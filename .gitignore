@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js build output
+web/.next/
+web/out/
+web/.open-next/
+
+# Cloudflare
+.wrangler/
+.dev.vars
+.mf/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+.env.*.local
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage/
+*.lcov
+
+# Type checking
+*.tsbuildinfo
+next-env.d.ts
+
+# Secrets — NEVER commit
+secrets/
+*.pem
+*.key
+credentials.json

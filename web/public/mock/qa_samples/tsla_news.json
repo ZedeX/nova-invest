@@ -1,0 +1,17 @@
+{
+  "filename": "tsla_news.json",
+  "query_pattern": "TSLA.*(?:新闻|news|最近)",
+  "intent": "tool_call",
+  "response": {
+    "summary": "TSLA 最近新闻：交付量超预期，但价格调整引发市场关注。",
+    "numeric_facts": [],
+    "citations": [
+      {
+        "source": "mock",
+        "url": "/mock/news/tsla.json",
+        "quote": "Tesla deliveries beat estimates"
+      }
+    ],
+    "confidence": 0.85
+  }
+}

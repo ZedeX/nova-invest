@@ -1,0 +1,26 @@
+{
+  "filename": "aapl_price.json",
+  "query_signature": "current_price_aapl",
+  "query_pattern": "AAPL.*(?:当前|现在).*(?:价格|股价|多少钱)|AAPL.*price",
+  "intent": "simple_qa",
+  "response": {
+    "summary": "AAPL 当前价格约为 $187.31（基于最新 Mock 数据）。",
+    "numeric_facts": [
+      {
+        "value": 187.31,
+        "unit": "USD",
+        "source": "mock",
+        "quote": "AAPL Close 187.31",
+        "confidence": 0.95
+      }
+    ],
+    "citations": [
+      {
+        "source": "mock",
+        "url": "/mock/klines/AAPL_1d.json",
+        "quote": "Last close: 187.31"
+      }
+    ],
+    "confidence": 0.95
+  }
+}

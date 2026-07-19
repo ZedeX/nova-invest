@@ -1,0 +1,32 @@
+{
+  "filename": "portfolio_risk.json",
+  "query_pattern": "(?:持仓|portfolio).*(?:风险|risk)",
+  "intent": "deep_research",
+  "response": {
+    "summary": "基于你的持仓（AAPL 100 股 + NVDA 50 股），当前组合 Beta 约 1.15，最大回撤预估 12%。",
+    "numeric_facts": [
+      {
+        "value": 1.15,
+        "unit": "ratio",
+        "source": "mock",
+        "quote": "Portfolio Beta 1.15",
+        "confidence": 0.85
+      },
+      {
+        "value": 12.0,
+        "unit": "percent",
+        "source": "mock",
+        "quote": "Estimated Max Drawdown 12%",
+        "confidence": 0.75
+      }
+    ],
+    "citations": [
+      {
+        "source": "mock",
+        "url": "/mock/portfolio/risk.json",
+        "quote": "Risk analysis"
+      }
+    ],
+    "confidence": 0.8
+  }
+}

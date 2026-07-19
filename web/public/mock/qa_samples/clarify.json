@@ -1,0 +1,11 @@
+{
+  "filename": "clarify.json",
+  "query_pattern": "(?:怎么办|应该如何|help)",
+  "intent": "clarify",
+  "response": {
+    "summary": "你能更具体地描述你想了解的内容吗？例如：是想分析某个标的、回测某个策略，还是查询某个财报？",
+    "numeric_facts": [],
+    "citations": [],
+    "confidence": 0.5
+  }
+}

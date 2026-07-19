@@ -1,0 +1,32 @@
+{
+  "filename": "nvda_earnings.json",
+  "query_pattern": "NVDA.*(?:财报|earnings|营收)",
+  "intent": "deep_research",
+  "response": {
+    "summary": "NVDA 最近一季财报表现强劲，营收同比增长超 100%，主要由数据中心 AI 加速卡需求驱动。",
+    "numeric_facts": [
+      {
+        "value": 35.08,
+        "unit": "B USD",
+        "source": "mock",
+        "quote": "Revenue $35.08B",
+        "confidence": 0.92
+      },
+      {
+        "value": 0.65,
+        "unit": "USD EPS",
+        "source": "mock",
+        "quote": "EPS $0.65",
+        "confidence": 0.9
+      }
+    ],
+    "citations": [
+      {
+        "source": "mock",
+        "url": "/mock/earnings/nvda.json",
+        "quote": "Q4 FY25 Revenue"
+      }
+    ],
+    "confidence": 0.88
+  }
+}

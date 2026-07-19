@@ -1,0 +1,114 @@
+{
+  "playbooks": [
+    {
+      "package_id": "pkg_mock_001",
+      "playbook_id": "pb_mock_macross",
+      "title": "NVDA Momentum Master",
+      "description": "50/200 SMA crossover strategy for NVDA, optimized for momentum capture.",
+      "author": {
+        "id": "mock-brenda",
+        "name": "Brenda Liu",
+        "avatar": "/mock/avatars/brenda.png"
+      },
+      "tags": [
+        "momentum",
+        "single-stock",
+        "sma"
+      ],
+      "version": "1.0.0",
+      "installed_count": 234,
+      "rating_avg": 4.5,
+      "rating_count": 87,
+      "created_at": "2025-10-15T10:00:00Z",
+      "performance": {
+        "total_return": 28.5,
+        "sharpe": 1.62,
+        "max_drawdown": 8.3,
+        "win_rate": 58
+      }
+    },
+    {
+      "package_id": "pkg_mock_002",
+      "playbook_id": "pb_mock_rsi",
+      "title": "RSI Reversal Strategy",
+      "description": "Buy on RSI < 30 (oversold), sell on RSI > 70 (overbought).",
+      "author": {
+        "id": "mock-brenda",
+        "name": "Brenda Liu",
+        "avatar": "/mock/avatars/brenda.png"
+      },
+      "tags": [
+        "reversal",
+        "oversold",
+        "rsi"
+      ],
+      "version": "1.0.0",
+      "installed_count": 189,
+      "rating_avg": 4.2,
+      "rating_count": 65,
+      "created_at": "2025-10-20T10:00:00Z",
+      "performance": {
+        "total_return": 15.3,
+        "sharpe": 1.05,
+        "max_drawdown": 5.8,
+        "win_rate": 62
+      }
+    },
+    {
+      "package_id": "pkg_mock_003",
+      "playbook_id": "pb_mock_bollinger",
+      "title": "Bollinger Breakout",
+      "description": "Trade breakouts above upper Bollinger Band, exit at middle band.",
+      "author": {
+        "id": "mock-alex",
+        "name": "Alex Chen",
+        "avatar": "/mock/avatars/alex.png"
+      },
+      "tags": [
+        "breakout",
+        "volatility",
+        "bollinger"
+      ],
+      "version": "1.0.0",
+      "installed_count": 156,
+      "rating_avg": 4.0,
+      "rating_count": 52,
+      "created_at": "2025-11-01T10:00:00Z",
+      "performance": {
+        "total_return": 19.7,
+        "sharpe": 1.18,
+        "max_drawdown": 7.2,
+        "win_rate": 55
+      }
+    },
+    {
+      "package_id": "pkg_mock_004",
+      "playbook_id": "pb_mock_combo",
+      "title": "Multi-Strategy Combo",
+      "description": "50% MA Cross + 30% RSI + 20% Bollinger, diversified approach.",
+      "author": {
+        "id": "mock-charles",
+        "name": "Charles Wang",
+        "avatar": "/mock/avatars/charles.png"
+      },
+      "tags": [
+        "diversified",
+        "multi-strategy",
+        "balanced"
+      ],
+      "version": "1.0.0",
+      "installed_count": 98,
+      "rating_avg": 4.8,
+      "rating_count": 34,
+      "created_at": "2025-11-15T10:00:00Z",
+      "performance": {
+        "total_return": 22.1,
+        "sharpe": 1.42,
+        "max_drawdown": 6.5,
+        "win_rate": 60
+      }
+    }
+  ],
+  "total": 4,
+  "generated_at": "2026-07-19T05:22:19Z"
+}

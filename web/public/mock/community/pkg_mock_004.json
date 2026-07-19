@@ -1,0 +1,27 @@
+{
+  "package_id": "pkg_mock_004",
+  "playbook_id": "pb_mock_combo",
+  "title": "Multi-Strategy Combo",
+  "description": "50% MA Cross + 30% RSI + 20% Bollinger, diversified approach.",
+  "author": {
+    "id": "mock-charles",
+    "name": "Charles Wang",
+    "avatar": "/mock/avatars/charles.png"
+  },
+  "tags": [
+    "diversified",
+    "multi-strategy",
+    "balanced"
+  ],
+  "version": "1.0.0",
+  "installed_count": 98,
+  "rating_avg": 4.8,
+  "rating_count": 34,
+  "created_at": "2025-11-15T10:00:00Z",
+  "performance": {
+    "total_return": 22.1,
+    "sharpe": 1.42,
+    "max_drawdown": 6.5,
+    "win_rate": 60
+  }
+}

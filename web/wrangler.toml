@@ -1,0 +1,80 @@
+name = "nova-invest-web"
+compatibility_date = "2026-07-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Next.js on Workers via @opennextjs/cloudflare
+main = ".open-next/worker.js"
+assets = { directory = ".open-next/assets", binding = "ASSETS" }
+
+# ────────────────────────────────────────────────────────────────────────────
+# Environment Variables
+# ────────────────────────────────────────────────────────────────────────────
+[vars]
+USE_MOCK = "true"
+APP_ENV = "production"
+LLM_PROVIDER = "volcano-ark"
+DEFAULT_MODEL = "doubao-pro-32k"
+
+# ────────────────────────────────────────────────────────────────────────────
+# Cloudflare D1 (SQLite edge database)
+# Free tier: 5GB storage, 5M rows read/day, 100K rows written/day
+# ────────────────────────────────────────────────────────────────────────────
+[[d1_databases]]
+binding = "DB"
+database_name = "nova-invest-db"
+database_id = "aec3b1df-7088-43ee-9c32-32103fa1c597"
+migrations_dir = "migrations"
+
+# ────────────────────────────────────────────────────────────────────────────
+# Cloudflare R2 (object storage — Mock K-line cache)
+# Free tier: 10GB storage, 1M Class A ops/month, 10M Class B ops/month
+# Only caches 10 symbols per R2_CACHE_SYMBOLS whitelist
+# ────────────────────────────────────────────────────────────────────────────
+[[r2_buckets]]
+binding = "R2_CACHE"
+bucket_name = "nova-invest-cache"
+
+# ────────────────────────────────────────────────────────────────────────────
+# Cloudflare KV (session + short-term Agent memory)
+# Free tier: 100K reads/day, 1K writes/day, 1GB storage
+# ────────────────────────────────────────────────────────────────────────────
+[[kv_namespaces]]
+binding = "KV"
+id = "27f54dffaded46aa9b005706f0f831ce"
+
+# ────────────────────────────────────────────────────────────────────────────
+# Cloudflare Vectorize (vector index for RAG)
+# Free tier: 30M queried dimensions/month, 5M stored dimensions
+# Strict usage cap to stay within free tier
+# ────────────────────────────────────────────────────────────────────────────
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "nova-invest-vec"
+
+# ────────────────────────────────────────────────────────────────────────────
+# Dev environment overrides
+# ────────────────────────────────────────────────────────────────────────────
+[env.dev]
+name = "nova-invest-web-dev"
+[env.dev.vars]
+USE_MOCK = "true"
+APP_ENV = "dev"
+LLM_PROVIDER = "local-lmstudio"
+DEFAULT_MODEL = "local-qwen2.5-14b"
+
+# ────────────────────────────────────────────────────────────────────────────
+# Production environment
+# ────────────────────────────────────────────────────────────────────────────
+[env.production]
+name = "nova-invest-web"
+[env.production.vars]
+USE_MOCK = "false"
+APP_ENV = "production"
+LLM_PROVIDER = "volcano-ark"
+DEFAULT_MODEL = "doubao-pro-32k"
+
+# Secrets (set via `wrangler secret put`):
+#   VOLCANO_ARK_API_KEY
+#   ANTHROPIC_API_KEY
+#   YAHOO_FINANCE_API_KEY
+#   ALPHA_VANTAGE_API_KEY

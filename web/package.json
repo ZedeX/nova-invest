@@ -1,0 +1,37 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "preview": "opennextjs-cloudflare && wrangler dev",
+    "deploy": "opennextjs-cloudflare && wrangler deploy",
+    "deploy:dev": "opennextjs-cloudflare && wrangler deploy --env dev",
+    "db:migrate": "wrangler d1 migrations apply nova-invest-db --local",
+    "db:migrate:prod": "wrangler d1 migrations apply nova-invest-db --remote",
+    "db:seed": "wrangler d1 execute nova-invest-db --local --file=migrations/seed.sql",
+    "mock:generate": "python ../scripts/generate_mock_data.py",
+    "cf:create": "wrangler d1 create nova-invest-db && wrangler r2 bucket create nova-invest-cache && wrangler kv namespace create KV && wrangler vectorize create nova-invest-vec --dimensions 768 --metric cosine"
+  },
+  "dependencies": {
+    "next": "16.2.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260718.1",
+    "@opennextjs/cloudflare": "^1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "wrangler": "^4"
+  }
+}
