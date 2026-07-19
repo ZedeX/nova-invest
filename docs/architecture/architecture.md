@@ -312,6 +312,8 @@ flowchart BT
 | [ADR-0005](./adr-0005-memory-layer.md) | Memory Layer (2/3 Phase 1) | Proposed | §3 Layer 4 |
 | [ADR-0006](./adr-0006-tool-protocol.md) | Tool Protocol (Native+MCP) | Proposed | §3 Layer 5 |
 | [ADR-0007](./adr-0007-citation-validator.md) | Citation Validator | Proposed | Ask Agent §2 |
+| [ADR-0008](./adr-0008-strategy-dsl-schema.md) | Strategy DSL Schema | Proposed | §3 EP04 Strategy |
+| [ADR-0009](./adr-0009-backtest-engine.md) | Backtest Engine + PaperBroker | Proposed | §3 EP04/EP06 |
 | [ADR-0011](./adr-0011-d1-schema-master.md) | D1 Schema Master | Accepted | §6 部署/D1 |
 
 ***

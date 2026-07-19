@@ -5,7 +5,7 @@
 #
 # Last Updated: 2026-07-19
 # Version: 6
-# Total ADRs referenced: 8 (ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0011)
+# Total ADRs referenced: 10 (ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0009, ADR-0011)
 
 state_ownership:
   - id: SO-0001
@@ -91,6 +91,50 @@ state_ownership:
     owner_adr: ADR-0007
     interface: "validateCitations(answer, ragContext, env) -> ValidationResult"
     file: web/src/lib/ask/citation.ts
+    status: proposed
+
+  - id: SO-0011
+    name: strategy_dsl_validation
+    description: >
+      3-stage validation of Strategy DSL YAML: parse → JSON Schema → expression parse.
+      Owned by validateStrategy() pure function from ADR-0008.
+      Produces ValidatedStrategy or ValidationError list.
+    owner_adr: ADR-0008
+    interface: "validateStrategy(yamlString: string) -> ValidationResult"
+    file: web/src/lib/strategy/schema.ts
+    status: proposed
+
+  - id: SO-0012
+    name: strategy_lifecycle
+    description: >
+      Strategy lifecycle state machine (Draft → Validated → Backtested → PaperTrading → Live).
+      Owned by ADR-0008. Server-side guard enforcement on D1 write.
+      Rollback to Draft permitted from any state (creates new version).
+    owner_adr: ADR-0008
+    interface: "transitionLifecycle(strategy, toState, ctx) -> Strategy"
+    file: web/src/lib/strategy/lifecycle.ts
+    status: proposed
+
+  - id: SO-0013
+    name: backtest_execution
+    description: >
+      Execution of backtest pipeline (8 steps) producing BacktestResult.
+      Owned by runBacktest() from ADR-0009. Takes ValidatedStrategy from ADR-0008.
+      Deterministic (seeded PRNG). Shares TradeSimulator with PaperBroker.
+    owner_adr: ADR-0009
+    interface: "runBacktest(strategy, provider, seed?) -> BacktestResult"
+    file: web/src/lib/strategy/backtest.ts
+    status: proposed
+
+  - id: SO-0014
+    name: paper_broker_execution
+    description: >
+      PaperBroker order execution using shared TradeSimulator core.
+      Owned by PaperBroker class implementing BrokerAdapter interface.
+      Phase 1 only (no real broker). 5bps slippage, T+1 settlement.
+    owner_adr: ADR-0009
+    interface: "PaperBroker implements BrokerAdapter"
+    file: web/src/lib/broker/paper-broker.ts
     status: proposed
 
   - id: SO-0009
