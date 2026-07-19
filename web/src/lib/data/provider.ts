@@ -10,7 +10,7 @@
  * See: docs/prd/epic/02_DataLayer.md
  */
 
-import { Env, getEnv, isMockMode, R2_CACHE_SYMBOLS } from "../env";
+import { Env, getEnv, isMockMode, R2_CACHE_SYMBOLS, shouldCacheR2 } from "../env";
 import type { Kline, KlineResponse, Quote, SymbolInfo, Timeframe } from "../types";
 
 export interface MarketDataProvider {
@@ -187,6 +187,6 @@ export function getProvider(): MarketDataProvider {
   return _provider;
 }
 
-export function shouldCacheR2(symbol: string): boolean {
-  return R2_CACHE_SYMBOLS.has(symbol.toUpperCase());
-}
+// shouldCacheR2 is now canonicaly exported from env.ts per ADR-0002.
+// Re-export here for backward compat with any caller importing from provider.
+export { shouldCacheR2 };

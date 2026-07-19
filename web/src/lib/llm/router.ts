@@ -143,17 +143,22 @@ export function getLLM(intent: QueryIntent): MockLLM | RealLLM {
 export function classifyIntent(query: string): QueryIntent {
   const q = query.toLowerCase();
 
-  // Simple patterns
-  if (/\b(?:当前|现在)\b.*\b(?:价格|股价|多少钱)\b/.test(q) ||
+  // NOTE: Do NOT use \b around Chinese alternations — JS \b matches the
+  // boundary between [A-Za-z0-9_] and any other char, and CJK chars are
+  // "other" so \b当前\b never matches a pure-Chinese substring. Use bare
+  // alternations for Chinese; keep \b for English patterns.
+  // (Discovered by ADR-0003 TDD spec — see tests/unit/classify-intent.test.ts)
+
+  if (/(?:当前|现在).*(?:价格|股价|多少钱)/.test(q) ||
       /\bcurrent price\b|\bhow much\b/.test(q)) {
     return "simple_qa";
   }
-  if (/\b(?:分析|研究|比较|趋势|过去|历史)\b/.test(q) ||
-      /\banalyze|research|compare|trend|past|history\b/.test(q)) {
+  if (/(?:分析|研究|比较|趋势|过去|历史)/.test(q) ||
+      /\banalyze\b|\bresearch\b|\bcompare\b|\btrend\b|\bpast\b|\bhistory\b/.test(q)) {
     return "deep_research";
   }
-  if (/\b(?:查|调用|搜索|新闻)\b/.test(q) ||
-      /\bsearch|fetch|news\b/.test(q)) {
+  if (/(?:查询|查一下|调用|搜索|新闻)/.test(q) ||
+      /\bsearch\b|\bfetch\b|\bnews\b/.test(q)) {
     return "tool_call";
   }
   return "clarify";
