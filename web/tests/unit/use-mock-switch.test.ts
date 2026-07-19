@@ -64,7 +64,7 @@ describe("ADR-0001: USE_MOCK dual-mode switch", () => {
     // Next.js-served static file). The ADR's intent is clearly "zero EXTERNAL
     // HTTP calls" (no Yahoo/Alpha Vantage/Polygon). This test enforces the
     // intent: any fetch() call must target /mock/* (local), never http(s)://.
-    const fetchSpy = vi.fn(async (url: string) => ({
+    const fetchSpy = vi.fn(async (_url: string) => ({
       ok: true,
       json: async () => ({
         ticker: "AAPL",

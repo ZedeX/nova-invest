@@ -165,7 +165,7 @@ export class RealProvider implements MarketDataProvider {
     };
   }
 
-  async searchSymbols(query: string): Promise<SymbolInfo[]> {
+  async searchSymbols(_query: string): Promise<SymbolInfo[]> {
     // Phase 1.5: implement via Yahoo search API
     return [];
   }
