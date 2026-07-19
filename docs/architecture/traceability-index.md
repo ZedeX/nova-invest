@@ -25,8 +25,8 @@ This index maps every Technical Requirement (TR) to its owning ADR. Requirements
 | ADR-0002 | R2 Cache Whitelist | Accepted | 6 | 0 |
 | ADR-0003 | LLM Routing + Cost Cap | Accepted | 9 | 0 |
 | ADR-0004 | Agent Loop Design | Accepted | 2 | 2 |
-| ADR-0005 | Memory Layer | Proposed | 4 | 0 |
-| ADR-0006 | Tool Protocol | Proposed | 2 | 1 |
+| ADR-0005 | Memory Layer | Accepted | 4 | 0 |
+| ADR-0006 | Tool Protocol | Accepted | 2 | 1 |
 | ADR-0007 | Citation Validator | Accepted | 3 | 1 |
 | ADR-0008 | Strategy DSL Schema | Accepted | 9 | 0 |
 | ADR-0009 | Backtest Engine + PaperBroker | Accepted | 15 | 0 |
@@ -112,8 +112,8 @@ All conflicts resolved. No open conflicts remain.
 | ADR-0002 | R2 Cache Whitelist | Accepted | ADR-0001 |
 | ADR-0003 | LLM Routing + Cost Cap | Accepted | ADR-0001 |
 | ADR-0004 | Agent Loop Design | Accepted | ADR-0001, ADR-0003, ADR-0011 (transitive) |
-| ADR-0005 | Memory Layer | Proposed | ADR-0001, ADR-0004, ADR-0011 |
-| ADR-0006 | Tool Protocol | Proposed | ADR-0001, ADR-0003, ADR-0004 |
+| ADR-0005 | Memory Layer | Accepted | ADR-0001, ADR-0004, ADR-0011 |
+| ADR-0006 | Tool Protocol | Accepted | ADR-0001, ADR-0003, ADR-0004 |
 | ADR-0007 | Citation Validator | Accepted | ADR-0003 |
 | ADR-0008 | Strategy DSL Schema | Accepted | ADR-0001, ADR-0011 |
 | ADR-0009 | Backtest Engine + PaperBroker | Accepted | ADR-0008, ADR-0001, ADR-0011 |
@@ -152,4 +152,4 @@ All ADRs with resolved blockers have been promoted:
 | ADR-0012 | Community UGC | Proposed | Accepted | C16 resolved |
 | ADR-0013 | Playbook System | Proposed | Accepted | C17 resolved |
 
-Remaining Proposed ADRs: ADR-0005, ADR-0006, ADR-0014, ADR-0015, ADR-0016.
+Remaining Proposed ADRs: ADR-0014, ADR-0015, ADR-0016.
