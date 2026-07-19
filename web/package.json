@@ -14,7 +14,15 @@
     "db:migrate:prod": "wrangler d1 migrations apply nova-invest-db --remote",
     "db:seed": "wrangler d1 execute nova-invest-db --local --file=migrations/seed.sql",
     "mock:generate": "python ../scripts/generate_mock_data.py",
-    "cf:create": "wrangler d1 create nova-invest-db && wrangler r2 bucket create nova-invest-cache && wrangler kv namespace create KV && wrangler vectorize create nova-invest-vec --dimensions 768 --metric cosine"
+    "cf:create": "wrangler d1 create nova-invest-db && wrangler r2 bucket create nova-invest-cache && wrangler kv namespace create KV && wrangler vectorize create nova-invest-vec --dimensions 768 --metric cosine",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:all": "vitest run && playwright test",
+    "check:mock-symbols": "node scripts/check-mock-symbols.mjs"
   },
   "dependencies": {
     "next": "16.2.10",
@@ -24,14 +32,23 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260718.1",
     "@opennextjs/cloudflare": "^1",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/ui": "^4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "jsdom": "^29.1.1",
+    "msw": "^2.15.0",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vitest": "^4.1.10",
     "wrangler": "^4"
   }
 }
