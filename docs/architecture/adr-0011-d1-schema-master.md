@@ -292,6 +292,7 @@ CREATE TABLE community_playbooks (
   title           TEXT NOT NULL,
   description     TEXT,
   tags_json       TEXT,                    -- JSON array
+  content_hash    TEXT,                    -- SHA-256 of R2 YAML content; used by ADR-0012 checkDuplicate()
   -- NOTE: yaml_r2_key column REMOVED per ADR-0011. Reference playbook_versions.yaml_r2_key via playbook_id + current_version.
   version         TEXT DEFAULT '1.0',      -- SemVer of published version
   moderation_status TEXT NOT NULL DEFAULT 'active',  -- active/removed/banned (renamed from `status`)

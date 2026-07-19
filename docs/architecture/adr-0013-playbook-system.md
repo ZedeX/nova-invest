@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -740,7 +740,13 @@ export interface ExecutionContext {
 ### Negative
 
 - PlaybookExecutor conditional evaluation uses `Function()` constructor for expression evaluation — potential security risk if conditions come from untrusted input.
-  - Mitigation: Phase 1 conditions are authored by the Playbook creator (trusted). Phase 2 adds jsep-based safe expression parser.
+  - Mitigation: Phase 1 conditions are authored by the Playbook creator (trusted). Phase 2 replaces `Function()` with jsep-based safe expression parser.
+  - **Phase 2 Migration Plan (Function() → jsep)**:
+    1. **Trigger**: When community_playbooks moderation pipeline allows user-authored conditions (C17 resolution gate).
+    2. **Scope**: Replace `evaluateCondition()` with `jsep.parse(condition)` + recursive evaluator supporting `==`, `!=`, `<`, `>`, `<=`, `>=`, `&&`, `||`, string/number literals, and context variable access.
+    3. **Acceptance Criteria**: (a) All existing Phase 1 Playbook conditions pass unchanged; (b) No `Function()` or `eval()` calls in production code path; (c) Fuzz test with 1000 random expressions — zero uncaught exceptions; (d) jsep evaluator ≤ 0.5ms per evaluation (no perf regression).
+    4. **Rollback**: If jsep evaluator has critical bugs, feature-flag `USE_JSEP=false` falls back to `Function()` with a logged warning.
+    5. **ADR Amendment**: Upon completion, ADR-0013 §Code will be amended to show jsep evaluator; this Consequences entry will be updated to "RESOLVED in Phase 2".
 - Topological sort loads transitive dependencies into memory. Deep dependency chains (>10 levels) may be slow.
   - Mitigation: Limit max dependency depth to 10 in validation. Most Playbooks will have 2-3 levels.
 - Playbook lifecycle FSM differs from Strategy lifecycle FSM — developers must remember two different state machines.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -23,7 +23,7 @@ Proposed
 
 | Field | Value |
 |-------|-------|
-| **Depends On** | ADR-0001 (USE_MOCK provider factory), ADR-0003 (LLM routing + cost_cap) - both Accepted |
+| **Depends On** | ADR-0001 (USE_MOCK provider factory), ADR-0003 (LLM routing + cost_cap), ADR-0011 (D1 Schema Master — transitive: LoopContext.memory_ref → ADR-0005 MemoryRef → D1 conversation_history) — all Accepted |
 | **Enables** | EP01 Agent Harness stories (loop foundation), EP03 Ask Agent stories (Ask-specific handlers), ADR-0005 Memory Layer (loop emits memory events), ADR-0006 Tool Protocol (loop invokes tools), ADR-0014 Observability Schema (loop emits TraceStep) |
 | **Blocks** | EP01/EP03 implementation sprints cannot start until this is Accepted |
 | **Ordering Note** | Must be Accepted before ADR-0005 (Memory), ADR-0006 (Tools), ADR-0014 (Observability) - all three consume the `LoopContext` + `TraceStep` shapes defined here |
