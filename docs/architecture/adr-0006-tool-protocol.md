@@ -576,7 +576,7 @@ The current `TOOL_REGISTRY` static map will remain for native tools; MCP tools w
 | ADR-0004 §onToolCall | `onToolCall(ctx, tool: ToolCall): Promise<ToolResult>` | This ADR defines `ToolCall` and `ToolResult` shapes consumed by ADR-0004. |
 | ADR-0004 §executeWithFallback | "retry ×3, then switch source" | Retry ×3 is loop's job (ADR-0004); source switching is tool-internal (this ADR, per EP02 ID-4). |
 | ADR-0004 §TOOL_RETRY_LIMIT=3 | Loop retries same tool ×3 | Tool handlers must be idempotent (same params → same result, or retriable failure). |
-| TR-EP01-007 | Hybrid tool protocol: MCP (external) + native function call (internal) | Phase 1: 9 native; Phase 2: MCP. Hybrid model defined. |
+| TR-EP01-004 | Hybrid tool protocol: MCP (external) + native function call (internal) | Phase 1: 9 native; Phase 2: MCP. Hybrid model defined. |
 | TR-EP03-011 | MCP + Function Call protocol (internal native, external MCP Phase 2) | Phase 1: native function call (9 tools); Phase 2: MCP protocol (deferred). |
 | TR-EP06-013 | MCP broker server placeholder (Phase 2) | Phase 2 MCP integration will add brokerage server. Not in Phase 1 TOOL_REGISTRY. |
 

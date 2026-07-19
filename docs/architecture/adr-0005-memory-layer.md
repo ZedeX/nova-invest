@@ -580,12 +580,12 @@ The current `MemoryRef` shape already includes `vector_ref?: string` - Phase 1.5
 | EP03 Job Story 7 | Mock mode returns pre-built samples immediately | MockMemoryStore uses in-memory Map + seeded JSON; no KV/D1 calls (FP-0005) |
 | EP03 §2.7 | Ask Agent Loop includes SaveMemory state | `StepHandler.onFinalize` saves short_term to KV + appends conversation to D1 |
 | ADR-0004 §LoopContext | `memory_ref?: MemoryRef` field "per future ADR-0005" | This ADR defines `MemoryRef` shape (session_id, user_id, short_term, user_profile?, vector_ref?) |
-| TR-EP01-008 | 3-layer Memory: short_term / long_term_structured / long_term_vector | 2/3 covered (short_term ✅, long_term_structured ✅); long_term_vector shape defined but deferred (Phase 1.5) |
+| TR-EP01-005 | 3-layer Memory: short_term / long_term_structured / long_term_vector | 2/3 covered (short_term ✅, long_term_structured ✅); long_term_vector shape defined but deferred (Phase 1.5) |
 | TR-EP03-009 | Short-term memory (sessionId/messages/context_window 4096/last_topic) | `MemoryRef.short_term: Message[]` + `truncateToTokenBudget(4096)` |
 | TR-EP03-010 | Long-term memory D1 schema (user_profiles + conversation_history) | Already covered by ADR-0011; this ADR provides the access layer (`D1UserProfileStore`) |
 | TR-EP03-012 | Ask Agent Loop SaveMemory state | Partial: `StepHandler.onFinalize` saves memory; full Ask loop still in handler implementation |
-| TR-EP03-015 | Multi-turn memory with pronoun resolution | LLM prompt history approach; short_term Message[] included in prompt |
-| TR-EP03-016 | Cross-session long-term memory persistence (user_profiles) | `loadUserProfile()` lazy loads from D1; conversation_history persists all messages |
+| TR-EP03-017 | Multi-turn memory with pronoun resolution | LLM prompt history approach; short_term Message[] included in prompt |
+| TR-EP03-018 | Cross-session long-term memory persistence (user_profiles) | `loadUserProfile()` lazy loads from D1; conversation_history persists all messages |
 
 ## Performance Implications
 

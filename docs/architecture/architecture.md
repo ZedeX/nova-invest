@@ -96,8 +96,8 @@ flowchart TB
 | 8 Orchestration | Supervisor 路由 Ask/Build/Dashboard  | 自研轻量编排器                                   |
 | 7 Agent Loop    | ReAct + max\_steps + 成本/延迟 ceiling | TypeScript（详见 [ADR-0004](./adr-0004-agent-loop-design.md)）                            |
 | 6 Planning      | CoT + Plan-and-Execute             | LLM 原生                                    |
-| 5 Tool Calling  | MCP（外部数据源）+ 原生 function call（内部）   | MCP SDK + native                          |
-| 4 Memory        | 对话 buffer + 向量（Vectorize）+ 结构化（D1） | Cloudflare 三件套                            |
+| 5 Tool Calling  | MCP（外部数据源）+ 原生 function call（内部）   | MCP SDK + native（详见 [ADR-0006](./adr-0006-tool-protocol.md)）                          |
+| 4 Memory        | 对话 buffer + 向量（Vectorize）+ 结构化（D1） | Cloudflare 三件套（详见 [ADR-0005](./adr-0005-memory-layer.md)）                            |
 | 3 RAG           | 金融语料库 + 检索 + rerank                | Cloudflare Vectorize + 自研 rerank          |
 | 2 LLM Provider  | 本地 LM Studio + Cloudflare 部署后接火山引擎 | LiteLLM 风格路由                              |
 | 1 Observability | trace + replay + 成本监控              | OpenTelemetry + Grafana Cloud free        |
@@ -142,6 +142,8 @@ sequenceDiagram
 
 ## 5. Mock / 真实模式切换
 
+> **架构决策**: 详见 [ADR-0001: Use-Mock 双模切换](./adr-0001-use-mock-dual-mode-switch.md)
+
 ### 5.1 切换架构
 
 ```mermaid
@@ -181,6 +183,10 @@ LLM_API_KEY=${{ARK_API_KEY}}
 ***
 
 ## 6. 部署架构（Cloudflare 免费栈）
+
+> **R2 缓存白名单**: 详见 [ADR-0002: R2 Cache Whitelist](./adr-0002-r2-cache-whitelist.md)
+>
+> **D1 Schema Master**: 详见 [ADR-0011: D1 Schema Master](./adr-0011-d1-schema-master.md)
 
 ```mermaid
 flowchart TB
@@ -292,6 +298,21 @@ flowchart BT
 | LLM 调用  | rate limit + cost ceiling        |
 | 交易      | Phase 2 才接 broker，Phase 1 仅 Mock |
 | 合规      | Publisher 定位 + 免责声明 + 不持用户资金     |
+
+***
+
+## 11. Architecture Decision Records (ADR)
+
+| ADR | 标题 | 状态 | 覆盖层 |
+|-----|------|------|--------|
+| [ADR-0001](./adr-0001-use-mock-dual-mode-switch.md) | Use-Mock 双模切换 | Accepted | §5 Mock/Real |
+| [ADR-0002](./adr-0002-r2-cache-whitelist.md) | R2 缓存白名单 | Accepted | §6 部署/R2 |
+| [ADR-0003](./adr-0003-llm-routing-cost-cap.md) | LLM 路由 + Cost Cap | Accepted | §9.4 LLM 路由 |
+| [ADR-0004](./adr-0004-agent-loop-design.md) | Agent Loop 设计 | Proposed | §3 Layer 7 |
+| [ADR-0005](./adr-0005-memory-layer.md) | Memory Layer (2/3 Phase 1) | Proposed | §3 Layer 4 |
+| [ADR-0006](./adr-0006-tool-protocol.md) | Tool Protocol (Native+MCP) | Proposed | §3 Layer 5 |
+| [ADR-0007](./adr-0007-citation-validator.md) | Citation Validator | Proposed | Ask Agent §2 |
+| [ADR-0011](./adr-0011-d1-schema-master.md) | D1 Schema Master | Accepted | §6 部署/D1 |
 
 ***
 

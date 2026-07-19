@@ -184,7 +184,12 @@ export interface LoopResult {
   total_cost_usd: number;
   steps_executed: number;
   status: "completed" | "aborted" | "partial";
-  abort_reason?: "max_steps_exceeded" | "cost_exceeded" | "all_tools_failed" | "internal_error";
+  // Amendment 2026-07-19 (C15 resolution): added "citation_validation_failed" to align with
+  // ADR-0007 §Citation Validation Pipeline. ADR-0007's validateCitations() throws
+  // CitationValidationFailed when structural/quote/URL checks fail; the loop's onSynthesize
+  // handler catches and converts it via this.abort("citation_validation_failed").
+  // See registry v6 IF-0006 for the canonical union.
+  abort_reason?: "max_steps_exceeded" | "cost_exceeded" | "all_tools_failed" | "internal_error" | "citation_validation_failed";
 }
 
 // TraceStep per EP01 ID-7
