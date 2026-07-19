@@ -94,12 +94,12 @@ flowchart TB
 | --------------- | ---------------------------------- | ----------------------------------------- |
 | 9 UI            | Web 入口，lightweight-charts 图表        | Next.js 16 + lightweight-charts (Apache 2.0) |
 | 8 Orchestration | Supervisor 路由 Ask/Build/Dashboard  | 自研轻量编排器                                   |
-| 7 Agent Loop    | ReAct + max\_steps + 成本/延迟 ceiling | TypeScript（详见 [ADR-0004](./adr-0004-agent-loop-design.md)）                            |
+| 7 Agent Loop    | ReAct + max\_steps + 成本/延迟 ceiling + SSE 流式 | TypeScript（详见 [ADR-0004](./adr-0004-agent-loop-design.md)；流式传输 [ADR-0015](./adr-0015-sse-streaming.md)）                            |
 | 6 Planning      | CoT + Plan-and-Execute             | LLM 原生                                    |
-| 5 Tool Calling  | MCP（外部数据源）+ 原生 function call（内部）   | MCP SDK + native（详见 [ADR-0006](./adr-0006-tool-protocol.md)）                          |
+| 5 Tool Calling  | MCP（外部数据源）+ 原生 function call（内部）+ Circuit Breaker | MCP SDK + native（详见 [ADR-0006](./adr-0006-tool-protocol.md)；熔断器 [ADR-0016](./adr-0016-circuit-breaker.md)）                          |
 | 4 Memory        | 对话 buffer + 向量（Vectorize）+ 结构化（D1） | Cloudflare 三件套（详见 [ADR-0005](./adr-0005-memory-layer.md)）                            |
-| 3 RAG           | 金融语料库 + 检索 + rerank                | Cloudflare Vectorize + 自研 rerank          |
-| 2 LLM Provider  | 本地 LM Studio + Cloudflare 部署后接火山引擎 | LiteLLM 风格路由                              |
+| 3 RAG           | 金融语料库 + 检索 + rerank                | Cloudflare Vectorize + 自研 rerank（详见 [ADR-0014](./adr-0014-ask-rag-pipeline.md)）          |
+| 2 LLM Provider  | 本地 LM Studio + Cloudflare 部署后接火山引擎 + 流式 | LiteLLM 风格路由（详见 [ADR-0003](./adr-0003-llm-routing-cost-cap.md)）                              |
 | 1 Observability | trace + replay + 成本监控              | OpenTelemetry + Grafana Cloud free        |
 
 ***
@@ -308,16 +308,19 @@ flowchart BT
 | [ADR-0001](./adr-0001-use-mock-dual-mode-switch.md) | Use-Mock 双模切换 | Accepted | §5 Mock/Real |
 | [ADR-0002](./adr-0002-r2-cache-whitelist.md) | R2 缓存白名单 | Accepted | §6 部署/R2 |
 | [ADR-0003](./adr-0003-llm-routing-cost-cap.md) | LLM 路由 + Cost Cap | Accepted | §9.4 LLM 路由 |
-| [ADR-0004](./adr-0004-agent-loop-design.md) | Agent Loop 设计 | Proposed | §3 Layer 7 |
-| [ADR-0005](./adr-0005-memory-layer.md) | Memory Layer (2/3 Phase 1) | Proposed | §3 Layer 4 |
-| [ADR-0006](./adr-0006-tool-protocol.md) | Tool Protocol (Native+MCP) | Proposed | §3 Layer 5 |
-| [ADR-0007](./adr-0007-citation-validator.md) | Citation Validator | Proposed | Ask Agent §2 |
-| [ADR-0008](./adr-0008-strategy-dsl-schema.md) | Strategy DSL Schema | Proposed | §3 EP04 Strategy |
-| [ADR-0009](./adr-0009-backtest-engine.md) | Backtest Engine + PaperBroker | Proposed | §3 EP04/EP06 |
-| [ADR-0010](./adr-0010-dashboard-layout.md) | Dashboard Layout + Widgets | Proposed | §3 EP05 Dashboard |
-| [ADR-0012](./adr-0012-community-ugc.md) | Community UGC + Moderation | Proposed | §3 EP07 Community |
-| [ADR-0013](./adr-0013-playbook-system.md) | Playbook System | Proposed | §3 EP08 Playbook |
+| [ADR-0004](./adr-0004-agent-loop-design.md) | Agent Loop 设计 | Accepted | §3 Layer 7 |
+| [ADR-0005](./adr-0005-memory-layer.md) | Memory Layer (2/3 Phase 1) | Accepted | §3 Layer 4 |
+| [ADR-0006](./adr-0006-tool-protocol.md) | Tool Protocol (Native+MCP) | Accepted | §3 Layer 5 |
+| [ADR-0007](./adr-0007-citation-validator.md) | Citation Validator | Accepted | Ask Agent §2 |
+| [ADR-0008](./adr-0008-strategy-dsl-schema.md) | Strategy DSL Schema | Accepted | §3 EP04 Strategy |
+| [ADR-0009](./adr-0009-backtest-engine.md) | Backtest Engine + PaperBroker | Accepted | §3 EP04/EP06 |
+| [ADR-0010](./adr-0010-dashboard-layout.md) | Dashboard Layout + Widgets | Accepted | §3 EP05 Dashboard |
 | [ADR-0011](./adr-0011-d1-schema-master.md) | D1 Schema Master | Accepted | §6 部署/D1 |
+| [ADR-0012](./adr-0012-community-ugc.md) | Community UGC + Moderation | Accepted | §3 EP07 Community |
+| [ADR-0013](./adr-0013-playbook-system.md) | Playbook System | Accepted | §3 EP08 Playbook |
+| [ADR-0014](./adr-0014-ask-rag-pipeline.md) | Ask RAG Pipeline (Embed→Retrieve→Assemble) | Accepted | §3 Layer 3 RAG |
+| [ADR-0015](./adr-0015-sse-streaming.md) | SSE Streaming for Long-Running Ask Responses | Accepted | §3 Layer 7 (transport) |
+| [ADR-0016](./adr-0016-circuit-breaker.md) | Circuit Breaker for External Data Sources | Accepted | §3 Layer 5 (data reliability) |
 
 ***
 

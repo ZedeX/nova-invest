@@ -261,6 +261,55 @@ class RealLLM {
 }
 ```
 
+### Streaming Extension (ADR-0015 integration)
+
+> **Note (2026-07-20 amendment)**: ADR-0015 (SSE Streaming) extends `RealLLM` with a `stream()` method for adaptive streaming of long-running responses. This is an additive extension — `complete()` is unchanged; `stream()` is a new method that returns an async iterable for token-by-token emission.
+
+```typescript
+class RealLLM {
+  // Existing non-streaming method (unchanged)
+  async complete(query: string, intent: QueryIntent): Promise<AskResponse> { /* ... */ }
+
+  /**
+   * Streaming variant — returns an async iterable of text chunks.
+   *
+   * Used by ADR-0015 SSE Streaming when:
+   *   - intent === "deep_research" (always stream)
+   *   - adaptive mode detects >5s latency on first non-streaming call
+   *
+   * Cost cap enforcement is identical to complete() — estimated before the
+   * stream starts, model is degraded if cost_cap exceeded.
+   *
+   * @returns AsyncIterable<{ text: string; done: boolean }>
+   *          - { text: "chunk", done: false } for each token chunk
+   *          - { text: "", done: true } when stream completes
+   *
+   * Implementation: Uses the Anthropic SDK / Volcengine Ark streaming endpoint
+   * (both providers support SSE-style streaming natively).
+   */
+  async *stream(query: string, intent: QueryIntent): AsyncIterable<{ text: string; done: boolean }> {
+    // Cost cap check (same as complete)
+    const inputTokens = Math.ceil(query.length / 4);
+    const estimatedCost = estimateCost(this.config, inputTokens);
+    if (estimatedCost > this.config.cost_cap) {
+      const degradedConfig = this.degrade(this.config);
+      console.warn(`Cost cap exceeded (${estimatedCost} > ${this.config.cost_cap}), degrading to ${degradedConfig.model}`);
+      this.config = degradedConfig;
+    }
+
+    // ... actual LLM streaming API call ...
+    // Yields { text: chunk, done: false } for each chunk
+    // Finally yields { text: "", done: true }
+  }
+}
+```
+
+**Cost tracking for streaming**: The `stream()` method must aggregate token usage across all chunks and log the final actual cost after the stream completes. This aggregated cost is added to `LoopContext.accumulated_cost_usd` by ADR-0004's loop (same as `complete()`).
+
+**Mock mode**: `MockLLM` does NOT implement `stream()` — ADR-0015 §resolveStreamingMode returns "never" when `USE_MOCK=true`, so streaming is never invoked in Mock mode. Mock returns instant canned responses via `complete()`.
+
+**Conflict resolution (C21)**: ADR-0015's `stream()` extension is now formally part of the `RealLLM` interface. The method is additive — no existing code paths that use `complete()` are affected.
+
 ## Alternatives Considered
 
 ### Alternative 1: Single model for all intents

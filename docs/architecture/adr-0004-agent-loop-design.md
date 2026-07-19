@@ -176,6 +176,12 @@ export interface LoopContext {
   memory_ref?: MemoryRef;           // per future ADR-0005
   provider: MarketDataProvider;     // from ADR-0001 getProvider()
   llm: MockLLM | RealLLM;           // from ADR-0003 getLLM(intent, env)
+  // Amendment 2026-07-20 (C22 resolution): ADR-0015 SSE Streaming adds optional
+  // `sse_encoder` field for streaming responses. Set by AskStepHandler.onInit
+  // when resolveStreamingMode(intent, env) returns "always" or "adaptive".
+  // Undefined for non-streaming responses (Mock mode, simple_qa intent).
+  // See ADR-0015 §LoopContext Extension for the SSEncoder class definition.
+  sse_encoder?: SSEncoder;          // from ADR-0015 — undefined when not streaming
 }
 
 export interface LoopResult {

@@ -358,9 +358,10 @@ Migrations MUST be applied in this order (FK dependencies):
 007_community.sql        -> community_playbooks, user_playbook_installs, playbook_ratings,
                             playbook_comments, playbook_reports (FK -> users, playbooks, community_playbooks)
 008_citation_url_check.sql -> url_check_queue (no FKs; task queue table, FK -> future ADR-0014 traces)
+009_rag_metadata.sql       -> rag_chunks, news_articles (FK -> symbols; added by ADR-0014)
 ```
 
-Each migration is idempotent (`CREATE TABLE IF NOT EXISTS`). Migration files live at `web/migrations/001_*.sql` through `web/migrations/008_*.sql`.
+Each migration is idempotent (`CREATE TABLE IF NOT EXISTS`). Migration files live at `web/migrations/001_*.sql` through `web/migrations/009_*.sql`.
 
 > **Note (2026-07-19 amendment)**: Migration 008 added by [ADR-0007](adr-0007-citation-validator.md) §D1 Schema Addition. The `url_check_queue` table stores async URL reachability check tasks for Cloud mode citation validation. `status` column here is queue-task state (pending/processing/done/failed), which is an EXCEPTION to FP-0009 (FP-0009 applies to entity lifecycle state, not task queue state).
 
@@ -388,6 +389,56 @@ CREATE INDEX IF NOT EXISTS idx_url_check_status ON url_check_queue(status, creat
 ```
 
 **Cleanup**: `url_check_queue` entries older than 30 days should be deleted by a cron worker to prevent unbounded growth. Queue depth > 1000 should trigger an alert.
+
+### Migration 009: rag_chunks + news_articles (ADR-0014)
+
+> **Note (2026-07-20 amendment)**: Migration 009 added by [ADR-0014](adr-0014-ask-rag-pipeline.md) §D1 Schema Addition. These tables store metadata for Vectorize-indexed RAG chunks (SEC filings, news, playbook sections) and news article metadata. The actual chunk embeddings live in Cloudflare Vectorize (`NOVA_RAG_INDEX`); D1 stores only the metadata + R2 key pointer for full-text retrieval.
+
+```sql
+-- 009_rag_metadata.sql
+-- Added by ADR-0014 §D1 Schema Addition
+-- Purpose: Metadata for Vectorize-indexed RAG chunks + news article metadata
+-- Vectorize stores vectors + IDs; D1 stores retrievable metadata; R2 stores full text
+
+CREATE TABLE IF NOT EXISTS rag_chunks (
+  id            TEXT PRIMARY KEY,           -- Vectorize vector ID (canonical)
+  source_type   TEXT NOT NULL,              -- "sec_edgar" | "news" | "playbook"
+  source_id     TEXT NOT NULL,              -- source document ID (e.g., "10-K_2025", "reuters_38291")
+  ticker        TEXT REFERENCES symbols(ticker),
+  title         TEXT NOT NULL,
+  snippet       TEXT NOT NULL,              -- chunk text (≤ 512 chars) for LLM context
+  chunk_index   INTEGER NOT NULL DEFAULT 0, -- chunk position in source document (0-based)
+  r2_key        TEXT,                       -- R2 object key for full document
+  url           TEXT,                       -- canonical URL for citation (e.g., SEC filing URL)
+  date          TEXT,                       -- document date (ISO 8601)
+  indexed_at    TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_rag_chunks_source ON rag_chunks(source_type, source_id);
+CREATE INDEX IF NOT EXISTS idx_rag_chunks_ticker ON rag_chunks(ticker, date DESC);
+CREATE INDEX IF NOT EXISTS idx_rag_chunks_source_type ON rag_chunks(source_type, ticker);
+
+CREATE TABLE IF NOT EXISTS news_articles (
+  id            TEXT PRIMARY KEY,           -- news article ID
+  source        TEXT NOT NULL,              -- "reuters" | "bloomberg" | "yahoo_news"
+  title         TEXT NOT NULL,
+  snippet       TEXT NOT NULL,
+  ticker        TEXT REFERENCES symbols(ticker),
+  url           TEXT NOT NULL,
+  r2_key        TEXT,                       -- R2 key for full article
+  published_at  TEXT NOT NULL,              -- ISO 8601
+  indexed_at    TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_news_ticker_date ON news_articles(ticker, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_news_source ON news_articles(source, published_at DESC);
+```
+
+**K-line data exemption**: Per Critical Implementation Rule #2, K-line data NEVER goes in D1. The `KlineMetadataAdapter` in ADR-0014 queries the existing `symbols` + `fundamentals` tables (Migrations 001/002), not `rag_chunks`. RAG chunks are only for SEC filings, news, and playbook sections — text-based sources.
+
+**UserNoteAdapter exemption**: User conversation notes are stored in `conversation_history` (Migration 002). `UserNoteAdapter` queries that table directly. No new table needed for user notes.
+
+**Cleanup**: `rag_chunks` entries for sources that no longer exist (e.g., deleted playbooks) should be deleted by the indexing pipeline. `news_articles` older than 90 days without a corresponding `rag_chunks` entry can be archived to R2 and deleted from D1.
 
 ### Critical Implementation Rules
 

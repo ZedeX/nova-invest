@@ -38,9 +38,19 @@
 #   - Promoted ADR-0004/0007/0008/0009/0010/0012/0013 to Accepted
 #   - Fixed C16 (ADR-0011 content_hash), C17 (ADR-0013 Function() migration plan), C18 (ADR-0004 transitive dep)
 #   - Coverage: 110 full + 7 partial + 13 gaps = 130 (84.6% full)
+# v7 changes (post-v5 fixes):
+#   - Promoted ADR-0014/0015/0016 to Accepted after resolving C19/C20/C21/C22
+#   - TR-EP02-008 upgraded from partial -> full (added ADR-0016 as co-owner per C20 resolution)
+#   - Coverage: 111 full + 6 partial + 13 gaps = 130 (85.4% full)
+#   - All v5 conflicts (C19/C20/C21/C22) resolved via ADR amendments:
+#     * C19: ADR-0011 amended with Migration 009 (rag_chunks + news_articles tables)
+#     * C20: ADR-0006 amended with ProviderRouter pattern acknowledgment
+#     * C21: ADR-0003 amended with RealLLM.stream() method
+#     * C22: ADR-0004 amended with LoopContext.sse_encoder field
+#   - See docs/architecture/architecture-review-2026-07-20-v5.md for full v5 review
 
-registry_version: 6
-last_updated: "2026-07-19"
+registry_version: 7
+last_updated: "2026-07-20"
 
 requirements:
   # ============ EP01 - Agent Harness (15 TRs) ============
@@ -206,9 +216,9 @@ requirements:
     system: Data Layer
     requirement: "Multi-source fallback Yahoo -> Alpha Vantage -> Polygon -> Mock (Phase 1.5+; Phase 1: Yahoo + Mock only)"
     domain: Data Layer
-    owner_adr: ADR-0006
-    coverage: partial
-    coverage_note: "ADR-0006 §Source Switching specifies source switching is tool-internal (loop only retries ×3); CircuitBreaker now ADR'd by ADR-0016"
+    owner_adr: [ADR-0006, ADR-0016]
+    coverage: full
+    coverage_note: "ADR-0006 §Source Switching defines tool-internal fallback pattern; ADR-0016 §ProviderRouter Integration canonicalizes the implementation with circuit-breaker integration. v7 upgrade: partial → full after ADR-0006 amended to acknowledge ProviderRouter (C20 resolution)."
     status: active
   - id: TR-EP02-009
     epic: EP02

@@ -414,6 +414,38 @@ async function getQuoteHandler(params, env): Promise<ToolResult> {
 
 **Critical**: The loop's `executeWithFallback` retries the SAME tool ×3 (e.g., `get_quote` called 3 times). Each call internally tries all sources (Yahoo -> Alpha). If a source is rate-limited, the retry ×3 may help (rate limit may clear). If all 3 retries fail, loop returns partial result.
 
+### ProviderRouter: Canonical Source-Switching Abstraction (ADR-0016 integration)
+
+> **Note (2026-07-20 amendment)**: The inline `try/catch` source-switching pattern shown above in `getQuoteHandler` is the conceptual model — each tool handler owns its fallback chain (per EP02 ID-4). For market-data tools (`get_quote`, `get_klines`, `get_fundamentals`), the canonical implementation of this pattern is the `ProviderRouter` class defined in [ADR-0016](adr-0016-circuit-breaker.md) §ProviderRouter Integration.
+
+`ProviderRouter` consolidates the fallback chain `[yahoo, alpha_vantage, polygon, mock]` into a single `MarketDataProvider` implementation, with these additions over the inline pattern:
+
+1. **Circuit-breaker integration**: Each source is wrapped by ADR-0016's `CircuitBreaker.isTripped(source)` check. Tripped sources are skipped without attempting a network call (saves 5–30s timeout latency).
+2. **R2 cache bypass**: Per ADR-0002, R2 cache hits bypass the circuit breaker and provider chain entirely — `ProviderRouter` checks R2 first for whitelisted symbols.
+3. **Mock source exemption**: `ProviderRouter` always falls back to `MockProvider` (ADR-0001) as the final option. Mock source is circuit-breaker-exempt per ADR-0016 §Critical Implementation Rules #5.
+4. **Single-flight half-open probe**: When a source is in HALF-OPEN state, only one probe request is allowed; concurrent requests skip (ADR-0016 §Critical Implementation Rules #4).
+
+**Tool handler integration**: Market-data tool handlers delegate to `ProviderRouter` instead of inlining the fallback chain:
+
+```typescript
+// Canonical pattern for market-data tools (post-ADR-0016)
+async function getQuoteHandler(params, env): Promise<ToolResult> {
+  const ticker = params.ticker as string;
+  const start = Date.now();
+  const router = new ProviderRouter(sources, circuitBreaker, r2);
+  try {
+    const quote = await router.getQuote(ticker);
+    return toolSuccess(quote, router.lastSourceUsed, 0, Date.now() - start);
+  } catch (error) {
+    return toolFailure(error.message, "error", Date.now() - start);
+  }
+}
+```
+
+**Non-market-data tools** (e.g., `search_news`, `get_earnings`, `build_strategy`, `run_backtest`) continue to use inline fallback chains because their sources are not interchangeable in the same way (e.g., `search_news` queries RSS feeds, not market-data APIs). The `ProviderRouter` pattern applies only to the `MarketDataProvider` interface (klines/quote/fundamentals/earnings/searchSymbols).
+
+**Conflict resolution (C20)**: ADR-0016's `ProviderRouter` is the canonical implementation of this ADR's "tool-internal source switching" pattern for market-data tools. Both ADRs are consistent: ADR-0006 defines the pattern (tool-internal, loop doesn't switch), ADR-0016 refines the implementation (ProviderRouter class + circuit breaker).
+
 ### Mock Mode Tool Behavior
 
 All 9 Phase 1 tools in Mock mode:

@@ -48,6 +48,10 @@ pnpm-debug.log*
 coverage/
 *.lcov
 
+# Playwright test artifacts
+web/playwright-report/
+web/test-results/
+
 # Type checking
 *.tsbuildinfo
 next-env.d.ts

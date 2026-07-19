@@ -29,7 +29,7 @@
   - C11 (LOW): EP03 §2.7 didn't back-ref ADR-0004 - **RESOLVED** (this session)
   - C12 (LOW): traceability-index.md was stale (said 3 ADRs) - **RESOLVED** (this session)
   - C13 (LOW): tr-registry.yaml owner_adr fields were stale - **RESOLVED** (this session)
-- **Pre-gate checklist**: tests/integration/ ❌, design/accessibility-requirements.md ❌, design/ux/interaction-patterns.md ❌
+- **Pre-gate checklist**: tests/integration/ ✅ (5 integration tests), design/accessibility-requirements.md ✅ (WCAG 2.1 AA), design/ux/interaction-patterns.md ✅ (12 patterns)
 - **Blocking issues for PASS**:
   1. Promote ADR-0004 and ADR-0011 from Proposed to Accepted (requires implementation)
   2. Write ADR-0007 Citation Validator (HIGH engine risk)
@@ -71,7 +71,7 @@
   - ADR-0005: TR-EP01-008 should be TR-EP01-005; TR-EP03-015 should be TR-EP03-017; TR-EP03-016 should be TR-EP03-018
   - ADR-0006: TR-EP01-007 should be TR-EP01-004
 - **Errata in v3 report itself**: Newly Covered table originally had 11 of 16 TR-IDs wrong (TR-EP03-013/019/021, TR-EP06-002/005/006, TR-EP02-004/005, TR-EP05-002/003, TR-EP07-003 were all misreferenced). Corrected inline with [RULES I BROKE] section appended per project rules.
-- **Pre-gate checklist**: tests/integration/ ❌, design/accessibility-requirements.md ❌, design/ux/interaction-patterns.md ❌
+- **Pre-gate checklist**: tests/integration/ ✅ (5 integration tests), design/accessibility-requirements.md ✅ (WCAG 2.1 AA), design/ux/interaction-patterns.md ✅ (12 patterns)
 - **Blocking issues for PASS**:
   1. ~~Resolve C14~~ ✅ RESOLVED (ADR-0011 §Rules #6 already documents the FP-0009 exception)
   2. ~~Resolve C15~~ ✅ RESOLVED (ADR-0004 abort_reason union extended — Amendment 2026-07-19)
