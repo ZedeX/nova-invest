@@ -1,0 +1,264 @@
+# Architecture Registry
+#
+# Single source of truth for architectural stances across the project.
+# Each stance is owned by an ADR; superseded stances are marked but never deleted.
+#
+# Last Updated: 2026-07-19
+# Version: 1
+# Total ADRs referenced: 3 (ADR-0001, ADR-0002, ADR-0003)
+
+state_ownership:
+  - id: SO-0001
+    name: provider_selection
+    description: >
+      Selection of Mock vs Real MarketDataProvider instance.
+      Owned by data-layer factory function getProvider().
+    owner_adr: ADR-0001
+    interface: "getProvider(env?) → MarketDataProvider"
+    file: web/src/lib/data/provider.ts
+    status: accepted
+
+  - id: SO-0002
+    name: r2_cache_membership
+    description: >
+      Decision of whether a given symbol is allowed to be cached in R2.
+      Owned by shouldCacheR2(symbol) predicate backed by R2_CACHE_SYMBOLS Set.
+    owner_adr: ADR-0002
+    interface: "shouldCacheR2(symbol: string) → boolean"
+    file: web/src/lib/env.ts
+    status: accepted
+
+  - id: SO-0003
+    name: llm_selection
+    description: >
+      Selection of MockLLM vs RealLLM instance and which LLMConfig to use.
+      Owned by llm-layer factory function getLLM(intent, env?).
+    owner_adr: ADR-0003
+    interface: "getLLM(intent: QueryIntent, env?) → MockLLM | RealLLM"
+    file: web/src/lib/llm/router.ts
+    status: accepted
+
+  - id: SO-0004
+    name: intent_classification
+    description: >
+      Classification of user query into one of four QueryIntent values.
+      Owned by classifyIntent(query) regex-based classifier (Phase 1).
+    owner_adr: ADR-0003
+    interface: 'classifyIntent(query: string) → "simple_qa" | "deep_research" | "tool_call" | "clarify"'
+    file: web/src/lib/llm/router.ts
+    status: accepted
+
+interfaces:
+  - id: IF-0001
+    name: MarketDataProvider
+    description: >
+      Strategy interface for market data access. Implemented by MockProvider
+      (reads JSON) and RealProvider (calls Yahoo + R2 cache).
+    owner_adr: ADR-0001
+    contract: |
+      interface MarketDataProvider {
+        getKlines(symbol: string, timeframe: "1d" | "5m", from?: string, to?: string): Promise<KlineResponse>;
+        getQuote(symbol: string): Promise<QuoteResponse>;
+        getEarnings(symbol: string): Promise<EarningsResponse>;
+      }
+    file: web/src/lib/data/provider.ts
+    status: accepted
+
+  - id: IF-0002
+    name: LLMConfig
+    description: >
+      Configuration object for LLM calls — provider, model, max_tokens, cost_cap.
+      Consumed by RealLLM constructor. MockLLM ignores it (uses mock-qa-sample).
+    owner_adr: ADR-0003
+    contract: |
+      interface LLMConfig {
+        provider: "mock" | "lmstudio" | "ark";
+        model: string;
+        max_tokens: number;
+        cost_cap: number;  // USD per request, 0 = free
+        api_base?: string;
+      }
+    file: web/src/lib/llm/router.ts
+    status: accepted
+
+  - id: IF-0003
+    name: LLMComplete
+    description: >
+      Common complete() method signature shared by MockLLM and RealLLM.
+      Enables polymorphic dispatch from agent code.
+    owner_adr: ADR-0003
+    contract: |
+      interface LLM {
+        complete(query: string, intent: QueryIntent): Promise<AskResponse>;
+      }
+    file: web/src/lib/llm/router.ts
+    status: accepted
+
+performance_budgets:
+  - id: PB-0001
+    name: r2_cache_size
+    description: >
+      Total R2 cache size must stay below 5GB (50% of free tier).
+      Bounded by R2_CACHE_SYMBOLS whitelist (10 symbols × ~500KB each = ~5MB actual).
+    owner_adr: ADR-0002
+    budget: "5GB max (actual ~5MB)"
+    metric: r2_storage_bytes
+    status: accepted
+
+  - id: PB-0002
+    name: r2_cache_hit_latency
+    description: >
+      R2 cache hit must return data in < 50ms (Workers cold start + R2 read).
+    owner_adr: ADR-0002
+    budget: "< 50ms p95"
+    metric: r2_read_latency_ms
+    status: accepted
+
+  - id: PB-0003
+    name: mock_provider_latency
+    description: >
+      MockProvider response must be < 100ms (local JSON file read).
+    owner_adr: ADR-0001
+    budget: "< 100ms p95"
+    metric: mock_provider_latency_ms
+    status: accepted
+
+  - id: PB-0004
+    name: llm_cost_cap_simple_qa
+    description: >
+      Per-request cost cap for simple_qa intent (cloud mode).
+      If estimated cost exceeds cap, RealLLM must degrade or abort.
+    owner_adr: ADR-0003
+    budget: "$0.001 per request (cloud) / $0 (local/mock)"
+    metric: llm_cost_usd_per_request
+    status: accepted
+
+  - id: PB-0005
+    name: llm_cost_cap_deep_research
+    description: >
+      Per-request cost cap for deep_research intent (cloud mode).
+      After A1 conflict fix: $0.05 (not $0.50).
+    owner_adr: ADR-0003
+    budget: "$0.05 per request (cloud) / $0 (local/mock)"
+    metric: llm_cost_usd_per_request
+    status: accepted
+
+  - id: PB-0006
+    name: llm_cost_cap_tool_call
+    description: Per-request cost cap for tool_call intent (cloud mode).
+    owner_adr: ADR-0003
+    budget: "$0.01 per request (cloud) / $0 (local/mock)"
+    metric: llm_cost_usd_per_request
+    status: accepted
+
+  - id: PB-0007
+    name: llm_cost_cap_clarify
+    description: Per-request cost cap for clarify intent (cloud mode).
+    owner_adr: ADR-0003
+    budget: "$0.0005 per request (cloud) / $0 (local/mock)"
+    metric: llm_cost_usd_per_request
+    status: accepted
+
+forbidden_patterns:
+  - id: FP-0001
+    name: module_level_provider_cache
+    description: >
+      Caching MarketDataProvider at module level (e.g., `let _provider`).
+      Breaks Cloudflare Workers stateless model — provider persists across
+      requests, ignoring env var changes between deploys.
+    banned_by_adr: ADR-0001
+    pattern: "let _provider; function getProvider() { if (_provider) return _provider; ... }"
+    replacement: "Pass env explicitly to factory; construct fresh instance per request"
+    status: banned
+
+  - id: FP-0002
+    name: module_level_llm_cache
+    description: >
+      Caching LLM instance at module level (e.g., `let _llm`).
+      Same Workers stateless issue as FP-0001, AND ignores intent parameter
+      on subsequent calls (returns wrong config).
+    banned_by_adr: ADR-0003
+    pattern: "let _llm; function getLLM(intent) { if (_llm) return _llm; ... }"
+    replacement: "Pass intent + env explicitly; construct fresh instance per request"
+    status: banned
+
+  - id: FP-0003
+    name: r2_write_without_shouldCacheR2_check
+    description: >
+      Writing to R2 without first calling shouldCacheR2(symbol).
+      Causes cache bloat from cold symbols (e.g., RKLB) that will never be re-queried.
+    banned_by_adr: ADR-0002
+    pattern: "await r2.put(key, data)  // without shouldCacheR2(symbol) check"
+    replacement: "if (shouldCacheR2(symbol)) { await r2.put(key, data); }"
+    status: banned
+
+  - id: FP-0004
+    name: llm_call_exceeding_cost_cap
+    description: >
+      Calling LLM API when estimated cost exceeds config.cost_cap.
+      Forbidden by EP03 §3 BDD and EP01 ID-5.
+    banned_by_adr: ADR-0003
+    pattern: "if (estimatedCost > config.cost_cap) { /* still call LLM anyway */ }"
+    replacement: "Degrade to cheaper model OR abort with cost_exceeded error"
+    status: banned
+
+  - id: FP-0005
+    name: mock_mode_external_http
+    description: >
+      Any external HTTP call (fetch to Yahoo, Ark, etc.) when USE_MOCK=true.
+      Violates EP01 acceptance criteria and ADR-0001 contract.
+    banned_by_adr: ADR-0001
+    pattern: "if (isMockMode()) { await fetch('https://yahoo.api/...'); }"
+    replacement: "Mock mode must read local JSON files only; no fetch to external APIs"
+    status: banned
+
+api_decisions:
+  - id: API-0001
+    name: use_mock_env_var
+    description: >
+      USE_MOCK environment variable is the canonical mock/real switch.
+      Values: "true" (mock, default) | "false" (real).
+      All other mode-detection logic must defer to this var.
+    owner_adr: ADR-0001
+    key: "process.env.USE_MOCK"
+    default: '"true" (safe demo default)'
+    status: accepted
+
+  - id: API-0002
+    name: mock_data_path
+    description: >
+      Mock JSON files live at web/public/mock/{klines,earnings,qa_samples}/*.json.
+      Runtime URL: /mock/{klines,earnings,qa_samples}/*.json.
+      (Reconciled in A3 conflict fix — was previously documented as mock_data/.)
+    owner_adr: ADR-0001
+    key: "web/public/mock/"
+    status: accepted
+
+  - id: API-0003
+    name: r2_cache_symbols_set
+    description: >
+      R2_CACHE_SYMBOLS is the canonical whitelist of symbols allowed in R2 cache.
+      Must stay in sync with Mock dataset filenames.
+    owner_adr: ADR-0002
+    key: "R2_CACHE_SYMBOLS in web/src/lib/env.ts"
+    value: '["AAPL", "MSFT", "NVDA", "GOOG", "META", "AMZN", "TSLA", "NFLX", "AMD", "INTC"]'
+    status: accepted
+
+  - id: API-0004
+    name: llm_routing_rules
+    description: >
+      ROUTING_RULES is the canonical routing table for LLM selection by intent.
+      Single source of truth for cost_cap values.
+    owner_adr: ADR-0003
+    key: "ROUTING_RULES in web/src/lib/llm/router.ts"
+    status: accepted
+
+  - id: API-0005
+    name: environment_var_for_llm_mode
+    description: >
+      ENVIRONMENT env var ("production" | other) determines local vs cloud LLM.
+      Combined with USE_MOCK, fully determines LLM provider.
+    owner_adr: ADR-0003
+    key: "process.env.ENVIRONMENT"
+    values: '"production" → cloud (Ark) | other → local (LM Studio)'
+    status: accepted
