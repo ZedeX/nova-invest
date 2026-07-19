@@ -17,7 +17,7 @@ Accepted
 | **Knowledge Risk** | LOW |
 | **References Consulted** | `web/src/lib/data/provider.ts`, EP02 §2.2, architecture.md §5 |
 | **Post-Cutoff APIs Used** | None |
-| **Verification Required** | USE_MOCK=true must produce zero external HTTP requests (assertable in tests) |
+|- **Verification Required** | USE_MOCK=true must produce zero outbound external HTTP requests to third-party finance/LLM APIs; local `/mock/*` static file fetch is permitted (assertable in tests) |
 
 ## ADR Dependencies
 
@@ -216,7 +216,7 @@ If a request needs to call `getProvider()` multiple times, the request handler s
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|---------------------------|
 | EP02 DataLayer §2.2 | "单一开关 USE_MOCK 环境变量" | Defines `USE_MOCK` as the canonical switch; codifies the factory pattern |
-| EP02 DataLayer §3 BDD | "Mock 模式下读 K 线 / 不发起任何外部 HTTP 请求 / 响应时间 < 100ms" | Establishes testable contract: MockProvider must not call `fetch()` |
+| EP02 DataLayer §3 BDD | "Mock 模式下读 K 线 / 不发起任何外部 HTTP 请求 / 响应时间 < 100ms" | Establishes testable contract: MockProvider must not make outbound HTTP requests to third-party APIs; local `/mock/*` static file fetch is permitted |
 | EP02 DataLayer ID-2 | "Mock/Real 切换设计 - 关键决策" | Formalizes the design decision as an ADR |
 | EP01 AgentHarness §验收 | "USE_MOCK=true 时无任何外部 API 调用" | Same contract, asserted at agent layer |
 | EP01 AgentHarness ID-5 | "Provider 切换（本地 vs 云）" | LLM provider uses same env-var pattern (see ADR-0003) |
@@ -227,7 +227,7 @@ If a request needs to call `getProvider()` multiple times, the request handler s
 - **CPU**: Negligible — one env var read per request
 - **Memory**: Mock mode: ~5MB JSON loaded per K-line file (cached in browser); Real mode: zero JSON load
 - **Load Time**: Mock mode: < 100ms (local file read); Real mode: 200-500ms (Yahoo API call) + R2 cache hit < 50ms
-- **Network**: Mock mode: zero external HTTP (enforced by test); Real mode: 1 Yahoo call per request, mitigated by R2 cache (ADR-0002)
+- **Network**: Mock mode: zero outbound external HTTP to third-party APIs (enforced by test; local `/mock/*` static file fetch is permitted); Real mode: 1 Yahoo call per request, mitigated by R2 cache (ADR-0002)
 
 ## Migration Plan
 
@@ -237,7 +237,7 @@ The current `web/src/lib/data/provider.ts` already implements this ADR's intent 
 2. Make `getProvider()` accept `env` parameter explicitly
 3. Update all call sites to pass `process.env` (or `getRequestContext().env` in Workers)
 4. Add unit test asserting `getProvider({ USE_MOCK: "true" })` returns `MockProvider` instance, `getProvider({ USE_MOCK: "false" })` returns `RealProvider`
-5. Add unit test asserting `MockProvider.getKlines()` makes zero `fetch()` calls (use `vi.spyOn(globalThis, "fetch")`)
+5. Add unit test asserting `MockProvider.getKlines()` makes zero outbound HTTP requests to third-party APIs (local `/mock/*` static file fetch is permitted; use `vi.spyOn(globalThis, "fetch")`)
 6. Update `wrangler.toml` to set `USE_MOCK = "false"` in `[vars]` for production
 
 ## Validation Criteria
@@ -245,7 +245,7 @@ The current `web/src/lib/data/provider.ts` already implements this ADR's intent 
 - [ ] `process.env.USE_MOCK = "true"` → `getProvider()` returns `MockProvider` instance
 - [ ] `process.env.USE_MOCK = "false"` → `getProvider()` returns `RealProvider` instance
 - [ ] `process.env.USE_MOCK` unset → defaults to `"true"` (safe demo default)
-- [ ] `MockProvider.getKlines()` makes zero `fetch()` calls (verified by `vi.spyOn`)
+- [ ] `MockProvider.getKlines()` makes zero outbound external HTTP requests to third-party finance/LLM APIs; local `/mock/*` static file fetch is permitted (verified by `vi.spyOn`)
 - [ ] `MockProvider.getKlines("AAPL", "1d")` returns data from `web/public/mock/klines/AAPL_1d.json`
 - [ ] `RealProvider.getKlines()` falls back to Mock when Yahoo fails (Phase 1)
 - [ ] No module-level provider cache (request-scoped only)
@@ -258,3 +258,36 @@ The current `web/src/lib/data/provider.ts` already implements this ADR's intent 
 - **ADR-0003** (LLM routing + cost_cap) — uses the same env-var-driven switch pattern for LLM provider selection
 - EP02 §2.2 Mock/Real 切换设计 — originating design doc
 - architecture.md §5 — data flow context
+
+## TECH_DEBT — Module-Level Provider Cache Anti-Pattern
+
+**Status**: P1 refactor item — not resolved in current iteration; deferred to a future sprint.
+
+**Problem**: `web/src/lib/data/provider.ts` lines 176-188 use a module-level `_provider` cache:
+
+```typescript
+let _provider: MarketDataProvider | null = null;
+export function getProvider(): MarketDataProvider {
+  if (_provider) return _provider;  // ← stale on env change / cross-request leak
+  ...
+}
+```
+
+This violates Cloudflare Workers stateless semantics: a single Worker instance handles many requests, and the cached provider outlives its env-var reading. In Next.js dev mode with hot reload, stale providers persist across HMR cycles.
+
+**Impact**:
+- Mock/Real mode switch requires process restart (env change not picked up at runtime)
+- Cross-request state pollution in Workers (one user's Real provider reused for another's Mock request)
+- Unit tests must `vi.resetModules()` to avoid leaking state between test cases
+
+**Pending test cases** (3 `it.todo` in `web/tests/unit/use-mock-switch.test.ts`):
+
+| # | Test Case | Line |
+|---|-----------|------|
+| TD-1 | `getProvider(env)` accepts env parameter (request-scoped factory) | `it.todo` block |
+| TD-2 | `getProvider()` does NOT cache at module level (returns fresh instance when env changes) | `it.todo` block |
+| TD-3 | `getProvider({USE_MOCK:'true'})` returns MockProvider regardless of process.env | `it.todo` block |
+
+**Refactor trigger**: When a future iteration needs to promote these `it.todo` cases to `it()`, the module-level cache must be removed and `getProvider(env)` must accept an explicit env parameter (per §Critical Implementation Rule). Promoting the todos IS the refactor acceptance signal.
+
+**Related**: ADR-0003 TECH_DEBT (same pattern in `_llm` cache at `router.ts`).

@@ -379,3 +379,43 @@ The current `router.ts` already implements most of this ADR but with the anti-pa
 - EP01 ID-5 LLM 路由策略 — originating design doc
 - EP03 §2.2/§2.3/§2.6 — detailed routing rules and BDD
 - architecture.md §9 — inline decision this ADR formalizes
+
+## TECH_DEBT — Module-Level LLM Cache Anti-Pattern
+
+**Status**: P1 refactor item — not resolved in current iteration; deferred to a future sprint.
+
+**Problem**: `web/src/lib/llm/router.ts` lines 127-139 use a module-level `_llm` cache:
+
+```typescript
+let _llm: MockLLM | RealLLM | null = null;
+export function getLLM(intent: QueryIntent): MockLLM | RealLLM {
+  if (_llm) return _llm;  // ← BUG: ignores intent change + env leak
+  ...
+}
+```
+
+This has **two** bugs (not just the Workers stateless violation shared with ADR-0001):
+
+1. **Workers stateless violation**: Module-level `_llm` persists across requests in the same Worker instance, ignoring env var changes between deploys.
+2. **Intent ignored after first call**: First call with `intent="simple_qa"` creates a `RealLLM` with simple_qa config. Second call with `intent="deep_research"` returns the cached simple_qa LLM — **wrong model, wrong max_tokens, wrong cost_cap**.
+
+**Impact**:
+- Cost cap enforcement is silently bypassed (deep_research query uses simple_qa's cheaper model)
+- Mock/Real mode switch requires process restart
+- Cross-request state pollution in Workers
+- Unit tests must `vi.resetModules()` to avoid leaking state between test cases
+
+**Pending test cases** (6 `it.todo` in `web/tests/unit/llm-route.test.ts`):
+
+| # | Test Case | Line |
+|---|-----------|------|
+| TD-4 | `route(intent, env)` accepts env parameter (request-scoped) | `it.todo` block |
+| TD-5 | `getLLM(intent, env)` accepts env parameter (request-scoped) | `it.todo` block |
+| TD-6 | `getLLM()` does NOT cache at module level (returns fresh instance per call) | `it.todo` block |
+| TD-7 | `getLLM('simple_qa')` and `getLLM('deep_research')` return different RealLLM instances | `it.todo` block |
+| TD-8 | `RealLLM.complete()` calls `estimateCost()` before API call | `it.todo` block |
+| TD-9 | `RealLLM.complete()` degrades model when `estimateCost() > cost_cap` | `it.todo` block |
+
+**Refactor trigger**: When a future iteration needs to promote these `it.todo` cases to `it()`, the module-level cache must be removed, `getLLM(intent, env)` and `route(intent, env)` must accept explicit env parameters, and `estimateCost()` + cost cap enforcement must be implemented in `RealLLM.complete()`. Promoting the todos IS the refactor acceptance signal.
+
+**Related**: ADR-0001 TECH_DEBT (same module-level cache pattern in `_provider` at `provider.ts`).
