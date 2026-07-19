@@ -183,11 +183,15 @@ stateDiagram-v2
 
 ### 2.6 D1 Schema [B]
 
+> **注意（2026-07-19 修订）**：`symbol` 列已统一为 `ticker` per [ADR-0011](../../architecture/adr-0011-d1-schema-master.md)。
+> `orders.status` 已重命名为 `order_status` 以避免与 `lifecycle_status`/`moderation_status` 混淆。
+> 所有 FK 显式声明。Canonical schema 见 ADR-0011 §Master Schema。
+
 ```sql
 -- 账户表
 CREATE TABLE broker_accounts (
   id           TEXT PRIMARY KEY,
-  user_id      TEXT NOT NULL,
+  user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   broker_name  TEXT NOT NULL,  -- paper / alpaca / ibkr
   mode         TEXT NOT NULL,  -- paper / live
   balance      REAL DEFAULT 100000,  -- 虚拟资金默认 10 万
@@ -197,45 +201,45 @@ CREATE TABLE broker_accounts (
 
 -- 订单表
 CREATE TABLE orders (
-  id           TEXT PRIMARY KEY,
-  user_id      TEXT NOT NULL,
-  account_id   TEXT NOT NULL REFERENCES broker_accounts(id),
-  symbol       TEXT NOT NULL,
+  id           TEXT PRIMARY KEY,           -- ord_<timestamp>_<random6>
+  user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account_id   TEXT NOT NULL REFERENCES broker_accounts(id) ON DELETE CASCADE,
+  ticker       TEXT NOT NULL REFERENCES symbols(ticker),  -- renamed from `symbol` per ADR-0011
   side         TEXT NOT NULL,   -- buy/sell/sell_short/buy_to_cover
   type         TEXT NOT NULL,   -- market/limit/stop/stop_limit
   quantity     REAL NOT NULL,
   limit_price  REAL,
   stop_price   REAL,
-  status       TEXT NOT NULL,
+  order_status TEXT NOT NULL DEFAULT 'pending',  -- renamed from `status` per ADR-0011
   filled_qty   REAL DEFAULT 0,
   filled_price REAL,
   created_at   TEXT DEFAULT (datetime('now')),
   updated_at   TEXT,
-  strategy_id  TEXT  -- 关联策略（可选）
+  strategy_id  TEXT REFERENCES strategies(id) ON DELETE SET NULL  -- FK added per ADR-0011
 );
 
 CREATE INDEX idx_orders_user ON orders(user_id, created_at);
-CREATE INDEX idx_orders_status ON orders(status);
+CREATE INDEX idx_orders_status ON orders(order_status);
 
 -- 持仓表
 CREATE TABLE positions (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id      TEXT NOT NULL,
-  account_id   TEXT NOT NULL REFERENCES broker_accounts(id),
-  symbol       TEXT NOT NULL,
+  user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account_id   TEXT NOT NULL REFERENCES broker_accounts(id) ON DELETE CASCADE,
+  ticker       TEXT NOT NULL REFERENCES symbols(ticker),  -- renamed from `symbol` per ADR-0011
   quantity     REAL NOT NULL,
   avg_price    REAL NOT NULL,
   current_price REAL,
   unrealized_pnl REAL,
   updated_at   TEXT DEFAULT (datetime('now')),
-  UNIQUE(user_id, account_id, symbol)
+  UNIQUE(user_id, account_id, ticker)
 );
 
 -- 成交表
 CREATE TABLE trades (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  order_id     TEXT NOT NULL REFERENCES orders(id),
-  symbol       TEXT NOT NULL,
+  order_id     TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  ticker       TEXT NOT NULL REFERENCES symbols(ticker),  -- renamed from `symbol` per ADR-0011
   side         TEXT NOT NULL,
   quantity     REAL NOT NULL,
   price        REAL NOT NULL,

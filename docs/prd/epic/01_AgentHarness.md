@@ -125,6 +125,12 @@ Scenario: 成本 ceiling
 
 ### ID-2: Tool 协议
 
+> **注意（2026-07-19 修订）**：本节 tool 协议已由 [ADR-0006](../../architecture/adr-0006-tool-protocol.md) §Decision 正式规范化。
+> ADR-0006 定义 `ToolCall`/`ToolResult`/`ToolHandler` 接口 + `TOOL_REGISTRY` 静态注册表（9 个 Phase 1 native tools）+ `TOOL_METADATA`（LLM function calling）。
+> **Phase 1 范围**: 9/10 tools 为 native（`get_sentiment` 延后至 Phase 2 MCP）。`MCP_SERVERS`（brokerage + playbook_hub）延后至 Phase 2。
+> **`search_news` 分类澄清**: 本节原标 MCP，但 EP03 §2.6 `INTERNAL_TOOLS` 标为 native。ADR-0006 采用 EP03 §2.6 分类（Phase 1 native），覆盖本节原 MCP 分类。
+> **C6 冲突解决**: EP03 §2.6 原 `get_current_price` 统一为 `get_quote`（本节 ID-2 tool table 为 authoritative）。
+
 **决策**: 混合：MCP（外部数据源）+ 原生 function call（内部）
 
 **理由**:
@@ -148,22 +154,44 @@ Scenario: 成本 ceiling
 
 ### ID-3: Memory 三层架构
 
+> **注意（2026-07-19 修订）**：本节 3-layer Memory 架构已由 [ADR-0005](../../architecture/adr-0005-memory-layer.md) §Decision 正式规范化。
+>
+> **Phase 1 范围（2/3 layers）**：
+> - ✅ `short_term: Message[]` → Cloudflare KV（session-scoped, TTL 24h, context_window 4096 tokens）
+> - ✅ `long_term_structured: UserPref` → D1 `user_profiles` 表（per ADR-0011 Migration 003）
+> - ⏸ `long_term_vector: Embedding[]` → Cloudflare Vectorize，**Phase 1.5 启用**（trigger: query volume > 1000/day OR explicit semantic search need）。`MemoryRef.vector_ref` 字段已预留，Phase 1.5 激活不需 breaking change。
+>
+> **UserPref 形状澄清**：下方原稿 `UserPref = { watchlist, preferences, past_strategies, credit_balance }` 是**概念模型**。实际 D1 `user_profiles` 表（per ADR-0011）只存储 `risk_tolerance` / `sectors` / `preferred_sources` 三个字段；`watchlist` 由 `watchlists` 表派生、`past_strategies` 由 `strategies` 表派生、`credit_balance` 由 `credit_balances` 表派生。ADR-0005 §Key Interfaces 定义的 `UserPref` interface 仅包含 D1 实际存储的字段，派生字段通过 SQL JOIN 获取。
+>
+> **代词解析**：EP03 Job Story 3 "那它的 EPS 呢?" 通过 LLM prompt 包含 `short_term` 历史消息实现，无需独立 NLP 模块（per ADR-0005 §Pronoun Resolution）。
+>
+> **Mock 模式**：使用 in-memory Map + seeded JSON（`web/public/mock/user_profile.json`），零 KV/D1/Vectorize 调用（FP-0005 compliance）。
+
 ```typescript
+// Conceptual 3-layer Memory type (EP01 §ID-3 original).
+// Phase 1 implements 2/3 layers per ADR-0005.
 type Memory = {
-  short_term: Message[];           // 对话窗口（最近 N 条）
-  long_term_structured: UserPref;   // D1 用户偏好
-  long_term_vector: Embedding[];    // Vectorize 历史检索
+  short_term: Message[];           // 对话窗口（最近 N 条）  -- Phase 1: KV
+  long_term_structured: UserPref;   // D1 用户偏好            -- Phase 1: D1
+  long_term_vector: Embedding[];    // Vectorize 历史检索      -- Phase 1.5: Vectorize
 };
 
+// Conceptual UserPref (EP01 §ID-3 original).
+// NOTE: Actual D1 user_profiles table stores only risk_tolerance / sectors / preferred_sources.
+// watchlist / past_strategies / credit_balance are derived via SQL JOIN on other tables.
 type UserPref = {
-  watchlist: string[];        // 关注股票
+  watchlist: string[];        // 关注股票        -> derived from watchlists table
   preferences: Record<string, unknown>;
-  past_strategies: string[];   // 历史策略 ID
-  credit_balance: number;
+  past_strategies: string[];   // 历史策略 ID    -> derived from strategies table
+  credit_balance: number;      -> derived from credit_balances table
 };
 ```
 
 ### ID-4: Agent Loop 状态机
+
+> **注意（2026-07-19 修订）**：本节状态机已由 [ADR-0004](../../architecture/adr-0004-agent-loop-design.md) 正式规范化。
+> ADR-0004 §State Machine 定义了 `LoopState` 类型（含 `Aborted` 状态），§Constants 固化了 `MAX_STEPS=20` / `AGGREGATE_COST_CEILING_USD=5` / `TOOL_RETRY_LIMIT=3` 硬上限。
+> 实现时以 ADR-0004 §Key Interfaces 中的 `AgentLoop.run()` 为准。
 
 ```mermaid
 stateDiagram-v2
@@ -187,19 +215,36 @@ stateDiagram-v2
 
 ### ID-5: LLM 路由策略
 
+> **注意（2026-07-19 修订）**：本节原稿与 ADR-0003 不一致。已对齐 ADR-0003 的 3-tier 模型：
+> - `USE_MOCK=true` → MockLLM（零 LLM API 调用，返回预生成 JSON 样本）
+> - `USE_MOCK=false` + `ENVIRONMENT!="production"` → RealLLM with LM Studio（本地免费）
+> - `USE_MOCK=false` + `ENVIRONMENT="production"` → RealLLM with Volcengine Ark（云端付费）
+>
+> 详见 [ADR-0003](../../architecture/adr-0003-llm-routing-cost-cap.md)。
+
 ```typescript
-// LLM 路由表
+// LLM 路由表（Ask Agent 4 intents；与 ADR-0003 ROUTING_RULES 一致）
+// Build Agent 4 intents（strategy_dsl / backtest_explain）待 ADR-0004 扩展或新建 ADR
 const ROUTING = {
-  simple_qa:     { model: "haiku-tier",   max_tokens: 500,   cost_cap: 0.01 },
-  deep_research: { model: "sonnet-tier",  max_tokens: 4000,  cost_cap: 0.05 },
-  strategy_dsl:  { model: "sonnet-tier",  max_tokens: 2000,  cost_cap: 0.20 },
-  backtest_explain: { model: "haiku-tier", max_tokens: 1000, cost_cap: 0.05 },
+  simple_qa:     { model: "haiku-tier",   max_tokens: 500,   cost_cap: 0.001 },  // ADR-0003 cloud
+  deep_research: { model: "sonnet-tier",  max_tokens: 4000,  cost_cap: 0.05  },  // ADR-0003 cloud
+  tool_call:     { model: "sonnet-tier",  max_tokens: 800,   cost_cap: 0.01  },  // ADR-0003 cloud
+  clarify:       { model: "haiku-tier",   max_tokens: 200,   cost_cap: 0.0005 }, // ADR-0003 cloud
+  // Build Agent intents（待 ADR-0004 规定 local/cloud 配置与 cost_cap）:
+  strategy_dsl:      { model: "sonnet-tier",  max_tokens: 2000,  cost_cap: 0.20 },  // 占位值，待 ADR-0004
+  backtest_explain:  { model: "haiku-tier",   max_tokens: 1000,  cost_cap: 0.05 },  // 占位值，待 ADR-0004
 };
 
-// Provider 切换（本地 vs 云）
-const PROVIDER = process.env.USE_MOCK === "true"
-  ? { base_url: "http://localhost:1234/v1", api_key: "mock" }  // LM Studio
-  : { base_url: process.env.LLM_BASE_URL, api_key: process.env.LLM_API_KEY };
+// Provider 切换（3-tier per ADR-0003；USE_MOCK 控制 Mock/Real，ENVIRONMENT 控制 local/cloud）
+function selectProvider(env: { USE_MOCK: string; ENVIRONMENT: string }): LLMProvider {
+  if (env.USE_MOCK === "true") {
+    return new MockLLM();  // 零 API 调用，返回 mock-qa-sample JSON
+  }
+  if (env.ENVIRONMENT === "production") {
+    return new RealLLM({ provider: "ark", api_base: process.env.LLM_BASE_URL, api_key: process.env.LLM_API_KEY });
+  }
+  return new RealLLM({ provider: "lmstudio", api_base: "http://localhost:1234/v1", api_key: "mock" });
+}
 ```
 
 ### ID-6: Eval Golden Set
@@ -216,6 +261,10 @@ const PROVIDER = process.env.USE_MOCK === "true"
   - 幻觉率 ≤ 5%
 
 ### ID-7: Observability Schema
+
+> **注意（2026-07-19 修订）**：本节 `TraceStep` schema 已由 [ADR-0004](../../architecture/adr-0004-agent-loop-design.md) §Key Interfaces 正式规范化。
+> ADR-0004 在原 7 字段基础上扩展为 9 字段，新增 `state: LoopState`（标记发出该 TraceStep 的状态机状态）和 `timestamp: string`（ISO 8601）。
+> 顶层 `Trace` 聚合 schema 仍待未来 ADR-0014 Observability Schema 定义。
 
 ```typescript
 type Trace = {
@@ -288,6 +337,13 @@ type TraceStep = {
 
 ### 反模式
 
+> **注意（2026-07-19 修订）**：以下 `max_steps > 20` 和 `单次 query 成本 > $5` 两条反模式已由 [ADR-0004](../../architecture/adr-0004-agent-loop-design.md) §Constants 固化为代码常量：
+> - `MAX_STEPS = 20` 硬上限 - 超出时 loop 进入 `Aborted` 状态，返回 `abort_reason: "max_steps_exceeded"`
+> - `AGGREGATE_COST_CEILING_USD = 5` 硬上限（aggregate per user query）- 超出时 loop 进入 `CostExceeded` 状态并 abort
+> - 另增 `TOOL_RETRY_LIMIT = 3` - 工具调用失败重试 3 次后返回 partial result
+>
+> 注意：ADR-0004 的 `$5` 是 **aggregate per user query**（跨多步累计），与 ADR-0003 的 per-LLM-call `cost_cap` 是叠加关系而非替代。
+
 1. ❌ 不要让 max_steps > 20（失控风险）
 2. ❌ 不要让单次 query 成本 > $5（亏损）
 3. ❌ 不要在 LLM 输出上不验证 schema
@@ -321,7 +377,7 @@ type TraceStep = {
 - [ ] USE_MOCK=true 时无任何外部 API 调用
 - [ ] USE_MOCK=false 时可接 LM Studio + 火山引擎
 - [ ] 全链路 trace 可在 Grafana 查看
-- [ ] 单次 query 成本 ≤ $0.01（简单）/ $0.05（深度）
+- [ ] 单次 query 成本 ≤ $0.001（简单）/ $0.05（深度） per [ADR-0003](../../architecture/adr-0003-llm-routing-cost-cap.md)
 
 ---
 

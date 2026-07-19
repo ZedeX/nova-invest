@@ -337,41 +337,48 @@ stateDiagram-v2
 
 ### 2.8 D1 Schema 完整 [B]
 
+> **注意（2026-07-19 修订）**：`playbooks.status` 已重命名为 `lifecycle_status` per [ADR-0011](../../architecture/adr-0011-d1-schema-master.md)。
+> `playbook_dependencies` 主键已修正（移除 `dependency_type`,改为 `(parent_id, child_id)`）。
+> `user_playbooks` 表已合并入 `user_playbook_installs`(与 EP07 共享)。Canonical schema 见 ADR-0011 §Master Schema。
+
 ```sql
 -- Playbook 主表（最新版本）
 CREATE TABLE playbooks (
   id             TEXT PRIMARY KEY,
   title          TEXT NOT NULL,
   description    TEXT,
-  author_id      TEXT NOT NULL,
+  author_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   kind           TEXT NOT NULL,  -- strategy/composite/data_fetcher/risk_manager/alert/narrative
   current_version TEXT NOT NULL,
-  status         TEXT DEFAULT "published",  -- draft/published/archived/deprecated
+  lifecycle_status TEXT DEFAULT "published",  -- renamed from `status` per ADR-0011: draft/published/archived/deprecated
   created_at     TEXT DEFAULT (datetime('now')),
   updated_at     TEXT DEFAULT (datetime('now'))
 );
 
 -- 版本表（已定义在 2.5）
+-- playbook_versions: PRIMARY KEY (playbook_id, version) per ADR-0011
 
 -- Playbook 引用关系（组合）
 CREATE TABLE playbook_dependencies (
-  parent_id      TEXT NOT NULL,
-  child_id       TEXT NOT NULL,
+  parent_id      TEXT NOT NULL REFERENCES playbooks(id) ON DELETE CASCADE,
+  child_id       TEXT NOT NULL REFERENCES playbooks(id) ON DELETE CASCADE,
   child_version  TEXT,  -- 可选固定版本
   dependency_type TEXT NOT NULL,  -- parallel/sequential/conditional/data
   weight         REAL,  -- parallel 时的权重
   created_at     TEXT DEFAULT (datetime('now')),
-  PRIMARY KEY (parent_id, child_id, dependency_type)
+  PRIMARY KEY (parent_id, child_id)  -- FIX per ADR-0011: removed dependency_type from PK
 );
 
--- 用户安装记录（与 Epic 07 community_playbooks 不同，这里是无社区的）
-CREATE TABLE user_playbooks (
-  user_id        TEXT NOT NULL,
-  playbook_id    TEXT NOT NULL,
-  installed_version TEXT NOT NULL,
-  installed_at   TEXT DEFAULT (datetime('now')),
-  PRIMARY KEY (user_id, playbook_id)
-);
+-- 用户安装记录 (MERGED with EP07 playbook_installs into user_playbook_installs per ADR-0011)
+-- Old user_playbooks table is DEPRECATED. Use user_playbook_installs (see ADR-0011 §Master Schema Migration 007):
+-- CREATE TABLE user_playbook_installs (
+--   user_id            TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+--   playbook_id        TEXT NOT NULL REFERENCES playbooks(id) ON DELETE CASCADE,
+--   package_id         TEXT NOT NULL REFERENCES community_playbooks(package_id) ON DELETE CASCADE,
+--   installed_version  TEXT NOT NULL,
+--   installed_at       TEXT DEFAULT (datetime('now')),
+--   PRIMARY KEY (user_id, playbook_id)
+-- );
 ```
 
 ### 2.9 核心 API [B]

@@ -94,7 +94,7 @@ flowchart TB
 | --------------- | ---------------------------------- | ----------------------------------------- |
 | 9 UI            | Web 入口，lightweight-charts 图表        | Next.js 16 + lightweight-charts (Apache 2.0) |
 | 8 Orchestration | Supervisor 路由 Ask/Build/Dashboard  | 自研轻量编排器                                   |
-| 7 Agent Loop    | ReAct + max\_steps + 成本/延迟 ceiling | TypeScript                                |
+| 7 Agent Loop    | ReAct + max\_steps + 成本/延迟 ceiling | TypeScript（详见 [ADR-0004](./adr-0004-agent-loop-design.md)）                            |
 | 6 Planning      | CoT + Plan-and-Execute             | LLM 原生                                    |
 | 5 Tool Calling  | MCP（外部数据源）+ 原生 function call（内部）   | MCP SDK + native                          |
 | 4 Memory        | 对话 buffer + 向量（Vectorize）+ 结构化（D1） | Cloudflare 三件套                            |
@@ -174,9 +174,9 @@ LLM_API_KEY=${{ARK_API_KEY}}
 | K 线   | `web/public/mock/klines/*.json`       | NVDA/MSFT/SPY 等日线+分钟线 (运行时 URL: `/mock/klines/*.json`) |
 | 财报    | `web/public/mock/earnings/*.json`     | NVDA/MSFT 财报文本+结构化 (运行时 URL: `/mock/earnings/*.json`) |
 | 问答样本  | `web/public/mock/qa_samples/*.json`   | 50+ 预写问答对 (运行时 URL: `/mock/qa_samples/*.json`) |
+| 社区    | `web/public/mock/community/*.json`    | 预置 Playbook 样本 + 创作者档案 (运行时 URL: `/mock/community/*.json`) |
 | 用户/策略 | D1 seed                       | 测试账号、Credit、策略草稿      |
 | 回测结果  | D1 seed                       | 预生成回测报告               |
-| 社区    | D1 seed                       | Playbook 样本 + 创作者档案   |
 
 ***
 
@@ -269,8 +269,14 @@ flowchart BT
 - LLM 易生成
 - 比 Python 安全（无代码注入）
 
-### 9.4 为什么 LLM 路由支持本地 + 云？
+### 9.4 为什么 LLM 路由支持 Mock + 本地 + 云？
 
+> **3-tier 模型（per [ADR-0003](./adr-0003-llm-routing-cost-cap.md)）**：
+> - **Mock**：`USE_MOCK=true` -> MockLLM，零 API 调用，返回预生成 JSON 样本。用于演示与测试。
+> - **本地**：`USE_MOCK=false` + `ENVIRONMENT!="production"` -> RealLLM with LM Studio。开发调试免费。
+> - **云**：`USE_MOCK=false` + `ENVIRONMENT="production"` -> RealLLM with Volcengine Ark。生产部署可控。
+
+- Mock：演示零依赖、测试可复现
 - 本地：开发调试免费
 - 云：生产部署可控
 - 配置化切换，不绑死供应商

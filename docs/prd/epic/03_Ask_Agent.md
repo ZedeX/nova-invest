@@ -69,6 +69,10 @@ flowchart TB
 
 ### 2.2 LLM 路由策略 [B] - **关键决策**
 
+> **注意（2026-07-19 修订）**：本节原稿 `env_mode = USE_MOCK === "true" ? "local" : "cloud"` 与 ADR-0003 不一致。
+> ADR-0003 采用 3-tier 模型：`USE_MOCK` 控制 Mock/Real 切换；`ENVIRONMENT` 控制 local/cloud 切换。
+> 已对齐 ADR-0003。详见 [ADR-0003](../../architecture/adr-0003-llm-routing-cost-cap.md)。
+
 **用户细化决策**："本地运行时接 LM Studio，部署到 Cloudflare 后接火山引擎 Ark"
 
 ```typescript
@@ -90,19 +94,30 @@ const ROUTING_RULES = {
     local:  { provider: "lmstudio",  model: "qwen2.5-7b-instruct",  max_tokens: 800,  cost_cap: 0 },
     cloud:  { provider: "ark",       model: "doubao-pro-32k",     max_tokens: 800,  cost_cap: 0.01 },
   },
-  fallback: {         // 主模型失败
-    local:  { provider: "lmstudio",  model: "qwen2.5-7b-instruct",  max_tokens: 500,  cost_cap: 0 },
-    cloud:  { provider: "ark",       model: "doubao-lite-4k",      max_tokens: 500,  cost_cap: 0.001 },
+  clarify: {          // 主模型无法分类时的兜底（原字段名 `fallback` 已统一为 `clarify` per ADR-0003）
+    local:  { provider: "lmstudio",  model: "qwen2.5-7b-instruct",  max_tokens: 200,  cost_cap: 0 },
+    cloud:  { provider: "ark",       model: "doubao-lite-4k",      max_tokens: 200,  cost_cap: 0.0005 },
   }
 };
 
+// 3-tier routing per ADR-0003:
+//   1. USE_MOCK=true                       -> MockLLM (零 API 调用)
+//   2. USE_MOCK=false + ENVIRONMENT!="production" -> RealLLM with LM Studio (local)
+//   3. USE_MOCK=false + ENVIRONMENT="production"  -> RealLLM with Volcengine Ark (cloud)
 function route(query: ClassifiedQuery, env: Env): LLMConfig {
-  const env_mode = env.USE_MOCK === "true" ? "local" : "cloud";
+  if (env.USE_MOCK === "true") {
+    return { provider: "mock", model: "mock-qa-sample", max_tokens: 0, cost_cap: 0 };
+  }
+  const env_mode = env.ENVIRONMENT === "production" ? "cloud" : "local";
   return ROUTING_RULES[query.intent][env_mode];
 }
 ```
 
 ### 2.3 引用与防幻觉 [B] - **关键决策**
+
+> **注意（2026-07-19 修订）**：本节 forced citation mode + 防幻觉契约已由 [ADR-0007](../../architecture/adr-0007-citation-validator.md) §Decision 正式规范化。
+> ADR-0007 定义 3-stage 验证 pipeline（structural + quote substring + async URL check）+ 2 种失败模式（Partial strip 默认 + Strict reject fallback）。`Citation.source` enum 已扩展为 6 值（原 4 值 + `playbook` + `user_note`）以覆盖 EP03 §2.4 RAG Pipeline 全部 5 个检索源。
+> `validateCitations()` 函数签名见 ADR-0007 §Key Interfaces。
 
 **强制 Citation 模式**：所有数字字段必须从结构化数据提取，不允许 LLM 自由生成。
 
@@ -115,7 +130,9 @@ interface AnswerWithCitations {
 }
 
 interface Citation {
-  source: "sec_edgar" | "yahoo" | "fred" | "news";
+  // Extended per ADR-0007 to cover all 5 RAG pipeline sources (EP03 §2.4):
+  //   sec_edgar / yahoo / fred / news (original 4) + playbook / user_note (added)
+  source: "sec_edgar" | "yahoo" | "fred" | "news" | "playbook" | "user_note";
   url: string;
   accessed_at: string;
   quote: string;  // 原文片段
@@ -190,6 +207,13 @@ class AskRAGPipeline {
 
 ### 2.5 记忆层 [B]
 
+> **注意（2026-07-19 修订）**：本节记忆层架构已由 [ADR-0005](../../architecture/adr-0005-memory-layer.md) §Decision 正式规范化。
+> ADR-0005 定义 `MemoryRef` 类型（consumed by ADR-0004 `LoopContext.memory_ref`）+ `MemoryStore` interface（factory: MockMemoryStore / RealMemoryStore）。
+> 加载策略: short_term Message[] eager load + user_profile UserPref lazy load + vector_ref deferred (Phase 1.5)。
+> Mock 模式: in-memory Map + seeded JSON（`web/public/mock/user_profile.json`），零 KV/D1 调用（FP-0005）。
+> 代词解析: LLM prompt 包含 short_term 历史消息，LLM 自行处理 coreference（无独立 NLP 模块）。
+> 下方 `ShortTermMemory` interface 与 D1 schema 保留作历史参考，canonical 实现以 ADR-0005 §Key Interfaces 为准。
+
 **短期记忆**（会话内，KV 存储）：
 
 ```typescript
@@ -203,12 +227,15 @@ interface ShortTermMemory {
 
 **长期记忆**（D1 持久化，用户画像）：
 
+> **注意（2026-07-19 修订）**：`user_profiles.holdings` JSON 列已移除 per [ADR-0011](../../architecture/adr-0011-d1-schema-master.md)。
+> 用户持仓由 EP06 `positions` 表作为 canonical source。Ask Agent 通过 SQL JOIN 读取持仓,不再读 `user_profiles.holdings`。
+
 ```sql
 CREATE TABLE user_profiles (
-  user_id      TEXT PRIMARY KEY,
+  user_id      TEXT PRIMARY KEY,           -- FK to users(id) per ADR-0011
   risk_tolerance TEXT,           -- conservative/moderate/aggressive
   sectors       TEXT,            -- JSON array: ["tech", "healthcare"]
-  holdings      TEXT,            -- JSON: {ticker: shares}
+  -- holdings column REMOVED per ADR-0011 - use EP06 positions table
   preferred_sources TEXT,        -- ["yahoo", "sec_edgar"]
   created_at    TEXT,
   updated_at    TEXT
@@ -216,11 +243,11 @@ CREATE TABLE user_profiles (
 
 CREATE TABLE conversation_history (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id      TEXT NOT NULL,
+  user_id      TEXT NOT NULL,               -- FK to users(id) per ADR-0011
   session_id   TEXT NOT NULL,
   role         TEXT NOT NULL,    -- user/assistant
   content      TEXT,
-  metadata     TEXT,             -- JSON: {intent, citations, cost}
+  metadata     TEXT,             -- JSON: {intent, citations, cost, trace_id}
   created_at   TEXT DEFAULT (datetime('now'))
 );
 
@@ -229,12 +256,20 @@ CREATE INDEX idx_conv_user_session ON conversation_history(user_id, session_id);
 
 ### 2.6 MCP 与 Function Call 协议 [B]
 
+> **注意（2026-07-19 修订）**：本节工具协议已由 [ADR-0006](../../architecture/adr-0006-tool-protocol.md) §Decision 正式规范化。
+> ADR-0006 定义 `ToolCall`/`ToolResult`/`ToolHandler` 接口 + `TOOL_REGISTRY` 静态注册表（9 个 Phase 1 native tools）。
+> **C6 冲突解决**: 原 `get_current_price` 统一为 `get_quote`（per EP01 §ID-2 authoritative tool table）。
+> **`search_news` 分类**: Phase 1 为 native（per 本节 INTERNAL_TOOLS），覆盖 EP01 §ID-2 的 MCP 分类。Phase 2 可升级为 MCP。
+> **Phase 1 范围**: 9/10 EP01 §ID-2 tools 为 native; `get_sentiment` 延后至 Phase 2 MCP。`MCP_SERVERS`（brokerage + playbook_hub）延后至 Phase 2。
+> 下方 INTERNAL_TOOLS + MCP_SERVERS 保留作历史参考，canonical 实现以 ADR-0006 §Key Interfaces 为准。
+
 ```typescript
 // 内部工具（原生 function call）
+// NOTE: get_current_price renamed to get_quote per ADR-0006 (C6 conflict resolution)
 const INTERNAL_TOOLS = [
   {
-    name: "get_current_price",
-    description: "Get current price for a stock ticker",
+    name: "get_quote",  // was: get_current_price
+    description: "Get current price quote for a stock ticker",
     parameters: { type: "object", properties: { ticker: { type: "string" } } }
   },
   {
@@ -257,6 +292,14 @@ const MCP_SERVERS = [
 ```
 
 ### 2.7 Ask Agent Loop（状态机）[B]
+
+> **注意（2026-07-19 修订）**：本节 Ask Agent 状态机基于 [ADR-0004](../../architecture/adr-0004-agent-loop-design.md) 的通用 `AgentLoop` 实现。
+> ADR-0004 提供 6 状态通用 loop（Init/Plan/Execute/ToolCall/Synthesize/FinalAnswer + CostExceeded/Aborted），Ask Agent 通过实现 `StepHandler` 接口（6 方法：onInit/onPlan/onExecute/onToolCall/onSynthesize/onFinalize）注入 Ask 特定行为：
+> - `onExecute` 实现 Classify + RAGRetrieve
+> - `onSynthesize` 实现LLMCall + ValidateCitations
+> - `onFinalize` 实现SaveMemory
+>
+> 下方状态机为 Ask Agent 视角的业务流程图，实际控制流由 ADR-0004 §State Machine 统一管理。
 
 ```mermaid
 stateDiagram-v2
@@ -394,16 +437,23 @@ class CostBudget {
 
 ### ID-3: Citation 验证器 [B]
 
+> **注意（2026-07-19 修订）**：本节 `validateCitations()` stub 已由 [ADR-0007](../../architecture/adr-0007-citation-validator.md) §Key Interfaces 正式规范化。
+> ADR-0007 扩展函数签名为 `validateCitations(answer, ragContext, env) -> ValidationResult`,返回 `verified_facts` / `stripped_facts` / `url_pending_facts` / `validation_status` / `disclaimer` / `failures`。
+> 原 stub 的 3 项检查已重构为 3-stage pipeline: Stage 1 structural(每个 numeric_fact 有非空 source + 6 字段验证) + Stage 2 quote_substring(exact match in ragContext) + Stage 3 url_reachability(async, Cloud only)。
+> 失败模式: Partial strip(默认,保留 verified facts + 加 disclaimer) + Strict reject fallback(全失败时返回 "I don't have reliable data")。
+> Loop 集成: `StepHandler.onSynthesize` 调用 validator,然后转 `onFinalize`(不重试 LLM)。
+
 ```typescript
-function validateCitations(answer: AnswerWithCitations): ValidationResult {
-  // 1. 每个数字字段必须对应一个 citation
-  for (const fact of answer.numeric_facts) {
-    if (!fact.source) return { valid: false, reason: `Missing source for ${fact.value}` };
-  }
-  // 2. 检查 citation URL 可达（Mock 模式跳过）
-  // 3. 检查 quote 字段确实出现在 RAG context 中
-  return { valid: true };
-}
+// Stub retained for historical reference. Canonical implementation per ADR-0007.
+// function validateCitations(answer: AnswerWithCitations): ValidationResult {
+//   // 1. 每个数字字段必须对应一个 citation
+//   for (const fact of answer.numeric_facts) {
+//     if (!fact.source) return { valid: false, reason: `Missing source for ${fact.value}` };
+//   }
+//   // 2. 检查 citation URL 可达（Mock 模式跳过）
+//   // 3. 检查 quote 字段确实出现在 RAG context 中
+//   return { valid: true };
+// }
 ```
 
 ### ID-4: 多模型降级链 [B]

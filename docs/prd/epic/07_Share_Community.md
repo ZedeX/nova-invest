@@ -144,40 +144,47 @@ license:
 
 ### 2.4 D1 Schema [B]
 
+> **注意（2026-07-19 修订）**：`community_playbooks.yaml_r2_key` 列已移除 per [ADR-0011](../../architecture/adr-0011-d1-schema-master.md)。
+> 通过 `playbook_id` JOIN `playbook_versions.yaml_r2_key` 获取 R2 key。
+> `status` 列已重命名为 `moderation_status` 以避免歧义。
+> `playbook_installs` 表已合并入 `user_playbook_installs`(与 EP08 共享)。Canonical schema 见 ADR-0011 §Master Schema。
+
 ```sql
 -- 已发布 Playbook
 CREATE TABLE community_playbooks (
   package_id     TEXT PRIMARY KEY,
-  playbook_id    TEXT NOT NULL,
-  author_id      TEXT NOT NULL,
+  playbook_id    TEXT NOT NULL REFERENCES playbooks(id) ON DELETE CASCADE,  -- FK added per ADR-0011
+  author_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title          TEXT NOT NULL,
   description    TEXT,
   tags           TEXT,  -- JSON array
-  yaml_r2_key    TEXT NOT NULL,  -- R2 中 YAML 引用
+  -- yaml_r2_key column REMOVED per ADR-0011 - JOIN playbook_versions via playbook_id+version
   version        TEXT DEFAULT "1.0",
-  status         TEXT DEFAULT "active",  -- active/removed/banned
+  moderation_status TEXT DEFAULT "active",  -- renamed from `status` per ADR-0011: active/removed/banned
   installed_count INTEGER DEFAULT 0,
   rating_avg     REAL DEFAULT 0,
   rating_count   INTEGER DEFAULT 0,
   created_at     TEXT DEFAULT (datetime('now'))
 );
 
-CREATE INDEX idx_cp_status_created ON community_playbooks(status, created_at);
+CREATE INDEX idx_cp_status_created ON community_playbooks(moderation_status, created_at);
 CREATE INDEX idx_cp_author ON community_playbooks(author_id);
 
--- 安装记录
-CREATE TABLE playbook_installs (
-  id             INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id        TEXT NOT NULL,
-  package_id     TEXT NOT NULL REFERENCES community_playbooks(package_id),
-  installed_at   TEXT DEFAULT (datetime('now')),
-  UNIQUE(user_id, package_id)
-);
+-- 安装记录 (MERGED with EP08 user_playbooks into user_playbook_installs per ADR-0011)
+-- Old playbook_installs table is DEPRECATED. Use user_playbook_installs (see ADR-0011 §Master Schema Migration 007):
+-- CREATE TABLE user_playbook_installs (
+--   user_id            TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+--   playbook_id        TEXT NOT NULL REFERENCES playbooks(id) ON DELETE CASCADE,
+--   package_id         TEXT NOT NULL REFERENCES community_playbooks(package_id) ON DELETE CASCADE,
+--   installed_version  TEXT NOT NULL,
+--   installed_at       TEXT DEFAULT (datetime('now')),
+--   PRIMARY KEY (user_id, playbook_id)
+-- );
 
 -- 评分
 CREATE TABLE playbook_ratings (
-  user_id        TEXT NOT NULL,
-  package_id     TEXT NOT NULL,
+  user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  package_id     TEXT NOT NULL REFERENCES community_playbooks(package_id) ON DELETE CASCADE,
   rating         INTEGER NOT NULL,  -- 1-5
   created_at     TEXT DEFAULT (datetime('now')),
   PRIMARY KEY (user_id, package_id)
@@ -186,22 +193,22 @@ CREATE TABLE playbook_ratings (
 -- 评论
 CREATE TABLE playbook_comments (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
-  package_id     TEXT NOT NULL,
-  user_id        TEXT NOT NULL,
+  package_id     TEXT NOT NULL REFERENCES community_playbooks(package_id) ON DELETE CASCADE,
+  user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   content        TEXT NOT NULL,
-  parent_id      INTEGER,  -- 嵌套回复
-  status         TEXT DEFAULT "active",  -- active/hidden/deleted
+  parent_id      INTEGER REFERENCES playbook_comments(id) ON DELETE CASCADE,  -- FK added per ADR-0011 (self-reference)
+  moderation_status TEXT DEFAULT "active",  -- renamed from `status` per ADR-0011: active/hidden/deleted
   created_at     TEXT DEFAULT (datetime('now'))
 );
 
 -- 举报
 CREATE TABLE playbook_reports (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
-  package_id     TEXT NOT NULL,
-  reporter_id    TEXT NOT NULL,
+  package_id     TEXT NOT NULL REFERENCES community_playbooks(package_id) ON DELETE CASCADE,
+  reporter_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   reason         TEXT NOT NULL,
   description    TEXT,
-  status         TEXT DEFAULT "pending",  -- pending/resolved/rejected
+  moderation_status TEXT DEFAULT "pending",  -- renamed from `status` per ADR-0011: pending/resolved/rejected
   created_at     TEXT DEFAULT (datetime('now'))
 );
 ```
@@ -419,8 +426,11 @@ async function installPackage(userId: string, packageId: string) {
 
 ### ID-7: Mock 模式预置社区数据 [B]
 
+> **注意（2026-07-19 修订）**：原稿引用 `mock_data/community/playbooks.json`，与 ADR-0001 §API-0002 canonical path 不一致。
+> 已对齐为 `web/public/mock/community/`。详见 [ADR-0001](../../architecture/adr-0001-use-mock-dual-mode-switch.md)。
+
 ```json
-// mock_data/community/playbooks.json
+// web/public/mock/community/index.json (canonical path per ADR-0001 API-0002)
 {
   "playbooks": [
     {

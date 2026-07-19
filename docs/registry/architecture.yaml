@@ -4,8 +4,8 @@
 # Each stance is owned by an ADR; superseded stances are marked but never deleted.
 #
 # Last Updated: 2026-07-19
-# Version: 1
-# Total ADRs referenced: 3 (ADR-0001, ADR-0002, ADR-0003)
+# Version: 6
+# Total ADRs referenced: 8 (ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0011)
 
 state_ownership:
   - id: SO-0001
@@ -47,6 +47,75 @@ state_ownership:
     interface: 'classifyIntent(query: string) → "simple_qa" | "deep_research" | "tool_call" | "clarify"'
     file: web/src/lib/llm/router.ts
     status: accepted
+
+  - id: SO-0005
+    name: agent_loop_execution
+    description: >
+      Execution state machine for all Sub-Agents (Ask/Build/Dashboard).
+      Owned by AgentLoop.run() with request-scoped LoopContext.
+      Sub-Agents inject StepHandler implementations; loop owns control flow.
+    owner_adr: ADR-0004
+    interface: "new AgentLoop(handlers: StepHandler, ctx: LoopContext).run() -> LoopResult"
+    file: web/src/lib/agent/loop.ts
+    status: proposed
+
+  - id: SO-0006
+    name: aggregate_query_cost
+    description: >
+      Running aggregate USD cost of a single user query across all loop steps.
+      Owned by AgentLoop's LoopContext.accumulated_cost_usd tracking.
+      Hard cap: $5 per query (EP01 §反模式).
+    owner_adr: ADR-0004
+    interface: "LoopContext.accumulated_cost_usd (number, USD)"
+    file: web/src/lib/agent/loop.ts
+    status: proposed
+
+  - id: SO-0007
+    name: d1_schema_master
+    description: >
+      Canonical D1 schema across all Epics. Owned by ADR-0011.
+      Any new D1 table must update ADR-0011 §Master Schema.
+      Naming conventions (ticker not symbol, prefixed status columns, mandatory FKs)
+      are enforced through this ownership.
+    owner_adr: ADR-0011
+    interface: "web/migrations/001_*.sql through 008_*.sql"
+    file: docs/architecture/adr-0011-d1-schema-master.md
+    status: proposed
+
+  - id: SO-0008
+    name: citation_validation
+    description: >
+      Validation of LLM-produced AskResponse against RAG context for anti-hallucination.
+      Owned by validateCitations() pure function. Returns verified_facts / stripped_facts
+      / url_pending_facts with validation_status (all_verified / partial_strip / strict_reject).
+    owner_adr: ADR-0007
+    interface: "validateCitations(answer, ragContext, env) -> ValidationResult"
+    file: web/src/lib/ask/citation.ts
+    status: proposed
+
+  - id: SO-0009
+    name: memory_layer_state
+    description: >
+      In-flight memory state for a user query session. Owned by MemoryStore interface
+      (MockMemoryStore or RealMemoryStore). MemoryRef is the consumed shape (loaded
+      per-request, never cached at module level). 2-layer Phase 1: short_term (KV)
+      + long_term_structured (D1). long_term_vector (Vectorize) deferred to Phase 1.5.
+    owner_adr: ADR-0005
+    interface: "getMemoryStore(env) -> MemoryStore; store.loadRef(session_id, user_id) -> MemoryRef"
+    file: web/src/lib/memory/store.ts
+    status: proposed
+
+  - id: SO-0010
+    name: tool_calling_layer
+    description: >
+      Tool invocation and dispatch. Owned by TOOL_REGISTRY static map (Phase 1:
+      9 native tools) + ToolHandler functions. Loop's onToolCall dispatches via
+      TOOL_REGISTRY[tool.name]. MCP protocol deferred to Phase 2. Source switching
+      is tool-internal (per EP02 ID-4); loop only retries ×3.
+    owner_adr: ADR-0006
+    interface: "TOOL_REGISTRY[tool.name] -> ToolHandler(params, env) -> ToolResult"
+    file: web/src/lib/tools/registry.ts
+    status: proposed
 
 interfaces:
   - id: IF-0001
@@ -93,6 +162,294 @@ interfaces:
       }
     file: web/src/lib/llm/router.ts
     status: accepted
+
+  - id: IF-0004
+    name: StepHandler
+    description: >
+      Interface implemented by Sub-Agents (Ask/Build/Dashboard) to plug into
+      the generic AgentLoop. Six methods: onInit, onPlan, onExecute, onToolCall,
+      onSynthesize, onFinalize. Handlers are stateless; all state flows through
+      LoopContext.
+    owner_adr: ADR-0004
+    contract: |
+      interface StepHandler {
+        onInit(ctx: LoopContext): Promise<LoopContext>;
+        onPlan(ctx: LoopContext): Promise<Plan>;
+        onExecute(ctx: LoopContext, plan: Plan): Promise<ExecResult>;
+        onToolCall(ctx: LoopContext, tool: ToolCall): Promise<ToolResult>;
+        onSynthesize(ctx: LoopContext, execResult: ExecResult): Promise<Synthesis>;
+        onFinalize(ctx: LoopContext, synthesis: Synthesis): Promise<LoopResult>;
+      }
+    file: web/src/lib/agent/loop.ts
+    status: proposed
+
+  - id: IF-0005
+    name: LoopContext
+    description: >
+      Request-scoped state passed through AgentLoop.run(). Contains query,
+      user_id, session_id, intent, accumulated_cost_usd, step_count, trace,
+      memory_ref, provider, llm. NEVER cached at module level.
+    owner_adr: ADR-0004
+    contract: |
+      interface LoopContext {
+        query: string;
+        user_id: string;
+        session_id: string;
+        intent: QueryIntent;
+        accumulated_cost_usd: number;
+        step_count: number;
+        trace: TraceStep[];
+        memory_ref?: MemoryRef;
+        provider: MarketDataProvider;
+        llm: MockLLM | RealLLM;
+      }
+    file: web/src/lib/agent/loop.ts
+    status: proposed
+
+  - id: IF-0006
+    name: LoopResult
+    description: >
+      Final output of AgentLoop.run(). Contains answer (AskResponse),
+      full trace, total cost, steps executed, and status (completed/aborted/partial).
+      NOTE: ADR-0007 extends abort_reason enum with "citation_validation_failed"
+      (see ADR-0007 §AgentLoop Integration). This entry shows the ADR-0004 baseline;
+      the extended union will be reflected when ADR-0004 is implemented.
+    owner_adr: ADR-0004
+    contract: |
+      interface LoopResult {
+        answer: AskResponse;
+        trace: TraceStep[];
+        total_cost_usd: number;
+        steps_executed: number;
+        status: "completed" | "aborted" | "partial";
+        abort_reason?: "max_steps_exceeded" | "cost_exceeded" | "all_tools_failed" | "internal_error" | "citation_validation_failed";
+      }
+    file: web/src/lib/agent/loop.ts
+    status: proposed
+
+  - id: IF-0007
+    name: validateCitations
+    description: >
+      Pure function that validates an LLM-produced AskResponse against RAG context.
+      3-stage pipeline: structural validation + quote substring verification + URL
+      reachability (async, deferred). Returns ValidationResult with verified/stripped/
+      url_pending facts. No side effects, no HTTP calls, no module-level state.
+    owner_adr: ADR-0007
+    contract: |
+      function validateCitations(
+        answer: AskResponse,
+        ragContext: string,
+        env: { USE_MOCK?: string; ENVIRONMENT?: string }
+      ): ValidationResult
+    file: web/src/lib/ask/citation.ts
+    status: proposed
+
+  - id: IF-0008
+    name: ValidationResult
+    description: >
+      Result of validating an AskResponse against RAG context. Contains 3 arrays
+      (verified_facts / stripped_facts / url_pending_facts), validation_status
+      (all_verified / partial_strip / strict_reject), disclaimer text, and
+      failures array with per-fact failure details.
+    owner_adr: ADR-0007
+    contract: |
+      interface ValidationResult {
+        verified_facts: NumericFact[];
+        stripped_facts: NumericFact[];
+        url_pending_facts: NumericFact[];
+        validation_status: "all_verified" | "partial_strip" | "strict_reject";
+        disclaimer: string;
+        failures: ValidationFailure[];
+      }
+
+      interface ValidationFailure {
+        fact_index: number;
+        stage: "structural" | "quote_substring";
+        reason: string;
+      }
+    file: web/src/lib/ask/citation.ts
+    status: proposed
+
+  - id: IF-0009
+    name: applyValidationResult
+    description: >
+      Applies ValidationResult to an AskResponse, producing the final response
+      returned to user. partial_strip: keep verified_facts + append disclaimer.
+      strict_reject: replace summary with disclaimer, clear numeric_facts + citations.
+      all_verified: return answer unchanged.
+    owner_adr: ADR-0007
+    contract: |
+      function applyValidationResult(
+        answer: AskResponse,
+        result: ValidationResult
+      ): AskResponse
+    file: web/src/lib/ask/citation.ts
+    status: proposed
+
+  - id: IF-0010
+    name: enqueueUrlChecks
+    description: >
+      Enqueue background URL reachability checks for url_pending_facts.
+      Mock mode: no-op (FP-0005). Local mode: no-op. Cloud mode: enqueue task
+      to D1 url_check_queue table. Failures logged to trace, do NOT modify
+      already-returned response.
+    owner_adr: ADR-0007
+    contract: |
+      function enqueueUrlChecks(
+        facts: NumericFact[],
+        trace_id: string,
+        env: { USE_MOCK?: string; ENVIRONMENT?: string }
+      ): Promise<void>
+    file: web/src/lib/ask/citation.ts
+    status: proposed
+
+  - id: IF-0011
+    name: MemoryRef
+    description: >
+      In-flight memory state consumed by ADR-0004 LoopContext.memory_ref.
+      Hybrid loading: short_term Message[] eager loaded; user_profile UserPref
+      lazy loaded via loadUserProfile(); vector_ref deferred to Phase 1.5.
+      Request-scoped, never cached at module level.
+    owner_adr: ADR-0005
+    contract: |
+      interface MemoryRef {
+        session_id: string;
+        user_id: string;
+        short_term: Message[];                    // eager loaded
+        user_profile?: UserPref;                  // lazy loaded
+        vector_ref?: string;                      // deferred (Phase 1.5)
+        loadUserProfile(): Promise<UserPref | undefined>;
+      }
+    file: web/src/lib/memory/types.ts
+    status: proposed
+
+  - id: IF-0012
+    name: MemoryStore
+    description: >
+      Interface for memory storage operations. Factory selects MockMemoryStore
+      (in-memory Map + seeded JSON) or RealMemoryStore (KV + D1) based on env.
+      All operations are request-scoped; no module-level state.
+    owner_adr: ADR-0005
+    contract: |
+      interface MemoryStore {
+        loadRef(session_id: string, user_id: string): Promise<MemoryRef>;
+        loadShortTerm(session_id: string, user_id: string): Promise<Message[]>;
+        loadUserProfile(user_id: string): Promise<UserPref | undefined>;
+        saveShortTerm(session_id: string, user_id: string, messages: Message[]): Promise<void>;
+        appendConversation(user_id: string, session_id: string, role: "user" | "assistant",
+          content: string, metadata?: Record<string, unknown>): Promise<void>;
+      }
+    file: web/src/lib/memory/types.ts
+    status: proposed
+
+  - id: IF-0013
+    name: Message
+    description: >
+      Single message in short_term conversation history. Used for multi-turn
+      dialog context and pronoun resolution via LLM prompt history.
+    owner_adr: ADR-0005
+    contract: |
+      interface Message {
+        role: "user" | "assistant" | "system";
+        content: string;
+        timestamp: string;  // ISO 8601
+        metadata?: {
+          intent?: QueryIntent;
+          citations_count?: number;
+          cost_usd?: number;
+        };
+      }
+    file: web/src/lib/memory/types.ts
+    status: proposed
+
+  - id: IF-0014
+    name: UserPref
+    description: >
+      User profile preferences stored in D1 user_profiles table (per ADR-0011
+      Migration 003). Conceptual EP01 §ID-3 UserPref includes watchlist /
+      past_strategies / credit_balance, but those are derived via SQL JOIN
+      on other tables (watchlists, strategies, credit_balances). This interface
+      contains only fields actually stored in user_profiles.
+    owner_adr: ADR-0005
+    contract: |
+      interface UserPref {
+        user_id: string;
+        risk_tolerance?: "conservative" | "moderate" | "aggressive";
+        sectors?: string[];           // JSON array in D1
+        preferred_sources?: string[];  // JSON array in D1
+      }
+    file: web/src/lib/memory/types.ts
+    status: proposed
+
+  - id: IF-0015
+    name: ToolCall
+    description: >
+      Tool invocation request shape. Consumed by ADR-0004 StepHandler.onToolCall.
+      Tool name must match a key in TOOL_REGISTRY. Timeout is per-call configurable
+      (default 5000ms enforced by onToolCall wrapper).
+    owner_adr: ADR-0006
+    contract: |
+      interface ToolCall {
+        name: string;                          // tool name, e.g. "get_quote"
+        parameters: Record<string, unknown>;   // tool-specific params
+        timeout?: number;                      // optional timeout in ms (default: 5000)
+      }
+    file: web/src/lib/tools/types.ts
+    status: proposed
+
+  - id: IF-0016
+    name: ToolResult
+    description: >
+      Tool invocation result shape. Rich shape includes trace fields (latency_ms,
+      source) for ADR-0004 TraceStep observability. cost_usd is 0 for Mock mode
+      and free-tier APIs; non-zero for premium APIs (Phase 2+).
+    owner_adr: ADR-0006
+    contract: |
+      interface ToolResult {
+        success: boolean;
+        result: unknown;        // tool-specific output
+        cost_usd: number;       // actual cost (0 for Mock/free-tier)
+        latency_ms: number;     // execution time
+        source: string;         // "mock" | "yahoo" | "alpha_vantage" | "sec_edgar" | "fred" | "rss"
+        error?: string;         // error message if success=false
+      }
+    file: web/src/lib/tools/types.ts
+    status: proposed
+
+  - id: IF-0017
+    name: ToolHandler
+    description: >
+      Tool handler function type. Stateless; all state via env parameter.
+      Implements source switching internally (per EP02 ID-4) - tries primary
+      source, falls back to secondary, then Mock. Loop retries ×3 on failure.
+    owner_adr: ADR-0006
+    contract: |
+      type ToolHandler = (
+        params: Record<string, unknown>,
+        env: Env
+      ) => Promise<ToolResult>
+    file: web/src/lib/tools/types.ts
+    status: proposed
+
+  - id: IF-0018
+    name: ToolMetadata
+    description: >
+      Tool metadata for LLM function calling. Used to generate the "tools" array
+      in LLM API request when intent is tool_call. TOOL_METADATA array contains
+      one entry per Phase 1 native tool (9 entries).
+    owner_adr: ADR-0006
+    contract: |
+      interface ToolMetadata {
+        name: string;
+        description: string;
+        parameters: {
+          type: "object";
+          properties: Record<string, { type: string; description?: string }>;
+          required?: string[];
+        };
+      }
+    file: web/src/lib/tools/types.ts
+    status: proposed
 
 performance_budgets:
   - id: PB-0001
@@ -159,6 +516,128 @@ performance_budgets:
     metric: llm_cost_usd_per_request
     status: accepted
 
+  - id: PB-0008
+    name: agent_loop_max_steps
+    description: >
+      Hard cap on loop iterations per user query. Enforced by AgentLoop.run()
+      - if step_count >= 20, abort with max_steps_exceeded.
+      Per EP01 §反模式.
+    owner_adr: ADR-0004
+    budget: "20 steps hard cap"
+    metric: agent_loop_step_count
+    status: proposed
+
+  - id: PB-0009
+    name: agent_loop_aggregate_cost
+    description: >
+      Hard cap on aggregate USD cost per user query (across all steps).
+      Enforced by AgentLoop.run() - if accumulated_cost_usd >= 5, abort
+      with cost_exceeded. Per EP01 §反模式.
+    owner_adr: ADR-0004
+    budget: "$5 per user query (aggregate)"
+    metric: agent_loop_aggregate_cost_usd
+    status: proposed
+
+  - id: PB-0010
+    name: agent_loop_overhead
+    description: >
+      Loop overhead per state transition (switch + trace push + bookkeeping).
+      Excludes handler execution time.
+    owner_adr: ADR-0004
+    budget: "< 1ms per state transition"
+    metric: agent_loop_overhead_ms
+    status: proposed
+
+  - id: PB-0011
+    name: tool_retry_limit
+    description: >
+      Maximum retries for a single tool call before declaring failure.
+      After 3 failures, loop switches to fallback behavior (partial result).
+    owner_adr: ADR-0004
+    budget: "3 retries per tool call"
+    metric: tool_call_retry_count
+    status: proposed
+
+  - id: PB-0012
+    name: citation_validation_latency
+    description: >
+      Maximum latency for validateCitations() pure function.
+      Covers Stage 1 (structural) + Stage 2 (quote substring) for up to 10
+      numeric_facts against 4KB RAG context. Stage 3 (URL check) is async
+      and excluded from this budget.
+    owner_adr: ADR-0007
+    budget: "< 10ms per answer (10 facts + 4KB ragContext)"
+    metric: citation_validation_latency_ms
+    status: proposed
+
+  - id: PB-0013
+    name: hallucination_rate
+    description: >
+      Project-level hallucination rate target per EP01 ID-6 Eval Golden Set.
+      Measured as (strict_reject_count + stripped_facts_count) / total_numeric_facts_count
+      across 200+ Golden Set queries. Validator makes this metric computable.
+    owner_adr: ADR-0007
+    budget: "≤ 5% hallucination rate (EP01 ID-6)"
+    metric: hallucination_rate_pct
+    status: proposed
+
+  - id: PB-0014
+    name: kv_short_term_load_latency
+    description: >
+      Maximum latency for Cloudflare KV read of short_term Message[] (session-scoped).
+      KV is co-located with Workers, expected ~5-10ms p95. Exceeding this suggests
+      KV namespace misconfiguration or cold-start region mismatch.
+    owner_adr: ADR-0005
+    budget: "< 10ms p95 (Cloudflare KV read)"
+    metric: kv_short_term_load_ms
+    status: proposed
+
+  - id: PB-0015
+    name: d1_user_profile_load_latency
+    description: >
+      Maximum latency for D1 query to load user_profile (lazy loaded via MemoryRef.loadUserProfile).
+      D1 query is a single-row PK lookup on user_profiles.user_id. Exceeding this
+      suggests missing index or D1 region mismatch.
+    owner_adr: ADR-0005
+    budget: "< 50ms p95 (D1 single-row PK lookup)"
+    metric: d1_user_profile_load_ms
+    status: proposed
+
+  - id: PB-0016
+    name: context_window_token_budget
+    description: >
+      Maximum token budget for short_term Message[] included in LLM prompt.
+      Per EP03 §2.5. Truncation is FIFO (oldest messages dropped first).
+      Estimate: 1 token ≈ 4 chars (English) / 1-2 chars (Chinese) - conservative
+      3 chars/token used in truncateToTokenBudget to avoid overflow.
+    owner_adr: ADR-0005
+    budget: "4096 tokens (FIFO truncation)"
+    metric: short_term_token_count
+    status: proposed
+
+  - id: PB-0017
+    name: tool_execution_latency
+    description: >
+      Maximum execution time for a single tool invocation. Default 5000ms timeout
+      enforced by onToolCall wrapper (Promise.race with setTimeout). Per-tool
+      configurable via ToolCall.timeout. Exceeded timeout returns toolFailure
+      with source: "timeout". Loop retries ×3 on timeout (may clear transient issue).
+    owner_adr: ADR-0006
+    budget: "< 5000ms default (per-tool configurable)"
+    metric: tool_execution_ms
+    status: proposed
+
+  - id: PB-0018
+    name: mock_tool_latency
+    description: >
+      Maximum latency for Mock mode tool invocation. Mock tools read seeded JSON
+      from web/public/mock/ - expected < 10ms. Exceeding this suggests Mock data
+      file missing or file system issue. Zero external HTTP calls (FP-0005).
+    owner_adr: ADR-0006
+    budget: "< 10ms (Mock JSON file read)"
+    metric: mock_tool_latency_ms
+    status: proposed
+
 forbidden_patterns:
   - id: FP-0001
     name: module_level_provider_cache
@@ -212,6 +691,190 @@ forbidden_patterns:
     replacement: "Mock mode must read local JSON files only; no fetch to external APIs"
     status: banned
 
+  - id: FP-0006
+    name: module_level_loop_cache
+    description: >
+      Caching AgentLoop instance at module level (e.g., `let _loop`).
+      Same Workers stateless violation as FP-0001/FP-0002. Loop must be
+      instantiated per user query with fresh LoopContext.
+    banned_by_adr: ADR-0004
+    pattern: "let _loop: AgentLoop; function getLoop() { if (_loop) return _loop; ... }"
+    replacement: "new AgentLoop(handlers, ctx) per request; never cache"
+    status: banned
+
+  - id: FP-0007
+    name: sub_agent_direct_dispatch
+    description: >
+      Sub-Agents (Ask/Build/Dashboard) calling each other directly, bypassing
+      the Supervisor. Violates EP01 §反模式.
+    banned_by_adr: ADR-0004
+    pattern: "askAgent.invoke(buildAgent, ...)  // bypassing Supervisor"
+    replacement: "All Sub-Agent dispatch goes through Supervisor; Sub-Agents only provide StepHandler implementations"
+    status: banned
+
+  - id: FP-0008
+    name: aggregate_cost_overrun
+    description: >
+      Continuing to execute loop steps when accumulated_cost_usd has exceeded
+      $5 hard ceiling. Violates EP01 §反模式.
+    banned_by_adr: ADR-0004
+    pattern: "if (ctx.accumulated_cost_usd > 5) { /* continue anyway */ }"
+    replacement: "Transition to CostExceeded state and abort with partial result + cost_exceeded reason"
+    status: banned
+
+  - id: FP-0009
+    name: bare_status_column
+    description: >
+      Using bare `status` column name in D1 tables. Overloaded across
+      moderation (active/removed), lifecycle (draft/published), and order
+      (pending/filled). Must prefix with domain.
+    banned_by_adr: ADR-0011
+    pattern: "CREATE TABLE foo (..., status TEXT, ...)"
+    replacement: "Use lifecycle_status, moderation_status, or order_status depending on domain"
+    status: banned
+
+  - id: FP-0010
+    name: kline_data_in_d1
+    description: >
+      Storing K-line (OHLCV) data in D1. Violates EP02 ID-5.
+      K-line goes to R2 (per ADR-0002) or Mock JSON (per ADR-0001).
+      D1 stores only kline_cache_index metadata.
+    banned_by_adr: ADR-0011
+    pattern: "CREATE TABLE klines (ticker, ts, open, high, low, close, volume, ...)"
+    replacement: "Use R2 with key klines/{ticker}/{timeframe}.json; D1 stores only kline_cache_index"
+    status: banned
+
+  - id: FP-0011
+    name: schema_without_fk
+    description: >
+      Referencing another table's PK without declaring REFERENCES clause.
+      Breaks referential integrity. SQLite enforces FKs only when
+      PRAGMA foreign_keys=ON, but the declaration is still required.
+    banned_by_adr: ADR-0011
+    pattern: "CREATE TABLE orders (..., account_id TEXT, ...)  -- no REFERENCES"
+    replacement: "Always declare REFERENCES <table>(<col>) ON DELETE <action>"
+    status: banned
+
+  - id: FP-0012
+    name: epic_local_schema
+    description: >
+      An Epic defining new D1 tables in its own PRD without updating ADR-0011.
+      Causes schema drift. All DDL must go through ADR-0011 §Master Schema.
+    banned_by_adr: ADR-0011
+    pattern: "Epic PRD adds new table without updating ADR-0011"
+    replacement: "Update ADR-0011 §Master Schema + add migration file in web/migrations/"
+    status: banned
+
+  - id: FP-0013
+    name: holdings_in_user_profiles
+    description: >
+      Storing user holdings as JSON in user_profiles.holdings column.
+      EP06 positions table is canonical source. user_profiles.holdings
+      column was REMOVED per ADR-0011.
+    banned_by_adr: ADR-0011
+    pattern: "user_profiles.holdings = JSON.stringify({AAPL: 100, MSFT: 50})"
+    replacement: "INSERT INTO positions (user_id, ticker, quantity, ...) VALUES (...)"
+    status: banned
+
+  - id: FP-0014
+    name: numeric_fact_without_citation
+    description: >
+      Returning a numeric_fact in AskResponse without a non-empty Citation source.
+      Violates EP03 §2.3 forced citation mode and EP03 §6.2 反模式 "LLM 自由生成数字".
+      Validator (ADR-0007 Stage 1) strips such facts in partial_strip mode or
+      triggers strict_reject if all facts fail.
+    banned_by_adr: ADR-0007
+    pattern: "numeric_facts: [{ value: 187.31, unit: 'USD', source: null }]"
+    replacement: "Every numeric_fact MUST have non-empty source: Citation with source/url/quote fields"
+    status: banned
+
+  - id: FP-0015
+    name: llm_freeform_numbers
+    description: >
+      Allowing LLM to generate numeric values not present in RAG context.
+      Violates EP03 §2.3 prompt rule "Do NOT fabricate numbers" and EP03 §6.2 反模式.
+      Validator (ADR-0007 Stage 2) catches this via quote substring verification -
+      fabricated numbers won't have a quote that appears in ragContext.
+    banned_by_adr: ADR-0007
+    pattern: "LLM returns { value: 999.9, source: { quote: 'fabricated quote' } } where quote not in ragContext"
+    replacement: "Prompt must instruct 'copy exact text from context'; validator enforces substring match"
+    status: banned
+
+  - id: FP-0016
+    name: sync_url_check_in_request_path
+    description: >
+      Performing synchronous URL reachability check (fetch to citation URL) during
+      AskResponse processing. Violates EP03 §6.2 反模式 '>5s 必须流式返回' (10 URLs × 1s
+      timeout = 10s added latency). Specific case of FP-0005 in Mock mode.
+      URL check MUST be async (Cloud only) via url_check_queue D1 table.
+    banned_by_adr: ADR-0007
+    pattern: "for (const fact of answer.numeric_facts) { await fetch(fact.source.url); }"
+    replacement: "Enqueue URL check task to url_check_queue; cron worker processes async; response returns immediately"
+    status: banned
+
+  - id: FP-0017
+    name: cross_user_memory_access
+    description: >
+      Accessing another user's memory state (short_term KV or long_term D1).
+      Violates EP03 §反模式 "跨用户共享长期记忆". Enforced via:
+      - KV key format: "session:{user_id}:{session_id}" (user_id in key)
+      - D1 queries: WHERE user_id = ? (mandatory)
+      - MockMemoryStore: in-memory Map key includes user_id
+    banned_by_adr: ADR-0005
+    pattern: "KV.get('session:' + session_id)  // missing user_id in key"
+    replacement: "KV.get('session:' + user_id + ':' + session_id); D1 query must include WHERE user_id = ?"
+    status: banned
+
+  - id: FP-0018
+    name: module_level_memory_cache
+    description: >
+      Caching MemoryStore or MemoryRef at module level (e.g., `let _store`).
+      Same Workers stateless violation as FP-0001/FP-0002/FP-0006. Memory state
+      must be loaded per-request via getMemoryStore(env) factory. Request-scoped
+      only; no module-level singletons.
+    banned_by_adr: ADR-0005
+    pattern: "let _store: MemoryStore; function getStore() { if (_store) return _store; ... }"
+    replacement: "getMemoryStore(env) per request; MemoryRef loaded via store.loadRef() per query"
+    status: banned
+
+  - id: FP-0019
+    name: sync_vectorize_in_phase1
+    description: >
+      Implementing long_term_vector (Vectorize) layer in Phase 1. Per ADR-0005,
+      Vectorize is deferred to Phase 1.5 with explicit trigger (query volume
+      > 1000/day OR semantic search need). Phase 1 implements 2/3 layers only
+      (short_term KV + long_term_structured D1). MemoryRef.vector_ref field
+      is reserved but inactive in Phase 1.
+    banned_by_adr: ADR-0005
+    pattern: "import { Vectorize } from '@cloudflare/workers-types'; const index = env.VECTORIZE_INDEX;"
+    replacement: "Phase 1: skip Vectorize; Phase 1.5: add VectorizeMemoryStore + activate MemoryRef.vector_ref"
+    status: banned
+
+  - id: FP-0020
+    name: direct_sub_agent_tool_invocation
+    description: >
+      Sub-Agent calling another Sub-Agent's tool directly, bypassing the loop's
+      onToolCall dispatch. Violates EP01 §反模式 "Sub-Agent 之间直接调用（必须通过
+      Supervisor）". All tool invocations must go through AgentLoop's ToolCall state,
+      which dispatches via TOOL_REGISTRY. This ensures trace emission, cost tracking,
+      and retry enforcement.
+    banned_by_adr: ADR-0006
+    pattern: "askAgent.buildStrategyHandler(params)  // bypassing loop"
+    replacement: "Loop enters ToolCall state; onToolCall dispatches via TOOL_REGISTRY['build_strategy']"
+    status: banned
+
+  - id: FP-0021
+    name: tool_without_source_switching
+    description: >
+      Tool handler that calls only one external source without fallback chain.
+      Violates EP02 §ID-4 priority chain (Yahoo -> Alpha Vantage -> Mock). Single-source
+      tools fail permanently if that source is rate-limited or down. Each tool handler
+      MUST implement source switching internally (loop only retries ×3, doesn't switch sources).
+    banned_by_adr: ADR-0006
+    pattern: "async function getQuoteHandler(params, env) { return await YahooProvider.getQuote(ticker); }  // no fallback"
+    replacement: "try Yahoo -> catch -> try Alpha Vantage -> catch -> return toolFailure OR Mock fallback"
+    status: banned
+
 api_decisions:
   - id: API-0001
     name: use_mock_env_var
@@ -260,5 +923,164 @@ api_decisions:
       Combined with USE_MOCK, fully determines LLM provider.
     owner_adr: ADR-0003
     key: "process.env.ENVIRONMENT"
-    values: '"production" → cloud (Ark) | other → local (LM Studio)'
+    values: '"production" -> cloud (Ark) | other -> local (LM Studio)'
     status: accepted
+
+  - id: API-0006
+    name: agent_loop_constants
+    description: >
+      Canonical hard limits for AgentLoop. Defined as TypeScript const
+      exports in web/src/lib/agent/loop.ts. Changing these requires ADR-0004
+      revision.
+    owner_adr: ADR-0004
+    keys:
+      - "MAX_STEPS = 20"
+      - "AGGREGATE_COST_CEILING_USD = 5"
+      - "TOOL_RETRY_LIMIT = 3"
+    file: web/src/lib/agent/loop.ts
+    status: proposed
+
+  - id: API-0007
+    name: d1_naming_conventions
+    description: >
+      Canonical D1 naming conventions. All DDL must follow these rules.
+      ticker (not symbol), prefixed status columns, _json suffix for JSON
+      TEXT columns, is_/has_ prefix for booleans, idx_<table>_<col> indexes.
+    owner_adr: ADR-0011
+    rules:
+      - "Primary keys: id INTEGER PRIMARY KEY AUTOINCREMENT or natural PK"
+      - "Foreign keys: <table_singular>_id REFERENCES parent(id)"
+      - "Ticker column: always ticker, never symbol"
+      - "Status columns: lifecycle_status / moderation_status / order_status"
+      - "JSON columns: suffix with _json"
+      - "Boolean columns: prefix is_ or has_, type INTEGER (0/1)"
+      - "Indexes: idx_<table>_<col1>_<col2>"
+    file: docs/architecture/adr-0011-d1-schema-master.md
+    status: proposed
+
+  - id: API-0008
+    name: d1_migration_order
+    description: >
+      Canonical migration order for D1 schema. Migrations MUST be applied
+      in this order to satisfy FK dependencies. Files live at web/migrations/.
+    owner_adr: ADR-0011
+    order:
+      - "001_users_symbols.sql (no FKs)"
+      - "002_data_layer.sql (FK -> users, symbols)"
+      - "003_ask_agent.sql (FK -> users)"
+      - "004_strategy.sql (FK -> users)"
+      - "005_broker.sql (FK -> users, symbols, strategies)"
+      - "006_playbook.sql (FK -> users)"
+      - "007_community.sql (FK -> users, playbooks, community_playbooks)"
+      - "008_citation_url_check.sql (no FKs; task queue table, added by ADR-0007)"
+    file: docs/architecture/adr-0011-d1-schema-master.md
+    status: proposed
+
+  - id: API-0009
+    name: citation_validation_mode
+    description: >
+      Canonical citation validation failure modes. Default is "partial_strip"
+      (keep verified facts, strip unverified, add disclaimer). Fallback is
+      "strict_reject" when ALL numeric_facts fail (return "I don't have reliable
+      data"). Mode is not configurable per-request; it's a fixed decision tree
+      in validateCitations().
+    owner_adr: ADR-0007
+    keys:
+      - "default: partial_strip (keep verified_facts + disclaimer)"
+      - "fallback: strict_reject (when verified_facts.length === 0)"
+      - "success: all_verified (when stripped_facts.length === 0)"
+    file: docs/architecture/adr-0007-citation-validator.md
+    status: proposed
+
+  - id: API-0010
+    name: citation_source_enum
+    description: >
+      Canonical Citation.source enum values. Extended from 4 (EP03 §2.3 original)
+      to 6 values to cover all 5 RAG pipeline sources (EP03 §2.4). Any new RAG
+      source MUST be added to this enum AND to the prompt template instructions.
+    owner_adr: ADR-0007
+    key: "Citation.source in web/src/lib/types.ts"
+    values:
+      - "sec_edgar (SEC EDGAR filings)"
+      - "yahoo (Yahoo Finance price/quote)"
+      - "fred (FRED macroeconomic data)"
+      - "news (RSS news feeds)"
+      - "playbook (Epic 08 Playbook content)"
+      - "user_note (user personal notes)"
+    file: docs/architecture/adr-0007-citation-validator.md
+    status: proposed
+
+  - id: API-0011
+    name: kv_session_key_format
+    description: >
+      Canonical KV key format for short_term memory. Includes user_id to enforce
+      user data isolation (FP-0017). TTL 24 hours (86400 seconds) ensures stale
+      sessions are cleaned up automatically. Mock mode uses in-memory Map with
+      same key format (no TTL, resets on restart).
+    owner_adr: ADR-0005
+    key: "Cloudflare KV: session:{user_id}:{session_id}"
+    value: "JSON-serialized Message[]; expirationTtl: 86400 (24h)"
+    file: web/src/lib/memory/real-store.ts
+    status: proposed
+
+  - id: API-0012
+    name: memory_store_factory
+    description: >
+      Canonical factory function for MemoryStore. Same env-var-driven switch
+      pattern as ADR-0001 (getProvider) and ADR-0003 (getLLM). Returns
+      MockMemoryStore when USE_MOCK=true; RealMemoryStore otherwise. Never
+      cached at module level (FP-0018).
+    owner_adr: ADR-0005
+    key: "getMemoryStore(env) in web/src/lib/memory/store.ts"
+    values: "USE_MOCK=true -> MockMemoryStore | USE_MOCK=false -> RealMemoryStore"
+    file: web/src/lib/memory/store.ts
+    status: proposed
+
+  - id: API-0013
+    name: mock_user_profile_path
+    description: >
+      Canonical path for seeded Mock user_profile JSON. Used by MockMemoryStore
+      to load a fake UserPref for demo/testing. Follows ADR-0001 §API-0002 mock
+      data path convention (web/public/mock/*).
+    owner_adr: ADR-0005
+    key: "web/public/mock/user_profile.json"
+    value: '{"user_id":"mock-user-001","risk_tolerance":"moderate","sectors":["tech","semiconductors"],"preferred_sources":["yahoo","sec_edgar"]}'
+    file: web/public/mock/user_profile.json
+    status: proposed
+
+  - id: API-0014
+    name: tool_registry_static
+    description: >
+      Canonical Phase 1 tool registry. Static const map (compile-time) with 9
+      native tool handlers. No dynamic registration in Phase 1. Phase 2 will
+      add MCP dynamic layer on top (mcp.{server}.{tool} naming convention).
+    owner_adr: ADR-0006
+    key: "TOOL_REGISTRY in web/src/lib/tools/registry.ts"
+    values:
+      - "get_quote, get_ohlc, get_earnings, search_news, get_macro, plot_chart"
+      - "build_strategy, run_backtest, save_dashboard"
+    file: web/src/lib/tools/registry.ts
+    status: proposed
+
+  - id: API-0015
+    name: tool_naming_get_quote
+    description: >
+      Canonical tool name for current price quote. Resolves C6 conflict between
+      EP01 §ID-2 (get_quote) and EP03 §2.6 (get_current_price). EP01 §ID-2 is
+      authoritative; EP03 §2.6 INTERNAL_TOOLS renamed per ADR-0006.
+    owner_adr: ADR-0006
+    key: "get_quote (NOT get_current_price)"
+    file: docs/architecture/adr-0006-tool-protocol.md
+    status: proposed
+
+  - id: API-0016
+    name: tool_timeout_default
+    description: >
+      Default timeout for tool execution. 5000ms enforced by onToolCall wrapper
+      via Promise.race with setTimeout. Per-tool configurable via ToolCall.timeout
+      field. Exceeded timeout returns toolFailure with source: "timeout". Loop
+      retries ×3 on timeout (may clear transient issue).
+    owner_adr: ADR-0006
+    key: "ToolCall.timeout?: number (default 5000ms)"
+    file: web/src/lib/tools/types.ts
+    status: proposed

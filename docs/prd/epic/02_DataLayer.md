@@ -138,6 +138,9 @@ function getProvider(env: Env): MarketDataProvider {
 
 **R2 缓存策略**：
 
+> **注意（2026-07-19 修订）**：原稿 `daily: 86400 (1天)` 与 ADR-0002 `R2_TTL.PRICE: 3600 (1小时)` 不一致。
+> 已对齐 ADR-0002 的 1 小时 price TTL（保证数据新鲜度，Yahoo API 压力可控）。详见 [ADR-0002](../../architecture/adr-0002-r2-cache-whitelist.md)。
+
 ```typescript
 interface R2CacheStrategy {
   // 仅缓存"Mockup 命中标的"
@@ -145,11 +148,10 @@ interface R2CacheStrategy {
   // 不缓存冷门标的（生产模式下直接走 Yahoo API）
   cacheKey: (symbol, timeframe) => `klines/${symbol}/${timeframe}.json`;
   ttl: {
-    daily: 86400,      // 1 天
-    minute: 60,        // 1 分钟
-    fundamental: 604800 // 7 天
+    price:       3600,      // 1 小时（per ADR-0002 R2_TTL.PRICE；原 86400 已弃用）
+    fundamental: 604800     // 7 天（per ADR-0002 R2_TTL.FUNDAMENTAL）
   };
-  // 优雅降级：R2 miss → 真实 API → 写回 R2 → 返回
+  // 优雅降级：R2 miss -> 真实 API -> 写回 R2 -> 返回
   fallback: "real_api_then_cache";
 }
 ```
@@ -589,7 +591,8 @@ describe("Data Provider Golden Set", () => {
 
 - [ ] `MarketDataProvider` 接口已定义且实现 MockProvider + RealProvider
 - [ ] `USE_MOCK=true` 时所有请求走 Mock JSON 文件
-- [ ] `USE_MOCK=false` 时按优先级走 Yahoo → Alpha Vantage → Polygon → Mock
+- [ ] `USE_MOCK=false` 时按优先级走 Yahoo -> Mock fallback（**Phase 1**）
+- [ ] `USE_MOCK=false` 时按优先级走 Yahoo -> Alpha Vantage -> Polygon -> Mock（**Phase 1.5+**，per ID-4 Phase 表）
 - [ ] R2 缓存仅缓存 10 个 Mockup 命中标 的
 - [ ] D1 schema 包含 symbols/watchlists/kline_cache_index/fundamentals 4 表
 - [ ] Mock 数据集包含 10 标的 × 2 时间框架 = 20 个 JSON 文件
