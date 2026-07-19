@@ -27,7 +27,6 @@ export interface Env {
 
 declare global {
   // Cloudflare Workers inject `env` as global
-  // eslint-disable-next-line no-var
   var env: Env | undefined;
 }
 
