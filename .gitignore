@@ -44,6 +44,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Temporary commit message artifacts (HEREDOC workaround on Windows)
+COMMIT_MSG*.txt
+
 # Test coverage
 coverage/
 *.lcov
