@@ -5,7 +5,7 @@
 #
 # Last Updated: 2026-07-19
 # Version: 6
-# Total ADRs referenced: 10 (ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0009, ADR-0011)
+# Total ADRs referenced: 13 (ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0009, ADR-0010, ADR-0011, ADR-0012, ADR-0013)
 
 state_ownership:
   - id: SO-0001
@@ -135,6 +135,38 @@ state_ownership:
     owner_adr: ADR-0009
     interface: "PaperBroker implements BrokerAdapter"
     file: web/src/lib/broker/paper-broker.ts
+    status: proposed
+
+  - id: SO-0015
+    name: dashboard_layout
+    description: >
+      Dashboard 12-column grid layout with widget system.
+      Owned by DashboardLayout component. Widgets are independently
+      loaded with per-widget ErrorBoundary. SWR for data fetching.
+    owner_adr: ADR-0010
+    interface: "DashboardLayout → Widget[] (lazy loaded)"
+    file: web/src/app/page.tsx
+    status: proposed
+
+  - id: SO-0016
+    name: community_publish_guard
+    description: >
+      Guard for community Playbook publish: strategy must be backtested.
+      Owned by canPublish() server-side check. Anti-abuse filters applied.
+    owner_adr: ADR-0012
+    interface: "canPublish(strategy_id, user_id) -> boolean"
+    file: web/src/lib/community/publish.ts
+    status: proposed
+
+  - id: SO-0017
+    name: playbook_composition
+    description: >
+      Playbook composition engine (parallel/sequential/conditional).
+      Owned by PlaybookExecutor class. Circular dependency detection
+      via topological sort at validation time.
+    owner_adr: ADR-0013
+    interface: "PlaybookExecutor.compose(playbook) -> CompositionResult"
+    file: web/src/lib/playbook/executor.ts
     status: proposed
 
   - id: SO-0009

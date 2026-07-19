@@ -314,6 +314,9 @@ flowchart BT
 | [ADR-0007](./adr-0007-citation-validator.md) | Citation Validator | Proposed | Ask Agent §2 |
 | [ADR-0008](./adr-0008-strategy-dsl-schema.md) | Strategy DSL Schema | Proposed | §3 EP04 Strategy |
 | [ADR-0009](./adr-0009-backtest-engine.md) | Backtest Engine + PaperBroker | Proposed | §3 EP04/EP06 |
+| [ADR-0010](./adr-0010-dashboard-layout.md) | Dashboard Layout + Widgets | Proposed | §3 EP05 Dashboard |
+| [ADR-0012](./adr-0012-community-ugc.md) | Community UGC + Moderation | Proposed | §3 EP07 Community |
+| [ADR-0013](./adr-0013-playbook-system.md) | Playbook System | Proposed | §3 EP08 Playbook |
 | [ADR-0011](./adr-0011-d1-schema-master.md) | D1 Schema Master | Accepted | §6 部署/D1 |
 
 ***
