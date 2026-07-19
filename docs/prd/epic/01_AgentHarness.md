@@ -133,18 +133,18 @@ Scenario: 成本 ceiling
 
 **内置工具集**:
 
-| 工具名 | 协议 | 用途 |
-|---|---|---|
-| `get_quote` | 原生 | 实时报价 |
-| `get_ohlc` | 原生 | K 线 |
-| `get_earnings` | 原生 | 财报 |
-| `search_news` | MCP | 新闻搜索 |
-| `get_macro` | 原生 | 宏观数据 |
-| `get_sentiment` | MCP | X/Reddit 情绪 |
-| `plot_chart` | 原生 | 生成图表 |
-| `build_strategy` | 原生 | NL→DSL |
-| `run_backtest` | 原生 | 触发回测 |
-| `save_dashboard` | 原生 | 持久化看板 |
+| 工具名 | 协议 | 用途 | Owner Agent |
+|---|---|---|---|
+| `get_quote` | 原生 | 实时报价 | Ask |
+| `get_ohlc` | 原生 | K 线 | Ask |
+| `get_earnings` | 原生 | 财报 | Ask |
+| `search_news` | MCP | 新闻搜索 | Ask |
+| `get_macro` | 原生 | 宏观数据 | Ask |
+| `get_sentiment` | MCP | X/Reddit 情绪 | Ask |
+| `plot_chart` | 原生 | 生成图表 | Ask |
+| `build_strategy` | 原生 | NL→DSL | Build |
+| `run_backtest` | 原生 | 触发回测 | Build |
+| `save_dashboard` | 原生 | 持久化看板 | Dashboard |
 
 ### ID-3: Memory 三层架构
 
@@ -191,7 +191,7 @@ stateDiagram-v2
 // LLM 路由表
 const ROUTING = {
   simple_qa:     { model: "haiku-tier",   max_tokens: 500,   cost_cap: 0.01 },
-  deep_research: { model: "sonnet-tier",  max_tokens: 4000,  cost_cap: 0.50 },
+  deep_research: { model: "sonnet-tier",  max_tokens: 4000,  cost_cap: 0.05 },
   strategy_dsl:  { model: "sonnet-tier",  max_tokens: 2000,  cost_cap: 0.20 },
   backtest_explain: { model: "haiku-tier", max_tokens: 1000, cost_cap: 0.05 },
 };
@@ -321,7 +321,7 @@ type TraceStep = {
 - [ ] USE_MOCK=true 时无任何外部 API 调用
 - [ ] USE_MOCK=false 时可接 LM Studio + 火山引擎
 - [ ] 全链路 trace 可在 Grafana 查看
-- [ ] 单次 query 成本 ≤ $0.50（简单）/ $5.00（深度）
+- [ ] 单次 query 成本 ≤ $0.01（简单）/ $0.05（深度）
 
 ---
 

@@ -75,7 +75,7 @@
 | **Vectorize** | Cloudflare 向量数据库服务 |
 | **Pages** | Cloudflare 静态站 + SSR 托管 |
 | **Wrangler** | Cloudflare CLI 工具 |
-| **TradingView Charting Library** | 专业金融图表库，免费商用 |
+| **lightweight-charts** | TradingView 开源图表库 (Apache 2.0)，Phase 1.5 接入 |
 | **LM Studio** | 本地 LLM 运行环境，兼容 OpenAI API |
 | **Ark** | 火山引擎大模型 API 平台 |
 | **OpenTelemetry** | 开源可观测性标准 |

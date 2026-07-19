@@ -355,7 +355,7 @@ Feature: PaperBroker 交易执行
 
   Scenario: Mock 模式成交价从 Mock K 线
     Given USE_MOCK=true
-    And mock_data/klines/AAPL_1d.json 最新收盘 $187.31
+    And web/public/mock/klines/AAPL_1d.json 最新收盘 $187.31
     When 用户下 buy 100 AAPL market
     Then 成交价 = $187.31 + 5bps
 

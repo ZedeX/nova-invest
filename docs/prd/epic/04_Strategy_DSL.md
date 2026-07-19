@@ -436,7 +436,7 @@ Feature: Strategy DSL 校验与回测
     Given USE_MOCK=true
     And 策略 universe.symbols = ["AAPL"]
     When 调用 backtest.run()
-    Then 加载 mock_data/klines/AAPL_1d.json
+    Then 加载 web/public/mock/klines/AAPL_1d.json
     And 不调用任何外部 API
 
   Scenario: 回测报告包含完整指标
@@ -644,7 +644,7 @@ describe("Strategy DSL Golden Set", () => {
 - [ ] 风控规则（stop_loss/take_profit/max_drawdown）实现
 - [ ] 策略状态机：Draft → Validated → Backtested → Paper
 - [ ] D1 schema 含 strategies + backtest_results 表
-- [ ] Mock 模式下回测完全用 mock_data/klines/*.json
+- [ ] Mock 模式下回测完全用 web/public/mock/klines/*.json
 - [ ] Golden 回测结果固化（3 个策略）
 - [ ] 指标计算与 talib 一致性测试通过
 

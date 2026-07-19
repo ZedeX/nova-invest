@@ -38,7 +38,7 @@ Alva 当前在数据层呈现的能力 [INFERRED]：
 **本 Epic 要"做得比 Alva 更好"的关键点 [C]**：
 - 显式 Mock/Real 双模开关（Alva 未公开此能力）
 - R2 智能缓存热门 K 线（Alva 未提及缓存策略）
-- 多源 fallback（Yahoo → Alpha Vantage → Polygon → Mock）
+- 多源 fallback（Yahoo → Alpha Vantage → Polygon → Mock）— Phase 1 仅 Yahoo → Mock；Phase 1.5 起启用完整链
 
 ---
 
@@ -64,9 +64,9 @@ flowchart TB
     end
 
     subgraph "Mock Data Sources"
-        M --> MK[mock_data/klines/*.json<br/>10 标的 × 2 年 日线]
-        M --> ME[mock_data/earnings/*.json<br/>财报样本]
-        M --> MQ[mock_data/qa_samples/*.json<br/>问答样本]
+        M --> MK[web/public/mock/klines/*.json<br/>10 标的 × 2 年 日线]
+        M --> ME[web/public/mock/earnings/*.json<br/>财报样本]
+        M --> MQ[web/public/mock/qa_samples/*.json<br/>问答样本]
     end
 
     subgraph "Cache Layer"
@@ -106,10 +106,13 @@ function getProvider(env: Env): MarketDataProvider {
   const mode = env.USE_MOCK === "true" ? "mock" : "real";
   return mode === "mock" ? new MockProvider() : new RealProvider({
     sources: [
+      // Phase 1: 仅 yahoo + mock fallback（当前实现）
+      // Phase 1.5: 启用 alpha + polygon
+      // Phase 2: 启用 sec + fred
       { name: "yahoo",   priority: 1, rateLimit: { req: 100, per: "minute" } },
-      { name: "alpha",   priority: 2, rateLimit: { req: 25,   per: "day"    } },
-      { name: "polygon", priority: 3, rateLimit: { req: 5,    per: "minute" } },
-      { name: "mock",    priority: 99, fallback: true }, // 兜底
+      { name: "alpha",   priority: 2, rateLimit: { req: 25,   per: "day"    } }, // Phase 1.5
+      { name: "polygon", priority: 3, rateLimit: { req: 5,    per: "minute" } }, // Phase 1.5
+      { name: "mock",    priority: 99, fallback: true }, // 兜底（Phase 1 即启用）
     ],
     r2: { enabled: true, ttl: 3600, maxSize: 5 * 1024 * 1024 * 1024 /* 5GB */ },
   });
@@ -120,8 +123,8 @@ function getProvider(env: Env): MarketDataProvider {
 
 | 层 | Mock 实现 | 数据来源 |
 |---|---|---|
-| 前端层 | `public/mock/*.json` 直接 fetch | 预生成静态文件 |
-| Worker 层 | `MockProvider` 类拦截请求 | `mock_data/klines/*.json` |
+| 前端层 | `web/public/mock/*.json` 直接 fetch | 预生成静态文件 |
+| Worker 层 | `MockProvider` 类拦截请求 | `web/public/mock/klines/*.json` |
 | D1 层 | 启动脚本 `seed.sql` 预置 | 测试账号/Credit/策略草稿 |
 
 ### 2.3 R2 缓存策略（细化用户决策）[B]
@@ -129,7 +132,7 @@ function getProvider(env: Env): MarketDataProvider {
 **用户细化决策**："R2 仅存储部分 Mockup 用到的真实 K 线"
 
 **"Mockup 用到"的精确定义**：
-1. Mock 数据集 (`mock_data/klines/*.json`) 涵盖的 10 个标的
+1. Mock 数据集 (`web/public/mock/klines/*.json`) 涵盖的 10 个标的
 2. 这 10 个标的的真实历史 K 线（过去 2 年日线 + 过去 30 天分钟线）
 3. 总量预估：10 标的 × 2 年 × 252 交易日 × 6 字段 ≈ 30K 条记录 → JSON ≈ 5MB → 完全在 R2 免费层内
 
@@ -152,7 +155,7 @@ interface R2CacheStrategy {
 ```
 
 **Mock 模式下 R2 行为**：
-- Mock 模式下 R2 不参与（直接读 `mock_data/klines/*.json`）
+- Mock 模式下 R2 不参与（直接读 `web/public/mock/klines/*.json`）
 - 仅在生产模式且标的在 `cachedSymbols` 列表内时才写 R2
 
 ### 2.4 D1 Schema [B]
@@ -235,7 +238,7 @@ CREATE TABLE fundamentals (
 }
 ```
 
-**Mock 数据集清单**（`mock_data/klines/` 目录）：
+**Mock 数据集清单**（`web/public/mock/klines/` 目录）：
 
 | 文件 | 标的 | 时间跨度 | 数据点数 | 大小估算 |
 |---|---|---|---|---|
@@ -257,13 +260,13 @@ async function main() {
   for (const symbol of MOCK_SYMBOLS) {
     const daily = await YahooAPI.getHistorical(symbol, "1d",
       "2024-01-01", "2025-12-31");
-    await fs.writeFile(`mock_data/klines/${symbol}_1d.json`,
+    await fs.writeFile(`web/public/mock/klines/${symbol}_1d.json`,
       JSON.stringify({ ticker: symbol, timeframe: "1d", source: "mock",
                       generated_at: new Date().toISOString(), data: daily }, null, 2));
 
     const minute = await YahooAPI.getHistorical(symbol, "5m",
       dayMinus30, today);
-    await fs.writeFile(`mock_data/klines/${symbol}_5m.json`,
+    await fs.writeFile(`web/public/mock/klines/${symbol}_5m.json`,
       JSON.stringify({ ticker: symbol, timeframe: "5m", source: "mock",
                       generated_at: new Date().toISOString(), data: minute }, null, 2));
   }
@@ -325,9 +328,9 @@ Feature: Mock/Real 切换
 
   Scenario: Mock 模式下读 K 线
     Given 环境变量 USE_MOCK=true
-    And mock_data/klines/AAPL_1d.json 存在
+    And web/public/mock/klines/AAPL_1d.json 存在
     When 用户请求 AAPL 日线
-    Then 返回 mock_data/klines/AAPL_1d.json 的内容
+    Then 返回 web/public/mock/klines/AAPL_1d.json 的内容
     And 不发起任何外部 HTTP 请求
     And 响应时间 < 100ms
 
@@ -366,7 +369,7 @@ Feature: Mock/Real 切换
   Scenario: Mock 数据集生成脚本
     Given 开发者运行 pnpm run gen:mock
     When 脚本从 Yahoo Finance 拉取 10 个标的 2 年日线
-    Then 生成 mock_data/klines/{SYMBOL}_1d.json 共 10 个文件
+    Then 生成 web/public/mock/klines/{SYMBOL}_1d.json 共 10 个文件
     And 每个文件包含 500+ 条 K 线数据
     And 文件总大小 < 50MB
 ```
@@ -428,14 +431,19 @@ function shouldCacheR2(symbol: string): boolean {
 
 ### ID-4: 真实数据源优先级 [B]
 
-| 优先级 | 源 | 限流 | 用途 | 备注 |
-|---|---|---|---|---|
-| 1 | Yahoo Finance 非官方 | 100 req/min | K 线/报价 | 免费，无 key，但易封 IP |
-| 2 | Alpha Vantage Free | 25 req/day | K 线 + 基本面 | 需免费 API key |
-| 3 | Polygon Free | 5 req/min | K 线 | 需免费 API key |
-| 4 | SEC EDGAR | 无明确限流 | 财报 | 完全免费 |
-| 5 | FRED | 120 req/min | 宏观 | 完全免费 |
-| 99 | Mock 数据集 | 无限 | 兜底 fallback | 仅在所有真实源失败时 |
+| 优先级 | 源 | 限流 | 用途 | 备注 | Phase |
+|---|---|---|---|---|---|
+| 1 | Yahoo Finance 非官方 | 100 req/min | K 线/报价 | 免费，无 key，但易封 IP | Phase 1 |
+| 2 | Alpha Vantage Free | 25 req/day | K 线 + 基本面 | 需免费 API key | Phase 1.5 |
+| 3 | Polygon Free | 5 req/min | K 线 | 需免费 API key | Phase 1.5 |
+| 4 | SEC EDGAR | 无明确限流 | 财报 | 完全免费 | Phase 2 |
+| 5 | FRED | 120 req/min | 宏观 | 完全免费 | Phase 2 |
+| 99 | Mock 数据集 | 无限 | 兜底 fallback | 仅在所有真实源失败时 | Phase 1 |
+
+**Phase 说明**:
+- **Phase 1**（求职作品 demo）: 仅 Yahoo + Mock fallback。代码实现在 `web/src/lib/data/provider.ts`。
+- **Phase 1.5**（生产灰度）: 增加 Alpha Vantage + Polygon 作为 Yahoo 限流时的 fallback。
+- **Phase 2**（完整版）: 增加 SEC EDGAR + FRED 支持财报与宏观数据。
 
 ### ID-5: D1 作为元数据存储，K 线不入 D1 [B]
 

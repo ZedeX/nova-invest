@@ -23,7 +23,7 @@
 ```mermaid
 flowchart TB
     subgraph Client["前端层 (Next.js)"]
-        UI[Web App<br/>TradingView Chart]
+        UI[Web App<br/>lightweight-charts]
         MockFE[前端 Mock<br/>本地 K线/问答样本]
     end
 
@@ -77,7 +77,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    L9[Layer 9: UI<br/>Next.js + TradingView] --> L8
+    L9[Layer 9: UI<br/>Next.js + lightweight-charts] --> L8
     L8[Layer 8: Orchestration<br/>Supervisor + 3 Sub-Agents] --> L7
     L7[Layer 7: Agent Loop<br/>ReAct + max steps + cost ceiling] --> L6
     L6[Layer 6: Planning<br/>CoT + Plan-and-Execute] --> L5
@@ -92,7 +92,7 @@ flowchart TB
 
 | 层               | 职责                                 | 技术选型                                      |
 | --------------- | ---------------------------------- | ----------------------------------------- |
-| 9 UI            | Web 入口，TradingView 图表              | Next.js 16 + TradingView Charting Library |
+| 9 UI            | Web 入口，lightweight-charts 图表        | Next.js 16 + lightweight-charts (Apache 2.0) |
 | 8 Orchestration | Supervisor 路由 Ask/Build/Dashboard  | 自研轻量编排器                                   |
 | 7 Agent Loop    | ReAct + max\_steps + 成本/延迟 ceiling | TypeScript                                |
 | 6 Planning      | CoT + Plan-and-Execute             | LLM 原生                                    |
@@ -169,11 +169,11 @@ LLM_API_KEY=${{ARK_API_KEY}}
 
 ### 5.3 Mock 数据集清单
 
-| 类型    | 位置                            | 内容                    |
-| ----- | ----------------------------- | --------------------- |
-| K 线   | `mock_data/klines/*.json`     | NVDA/MSFT/SPY 等日线+分钟线 |
-| 财报    | `mock_data/earnings/*.json`   | NVDA/MSFT 财报文本+结构化    |
-| 问答样本  | `mock_data/qa_samples/*.json` | 50+ 预写问答对             |
+| 类型    | 位置                                    | 内容                    |
+| ----- | ------------------------------------- | --------------------- |
+| K 线   | `web/public/mock/klines/*.json`       | NVDA/MSFT/SPY 等日线+分钟线 (运行时 URL: `/mock/klines/*.json`) |
+| 财报    | `web/public/mock/earnings/*.json`     | NVDA/MSFT 财报文本+结构化 (运行时 URL: `/mock/earnings/*.json`) |
+| 问答样本  | `web/public/mock/qa_samples/*.json`   | 50+ 预写问答对 (运行时 URL: `/mock/qa_samples/*.json`) |
 | 用户/策略 | D1 seed                       | 测试账号、Credit、策略草稿      |
 | 回测结果  | D1 seed                       | 预生成回测报告               |
 | 社区    | D1 seed                       | Playbook 样本 + 创作者档案   |
@@ -234,7 +234,7 @@ flowchart BT
 | 前端框架          | Next.js                       | 16.2   |
 | UI 库          | React                         | 19.2   |
 | 样式            | Tailwind CSS                  | 4.3    |
-| 图表            | TradingView Charting Library  | latest |
+| 图表            | lightweight-charts (Apache 2.0) | latest — Phase 1: SVG 占位；Phase 1.5: 接入 lightweight-charts |
 | UI 组件         | shadcn/ui                     | latest |
 | 后端            | Cloudflare Workers            | latest |
 | 数据库           | Cloudflare D1 (SQLite)        | -      |

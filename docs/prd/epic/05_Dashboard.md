@@ -23,7 +23,7 @@ Prosumer Brenda 想监控自己的 5 个策略 + 10 个标的时：
 
 ### 1.2 工程视角问题 [B]
 
-- **TradingView 集成**：用户决策"Next.js + TradingView Charting Library"，需处理 library 加载、license、数据 feed 适配
+- **图表库集成**：用户决策"Next.js + lightweight-charts (Apache 2.0)"，需处理 library 加载、数据 feed 适配；Phase 1 用 SVG 占位
 - **多图表布局**：单一 dashboard 同时显示 K 线 + 指标 + 持仓 + 策略表现，需响应式布局
 - **实时 vs Mock 数据流**：图表必须支持静态加载（Mock）与流式更新（Real SSE）双模
 - **可观测性**：用户决策"OpenTelemetry + Grafana"，前端必须暴露性能埋点
@@ -60,8 +60,8 @@ flowchart TB
         D --> W6[Widget: Ask Agent Panel]
     end
 
-    subgraph "TradingView Integration"
-        W1 --> TV[TradingView Charting Library]
+    subgraph "Charting Integration"
+        W1 --> TV[lightweight-charts<br/>Phase 1: SVG placeholder]
         TV --> DS[Datafeed Adapter<br/>Mock / Real]
         DS --> API[/api/klines<br/>Worker]
     end
@@ -109,9 +109,9 @@ flowchart TB
 - 默认隐藏 Sidebar（汉堡菜单）
 - 图表保持 16:9
 
-### 2.3 TradingView 集成 [B] - **关键决策**
+### 2.3 图表库集成 [B] - **关键决策**
 
-**用户决策**：TradingView Charting Library（免费商用）
+**用户决策**：lightweight-charts (Apache 2.0)；Phase 1 用自研 SVG 占位，Phase 1.5 接入 lightweight-charts
 
 ```typescript
 // src/components/charts/TradingViewChart.tsx
@@ -378,7 +378,7 @@ Feature: Dashboard 加载与交互
   Scenario: Mock 模式静态加载
     Given USE_MOCK=true
     When 用户打开 AAPL K 线
-    Then 直接加载 mock_data/klines/AAPL_1d.json
+    Then 直接加载 web/public/mock/klines/AAPL_1d.json
     And 不订阅 SSE
     And 不轮询
 ```

@@ -53,7 +53,7 @@ Alva Ask Agent 当前呈现 [INFERRED]：
 flowchart TB
     U[User Query] --> QU[Query Understanding<br/>classifyIntent]
     QU -->|simple_qa| H[Haiku-tier<br/>cost_cap $0.01]
-    QU -->|deep_research| S[Sonnet-tier<br/>cost_cap $0.50]
+    QU -->|deep_research| S[Sonnet-tier<br/>cost_cap $0.05]
     QU -->|tool_call| TC[Function Call<br/>via MCP]
     QU -->|clarify| CL[Clarify Question]
 
@@ -327,7 +327,7 @@ Feature: Ask Agent 引用与防幻觉
     Given 用户问"分析 NVDA 过去 3 年财报趋势"
     When Ask Agent 分类为 deep_research
     Then 路由到 Sonnet-tier 模型
-    And cost_cap = $0.50
+    And cost_cap = $0.05
     And max_tokens = 4000
 
   Scenario: 数字字段必须从 RAG 提取
