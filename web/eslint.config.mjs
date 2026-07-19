@@ -31,6 +31,14 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // Test files: relax `any` restriction for mocks/stubs/D1 bindings.
+    // Production code in src/lib/** retains the strict no-explicit-any rule.
+    files: ["tests/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
