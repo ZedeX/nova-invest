@@ -85,7 +85,7 @@ export default async function StrategyDetailPage({ params }: PageProps) {
           <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
             <h3 className="text-sm font-semibold mb-2">Validation</h3>
             <ul className="space-y-1 text-xs">
-              <li className="text-green-600 dark:text-green-400">✓ version: "1.0" matches schema</li>
+              <li className="text-green-600 dark:text-green-400">✓ version: &quot;1.0&quot; matches schema</li>
               <li className="text-green-600 dark:text-green-400">✓ all indicators registered</li>
               <li className="text-green-600 dark:text-green-400">✓ rules reference valid indicators</li>
               <li className="text-green-600 dark:text-green-400">✓ risk.stop_loss in [0, 1]</li>

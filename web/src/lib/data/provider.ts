@@ -130,8 +130,8 @@ export class RealProvider implements MarketDataProvider {
     if (!res.ok) {
       throw new Error(`Yahoo API error: ${res.status}`);
     }
-    const json: any = await res.json();
-    const result = json?.chart?.result?.[0];
+    const json: unknown = await res.json();
+    const result = (json as { chart?: { result?: Array<{ timestamp?: number[]; indicators?: { quote?: Array<{ open?: number[]; high?: number[]; low?: number[]; close?: number[]; volume?: number[] }> } }> } })?.chart?.result?.[0];
     if (!result) {
       throw new Error("Yahoo returned no result");
     }

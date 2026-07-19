@@ -40,12 +40,14 @@ export function AskAgentPanel({ defaultQuery = "" }: AskAgentPanelProps = {}) {
         else if (/持仓|portfolio|risk/.test(q))        sampleFile = "/mock/qa_samples/portfolio_risk.json";
 
         const res = await fetch(sampleFile);
-        const sample: any = await res.json();
-        setResponse({
-          ...sample.response,
-          intent: sample.intent,
-          cost: { credits_used: 0, model: "mock-qa-sample" },
-        });
+        const sample = await res.json() as { response?: AskResponse; intent?: AskResponse["intent"] };
+        if (sample.response) {
+          setResponse({
+            ...sample.response,
+            intent: sample.intent ?? sample.response.intent,
+            cost: { credits_used: 0, model: "mock-qa-sample" },
+          });
+        }
       } else {
         // Real mode: call /api/ask
         const res = await fetch("/api/ask", {
@@ -53,8 +55,8 @@ export function AskAgentPanel({ defaultQuery = "" }: AskAgentPanelProps = {}) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: q }),
         });
-        const json: any = await res.json();
-        setResponse(json.data?.answer || json.data);
+        const json = await res.json() as { data?: { answer?: AskResponse } };
+        setResponse(json.data?.answer ?? null);
       }
     } catch (e) {
       setResponse({

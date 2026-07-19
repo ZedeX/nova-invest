@@ -16,7 +16,7 @@ export function CommunityFeed() {
     async function load() {
       try {
         const res = await fetch("/mock/community/index.json");
-        const json: any = await res.json();
+        const json = await res.json() as { playbooks?: CommunityPlaybook[] };
         setPlaybooks(json.playbooks || []);
       } catch (e) {
         console.error("Failed to load community feed:", e);

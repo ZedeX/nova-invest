@@ -67,11 +67,14 @@ export class MockLLM {
     // Load pre-generated Mock QA samples based on intent + query match
     const sample = await this.findMatchingSample(query, intent);
     if (sample) {
-      return {
-        ...(sample as any).response,
-        intent,
-        cost: { credits_used: 0, model: "mock-qa-sample" },
-      };
+      const sampleResponse = (sample as { response?: AskResponse }).response;
+      if (sampleResponse) {
+        return {
+          ...sampleResponse,
+          intent,
+          cost: { credits_used: 0, model: "mock-qa-sample" },
+        };
+      }
     }
 
     // Fallback generic response

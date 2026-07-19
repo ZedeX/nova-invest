@@ -2,6 +2,8 @@
  * Strategy List Widget (Epic 04 + Epic 05).
  */
 
+import Link from "next/link";
+
 const STRATEGIES = [
   { id: "str_mock_1", name: "NVDA MA Cross",      status: "backtested", return: 28.5, sharpe: 1.62, mdd: 8.3 },
   { id: "str_mock_2", name: "RSI Oversold",       status: "paper",      return: 15.3, sharpe: 1.05, mdd: 5.8 },
@@ -21,12 +23,12 @@ export function StrategyList() {
     <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Strategies</h3>
-        <a href="/strategy" className="text-xs text-blue-600 hover:underline">+ New</a>
+        <Link href="/strategy" className="text-xs text-blue-600 hover:underline">+ New</Link>
       </div>
       <ul className="space-y-2">
         {STRATEGIES.map(s => (
           <li key={s.id}>
-            <a
+            <Link
               href={`/strategy/${s.id}`}
               className="block p-3 rounded border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
             >
@@ -43,7 +45,7 @@ export function StrategyList() {
                 <span>Sharpe: {s.sharpe.toFixed(2)}</span>
                 <span>MDD: {s.mdd.toFixed(1)}%</span>
               </div>
-            </a>
+            </Link>
           </li>
         ))}
       </ul>

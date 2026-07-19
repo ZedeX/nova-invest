@@ -32,14 +32,14 @@ export function KlineChart({ symbol, height = 320 }: Props) {
         if (isMockMode()) {
           const res = await fetch(`/mock/klines/${symbol.toUpperCase()}_1d.json`);
           if (!res.ok) throw new Error(`No mock data for ${symbol}`);
-          const json: any = await res.json();
-          setKlines(json.data.slice(-90));  // Last ~3 months
+          const json = await res.json() as { data?: Kline[] };
+          setKlines((json.data ?? []).slice(-90));  // Last ~3 months
         } else {
           // Real mode: call API
           const res = await fetch(`/api/data/klines?symbol=${symbol}&timeframe=1d&from=2024-01-01&to=2025-12-31`);
           if (!res.ok) throw new Error(`API error: ${res.status}`);
-          const json: any = await res.json();
-          setKlines(json.data?.slice(-90) || []);
+          const json = await res.json() as { data?: Kline[] };
+          setKlines((json.data ?? []).slice(-90));
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
