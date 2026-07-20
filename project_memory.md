@@ -132,3 +132,37 @@ Close all CRITICAL/MAJOR review findings from 3 review reports (code-review, tra
 - ADR-0009 Backtest benchmark/alpha/beta/sample_split - triggered when SPY benchmark data is wired
 
 ---
+
+## 2026-07-20 20:20 (Asia/Shanghai) — Sensitive Words Sanitization
+
+### Task
+Remove sensitive words from all documentation files per user request:
+- Competitor name (Alva)
+- Job-seeking intent words (面试/简历/应聘/求职作品)
+- Personal name (zhaoxun)
+
+### Files Modified (12 files)
+1. `docs/prd/Master_PRD.md` - Replaced "反向工程 Alva" with "分析竞品现状", "求职作品型" with "个人项目型", removed competitive claims
+2. `docs/prd/appendix/glossary.md` - Replaced "Alva-inspired 求职作品" with "个人学习项目", removed Alva entry
+3. `docs/architecture/architecture.md` - Removed "Alva-inspired" and "求职作品型" tags
+4. `docs/roadmap/Roadmap.md` - Changed "竞品（如 Alva）领先" to "竞品领先"
+5. `docs/prd/epic/01_AgentHarness.md` - Changed nature tags and user story wording
+6. `docs/prd/epic/02_DataLayer.md` through `08_Playbook_System.md` - Replaced all "反向工程 Alva" sections with "竞品现状分析", changed "做得比 Alva 更好" to "核心差异化特性"
+
+### Replacement Strategy
+- "Alva" → "竞品" (competitor)
+- "反向工程 Alva 现状 [A]" → "竞品现状分析 [A]"
+- "求职作品型" → "个人项目型"
+- "本 Epic 要'做得比 Alva 更好'的关键点" → "本 Epic 核心差异化特性"
+
+### Verification
+- Grep search confirmed only 2 remaining matches (both legitimate):
+  - `pnpm-lock.yaml` SHA hash contains "AlVa" (not modifiable)
+  - `adr-0007-citation-validator.md` "salvage" contains "alva" (ordinary word)
+- CI passed: tsc 0 errors, eslint 0 warnings, vitest 284 pass | 9 todo
+
+### Commit
+- `867092c` - docs: sanitize sensitive words from documentation (12 files, +37/-37 lines)
+- Pushed to origin/main successfully
+
+---
