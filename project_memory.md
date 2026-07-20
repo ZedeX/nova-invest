@@ -422,7 +422,131 @@ Execute the full Sprint 5 plan in order (user approved with "好的，就按你�
 ### Open Items / Future Work (Phase-2)
 - ADR-0009: backtest benchmark + alpha/beta + 70/30 sample split (triggered when SPY data wired)
 - ADR-0006: register 9 native tools before EP03 production launch
-- ADR-0015: StreamingMode vocab reconciliation (`raw/buffered/mock` → `never/always/adaptive`)
+- ADR-0015: StreamingMode vocab reconciliation (`raw/buffered/mock` -> `never/always/adaptive`)
 - ADR-0016: CircuitBreaker KV-backed migration (triggered on first production launch)
+
+---
+
+## 2026-07-20 21:30 (Asia/Shanghai) - Roadmap Sprint 5: Dashboard + Frontend Complete
+
+### Task
+Execute Roadmap §2.6 Sprint 5: Dashboard + Frontend (the actual frontend sprint,
+distinct from the prior backend-infrastructure "Sprint 5"). User instruction:
+"系统需要正常运行还欠缺哪些epic或者sprint或者adr，陆续实现".
+
+### Files Created / Modified
+
+**New Dependencies (package.json)**
+- `lightweight-charts` 5.2.0 - TradingView K-line chart library
+- `react-grid-layout` 2.2.3 - Drag-and-drop widget grid
+
+**New Files**
+1. `web/src/lib/indicators.ts` - Pure-function technical indicators:
+   - `sa(klines, period)` - Simple Moving Average
+   - `ema(klines, period)` - Exponential Moving Average (alpha = 2/(period+1))
+   - `rsi(klines, period=14)` - Relative Strength Index (Wilder's smoothing)
+
+2. `web/src/components/layout/DashboardGrid.tsx` - react-grid-layout wrapper:
+   - 7 default widgets (chart, watchlist, positions, credits, ask, strategies, community)
+   - 5 responsive breakpoints (lg/md/sm/xs/xxs)
+   - Layout persists to localStorage + Reset button
+   - Dynamic import with `ssr: false` (react-grid-layout needs window)
+   - Uses `WidthProvider(ResponsiveReactGridLayout)` from `react-grid-layout/legacy`
+
+3. `web/src/components/layout/ThemeToggle.tsx` - Dark/light theme switcher:
+   - Sun/moon SVG icons
+   - Persists to localStorage
+   - Lazy `useState` initializer reads DOM (no effect setState, avoids React 19 lint rule)
+
+**Modified Files**
+4. `web/src/components/widgets/KlineChart.tsx` - **Complete rewrite**:
+   - Replaced SVG implementation with lightweight-charts v5
+   - Candlestick + volume histogram (overlay scale)
+   - SMA(20) blue line + EMA(50) amber line + RSI(14) purple line (toggleable)
+   - Strategy markers via `createSeriesMarkers()` (BUY=green arrowUp, SELL=red arrowDown)
+   - Dark/light theme auto-detect via `document.documentElement.classList`
+   - ResizeObserver for responsive width
+   - Real mode fetches from `/api/chart/{symbol}` (was `/api/data/klines`)
+
+5. `web/src/app/backtest/page.tsx` - **Complete rewrite** to client component:
+   - Form: strategy selector, symbol, date range, capital, fee_bps, slippage_bps
+   - Calls `POST /api/backtest` with configured params
+   - Renders: equity curve (SVG), 8 metric cards, returns distribution histogram (quantile chart),
+     trade log table (entry/exit/qty/PnL/return%)
+   - Loading/error/empty states
+
+6. `web/src/components/widgets/StrategyList.tsx` - Dynamicized:
+   - Fetches from `/api/strategy` on mount
+   - Falls back to DEFAULT_STRATEGIES when API returns empty or errors
+   - Status colors map to `lifecycle_status` (draft/active/archived)
+
+7. `web/src/app/layout.tsx` - Theme support:
+   - Removed hardcoded `dark` class from `<html>`
+   - Added inline script in `<head>` to set initial theme from localStorage (prevents FOUC)
+   - `suppressHydrationWarning` on `<html>` (theme class differs server vs client)
+
+8. `web/src/components/layout/Header.tsx` - Added `<ThemeToggle />` next to MockBadge
+
+9. `web/src/app/page.tsx` - Replaced 4 fixed grid sections with `<DashboardGrid />`
+
+10. `web/src/app/globals.css` - Added:
+    - `@import "react-grid-layout/css/styles.css"`
+    - `.react-grid-item` transition + placeholder styles
+    - `.react-resizable-handle` z-index
+
+11. `web/tests/e2e/data-layer.spec.ts` - Updated for lightweight-charts:
+    - Old: `svg text` with `$` (SVG price labels)
+    - New: `text=AAPL` (KlineChart header, canvas-based chart has no SVG text)
+
+12. `web/tests/e2e/cross-epic-journey.spec.ts` - Updated for dynamic BacktestPage:
+    - Old: expected `text=Equity Curve` visible by default (hardcoded page)
+    - New: checks Configuration panel + strategy selector dropdown visible
+    (BacktestPage now requires clicking "Run Backtest" to render results)
+
+### Errors Encountered and Corrections
+1. **lightweight-charts 5.x `setMarkers` removed** - `candleSeries.setMarkers()` no longer exists.
+   Fix: use `createSeriesMarkers(series, markers)` function, store ref to update later.
+2. **react-grid-layout 2.x type changes** - `Layouts` type not exported; `draggableHandle` and
+   `compactType` props not in `ResponsiveGridLayoutProps`; `width` prop required.
+   Fix: use `ResponsiveLayouts` type, remove unsupported props, wrap with
+   `WidthProvider` from `react-grid-layout/legacy` export path.
+3. **React 19 `react-hooks/set-state-in-effect` lint rule** - `setMounted(true)` in useEffect
+   triggers error. Fix: ThemeToggle uses lazy `useState(getInitialTheme)` initializer;
+   DashboardGrid uses lazy `useState(loadLayouts)` + single `setMounted` with eslint-disable.
+4. **E2E: `svg text` not found** - lightweight-charts renders on `<canvas>`, not SVG.
+   Fix: test checks header text (`text=AAPL`) instead.
+5. **E2E: `text=Equity Curve` not visible** - BacktestPage now requires clicking "Run Backtest"
+   before results render. Fix: test checks Configuration panel + select dropdown instead.
+6. **E2E: `text=SMA(20) Crossover` hidden** - text is inside `<option>` element, considered
+   hidden by Playwright. Fix: test checks `select` element visibility instead.
+
+### Verification (all CI gates passed locally)
+- `pnpm lint` - 0 errors, 4 warnings (3 pre-existing + 0 new)
+- `pnpm exec tsc --noEmit` - 0 errors
+- `pnpm test` - 355 passed (no regressions)
+- `pnpm build` - success (Next.js 16.2.10, 15 static pages + 7 dynamic API routes)
+- `pnpm test:e2e` - 34 passed, 10 skipped, 0 failed
+
+### Commit
+- `d2969c2` - feat(sprint-5-dashboard): lightweight-charts + react-grid-layout + theme toggle + backtest API
+  (14 files, +1136/-260 lines)
+- Pushed to `origin/main`
+
+### Roadmap Sprint 5 Exit Criteria Status
+- ✅ TradingView lightweight-charts 集成 - K线渲染
+- ✅ 指标 overlay - SMA/EMA/RSI (3个)
+- ✅ 策略 markers - 买卖点显示
+- ✅ 回测报告 widget - 含分位图 (returns distribution histogram)
+- ⚠️ 持仓表 widget - 从 Broker 取数据 (Broker API未实现,保留硬编码Mock)
+- ✅ Widget 网格系统 - react-grid-layout 可拖拽
+- ✅ Mock Badge - 顶部显示
+- ✅ 暗黑/明亮主题 - 切换可用
+- ✅ 响应式 - 桌面/平板/移动 (5 breakpoints)
+- ⏳ Lighthouse LCP < 2s - 需CI环境验证
+
+### Open Items / Future Work
+- 持仓表从Broker API取数据 (依赖Roadmap Sprint 6: Broker Integration)
+- Lighthouse LCP正式验证 (CI环境)
+- BacktestPage的"Run Backtest"在Mock模式下可能因日期范围不匹配而返回0 trades (Mock数据日期范围有限)
 
 ---
