@@ -166,3 +166,37 @@ Remove sensitive words from all documentation files per user request:
 - Pushed to origin/main successfully
 
 ---
+
+## 2026-07-20 12:40 (Asia/Shanghai) — Add Actual UI Screenshots
+
+### Task
+Replace placeholder images in documentation with actual UI screenshots.
+
+### Classification
+- **Banner/宣传图**: Keep API-generated images (Hero Banner, Architecture Diagram, Citation Pipeline)
+- **Product Screenshots**: Use real UI captures from running application
+
+### Files Added (6 screenshots)
+- `docs/assets/01-dashboard.png` - Homepage/Dashboard
+- `docs/assets/02-ask-agent.png` - AI Assistant chat interface
+- `docs/assets/03-strategy.png` - Strategy editor/list
+- `docs/assets/04-chart-aapl.png` - Candlestick chart (AAPL symbol)
+- `docs/assets/05-backtest.png` - Backtest results
+- `docs/assets/06-community.png` - Community page
+
+### Files Modified
+1. `README.md` - Added "Product Screenshots" section with 6 UI screenshots in table layout
+2. `README.zh-CN.md` - Added Chinese version of screenshots section
+
+### Process
+1. Started dev server (`pnpm dev`) - Mock mode by default
+2. Used browser_use agent to capture screenshots
+3. Screenshots saved to temp directory, copied to `docs/assets/`
+4. Renamed from timestamp format to descriptive names
+5. Added screenshots section to both READMEs
+
+### Commit
+- `5ea9c7f` - docs: add actual UI screenshots to README (8 files, +36 lines)
+- Pushed to origin/main successfully
+
+---
