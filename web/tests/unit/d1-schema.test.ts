@@ -66,10 +66,15 @@ describe("ADR-0011: D1 Schema Master", () => {
     expect(TABLE_NAMES.RAG_CHUNKS).toBe("rag_chunks");
     expect(TABLE_NAMES.NEWS_ARTICLES).toBe("news_articles");
 
-    // Count check: exactly 25 tables in master schema.
+    // Migration 010 (Sprint 9 Billing)
+    expect(TABLE_NAMES.CREDIT_BALANCES).toBe("credit_balances");
+    expect(TABLE_NAMES.CREDIT_TRANSACTIONS).toBe("credit_transactions");
+    expect(TABLE_NAMES.CREDIT_ORDERS).toBe("credit_orders");
+
+    // Count check: exactly 28 tables in master schema.
     //
-    // NOTE: ADR-0011 §Context text says "24 tables (22 base + users + url_check_queue)"
-    // but the Master Schema DDL (Migrations 001-009) actually defines 25 tables:
+    // NOTE: ADR-0011 §Context text says "24 tables" but the Master Schema DDL
+    // (Migrations 001-010) actually defines 28 tables:
     //   001: users, symbols (2)
     //   002: watchlists, watchlist_items, kline_cache_index, fundamentals (4)
     //   003: user_profiles, conversation_history (2)
@@ -80,12 +85,13 @@ describe("ADR-0011: D1 Schema Master", () => {
     //        playbook_comments, playbook_reports (5)
     //   008: url_check_queue (1)
     //   009: rag_chunks, news_articles (2 - added by ADR-0014 amendment)
-    // Total = 2+4+2+2+4+3+5+1+2 = 25
+    //   010: credit_balances, credit_transactions, credit_orders (3 - Sprint 9)
+    // Total = 2+4+2+2+4+3+5+1+2+3 = 28
     //
     // ADR-0014 added Migration 009 (2 tables) AFTER ADR-0011 was Accepted.
     // ADR-0011 §Context + §Performance still say "24" - this is a known ADR
     // documentation drift; the DDL is the canonical source of truth.
-    expect(listAllTables()).toHaveLength(25);
+    expect(listAllTables()).toHaveLength(28);
   });
 
   // ---------- §Validation Criteria #2: validateSchema happy path ----------

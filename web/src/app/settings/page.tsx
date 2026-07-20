@@ -1,16 +1,49 @@
 /**
  * Settings Page.
- * Mock/Real mode toggle + LLM provider config + account settings.
+ * Mock/Real mode toggle + LLM provider config + account/credit settings.
  */
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { CreditBalance as CreditBalanceType, CreditTransaction } from "@/lib/credit/types";
+import { PLAN_CONFIGS } from "@/lib/credit/types";
+import type { CreditPlan } from "@/lib/credit/types";
 
 export default function SettingsPage() {
   const [useMock, setUseMock] = useState(true);
   const [llmProvider, setLlmProvider] = useState("local-lmstudio");
   const [defaultModel, setDefaultModel] = useState("claude-sonnet-4-5");
+  const [balance, setBalance] = useState<CreditBalanceType | null>(null);
+  const [recentTxs, setRecentTxs] = useState<CreditTransaction[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function load() {
+      try {
+        const [balRes, txRes] = await Promise.all([
+          fetch("/api/credits/balance", { signal: controller.signal }),
+          fetch("/api/credits/transactions?limit=5", { signal: controller.signal }),
+        ]);
+        if (controller.signal.aborted) return;
+        const balJson = await balRes.json() as { data: CreditBalanceType };
+        const txJson = await txRes.json() as { data: CreditTransaction[]; total: number };
+        setBalance(balJson.data);
+        setRecentTxs(txJson.data ?? []);
+      } catch {
+        if (controller.signal.aborted) return;
+      }
+    }
+
+    load();
+    return () => { controller.abort(); };
+  }, []);
+
+  const planLabel = (plan: CreditPlan) => {
+    const config = PLAN_CONFIGS[plan];
+    return config ? `${config.name} ($${config.monthlyPrice}/mo)` : plan;
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-4xl">
@@ -58,7 +91,7 @@ export default function SettingsPage() {
               className="w-full px-2 py-1.5 rounded border border-zinc-300 dark:border-zinc-700 bg-transparent text-sm"
             >
               <option value="local-lmstudio">Local — LM Studio (http://localhost:1234)</option>
-              <option value="volcano-ark">Cloud — Volcano Engine Ark (豆包/Doubao)</option>
+              <option value="volcano-ark">Cloud — Volcano Engine Ark (Doubao)</option>
               <option value="anthropic">Cloud — Anthropic (Claude)</option>
               <option value="openai">Cloud — OpenAI (GPT)</option>
               <option value="google">Cloud — Google (Gemini)</option>
@@ -92,13 +125,47 @@ export default function SettingsPage() {
       </section>
 
       <section className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
-        <h2 className="text-base font-semibold mb-3">Account</h2>
+        <h2 className="text-base font-semibold mb-3">Account & Credits</h2>
         <dl className="space-y-2 text-sm">
-          <div className="flex justify-between"><dt className="text-zinc-500">Email</dt><dd>brenda@example.com</dd></div>
-          <div className="flex justify-between"><dt className="text-zinc-500">Plan</dt><dd>Pro ($29/mo)</dd></div>
-          <div className="flex justify-between"><dt className="text-zinc-500">Credit Balance</dt><dd className="font-mono">847 / 1000</dd></div>
-          <div className="flex justify-between"><dt className="text-zinc-500">Renewal</dt><dd>2026-08-18</dd></div>
+          <div className="flex justify-between"><dt className="text-zinc-500">Email</dt><dd>demo_user</dd></div>
+          <div className="flex justify-between">
+            <dt className="text-zinc-500">Plan</dt>
+            <dd>{balance ? planLabel(balance.plan) : "Loading..."}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-zinc-500">Credit Balance</dt>
+            <dd className="font-mono">{balance ? `${balance.remaining} / ${balance.granted}` : "—"}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-zinc-500">Used</dt>
+            <dd className="font-mono">{balance ? balance.used : "—"}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-zinc-500">Topped Up</dt>
+            <dd className="font-mono">{balance ? balance.topped_up : "—"}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-zinc-500">Burn Rate</dt>
+            <dd>{balance ? `${balance.forecast_burn_rate.toFixed(1)} credits/day` : "—"}</dd>
+          </div>
         </dl>
+
+        {recentTxs.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+            <h3 className="text-xs font-semibold text-zinc-500 mb-2">Recent Transactions</h3>
+            <ul className="space-y-1">
+              {recentTxs.map((tx) => (
+                <li key={tx.id} className="flex items-center justify-between text-xs">
+                  <span className="font-mono text-zinc-600 dark:text-zinc-400">{tx.action}</span>
+                  <span className={tx.amount > 0 ? "text-red-500" : "text-green-500"}>
+                    {tx.amount > 0 ? "-" : "+"}{Math.abs(tx.amount)}
+                  </span>
+                  <span className="text-zinc-400">{tx.balance_after} left</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <section className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">

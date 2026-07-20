@@ -1,7 +1,7 @@
 /**
  * D1 Schema constants + validation (ADR-0011 Master Schema).
  *
- * Full 24-table master schema per ADR-0011 §Master Schema (Migrations 001-009):
+ * Full 28-table master schema per ADR-0011 §Master Schema (Migrations 001-010):
  *   001: users, symbols                                  (lookup tables)
  *   002: watchlists, watchlist_items, kline_cache_index, fundamentals  (EP02 Data Layer)
  *   003: user_profiles, conversation_history              (EP03 Ask Agent memory)
@@ -12,6 +12,7 @@
  *        playbook_comments, playbook_reports              (EP07 Community UGC)
  *   008: url_check_queue                                  (ADR-0007 Citation URL Check)
  *   009: rag_chunks, news_articles                        (ADR-0014 RAG Metadata)
+ *   010: credit_balances, credit_transactions, credit_orders  (Sprint 9 Billing)
  *
  * Column lists mirror ADR-0011 §Master Schema verbatim. Required columns are
  * those declared `NOT NULL` (or PK) in ADR-0011. Nullable columns are still
@@ -55,6 +56,10 @@ export const TABLE_NAMES = {
   // Migration 009 (ADR-0014 RAG Metadata)
   RAG_CHUNKS: "rag_chunks",
   NEWS_ARTICLES: "news_articles",
+  // Migration 010 (Sprint 9 Billing)
+  CREDIT_BALANCES: "credit_balances",
+  CREDIT_TRANSACTIONS: "credit_transactions",
+  CREDIT_ORDERS: "credit_orders",
 } as const;
 
 export type D1TableName = (typeof TABLE_NAMES)[keyof typeof TABLE_NAMES];
@@ -252,6 +257,30 @@ const SCHEMA: Record<D1TableName, TableSchema> = {
       "published_at", "indexed_at",
     ],
     requiredColumns: ["id", "source", "title", "snippet", "url", "published_at"],
+  },
+
+  // ---------- Migration 010: Sprint 9 Billing ----------
+  [TABLE_NAMES.CREDIT_BALANCES]: {
+    columns: [
+      "user_id", "period", "plan",
+      "granted", "used", "topped_up", "carried_over",
+      "updated_at",
+    ],
+    requiredColumns: ["user_id", "period", "plan", "granted"],
+  },
+  [TABLE_NAMES.CREDIT_TRANSACTIONS]: {
+    columns: [
+      "id", "user_id", "action", "amount",
+      "balance_after", "metadata", "created_at",
+    ],
+    requiredColumns: ["user_id", "action", "amount", "balance_after"],
+  },
+  [TABLE_NAMES.CREDIT_ORDERS]: {
+    columns: [
+      "id", "user_id", "amount_usd", "credits",
+      "order_status", "stripe_id", "created_at",
+    ],
+    requiredColumns: ["id", "user_id", "amount_usd", "credits", "order_status"],
   },
 };
 

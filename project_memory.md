@@ -197,6 +197,50 @@ Replace placeholder images in documentation with actual UI screenshots.
 
 ### Commit
 - `5ea9c7f` - docs: add actual UI screenshots to README (8 files, +36 lines)
+
+---
+
+## 2026-07-21 03:10 (Asia/Shanghai) — Sprint 8: Share & Community
+
+### Task
+Implement Sprint 8 per Epic 07 (Share & Community) and Roadmap §2.9.
+
+### Files Created
+1. `web/src/lib/community/store.ts` — In-memory community store with 10 mock seed packages, full CRUD (listPackages, getPackage, publishPackage, installPackage, ratePackage, addComment, listComments, deleteComment, reportPackage, listReports, resolveReport, updateModerationStatus). Anti-abuse: rate limit (5 publishes/hr/user), content hash dedup, rating dedup (1 per user per package), comment depth limit (2 levels), report severity triage with auto-flag on high severity or 3+ reports.
+2. `web/src/app/community/playbook/[id]/page.tsx` — Playbook detail page with Install button, star rating (1-5), comment section (nested 2 levels with reply/delete), report form (severity-graded low/med/high). Uses AbortController for data fetching. Full UGC closed loop.
+3. `web/src/app/api/community/playbook/[id]/install/route.ts` — POST (install, creates reference not copy) + GET (list user installs)
+4. `web/src/app/api/community/playbook/[id]/rate/route.ts` — POST (rate 1-5, dedup per user) + GET (get user's rating)
+5. `web/src/app/api/community/playbook/[id]/comments/route.ts` — GET (list) + POST (add, supports parent_id for 2-level nesting) + DELETE (by author, cascades child replies)
+6. `web/src/app/api/community/playbook/[id]/report/route.ts` — POST (severity-graded report) + GET (list reports)
+7. `web/tests/integration/community-routes.test.ts` — 18 integration tests covering all 5 API endpoints + UGC closed loop (publish→install→rate→comment→report)
+8. `web/tests/unit/community.test.ts` — Comprehensive unit tests: seeds, search/sort, publish (validation + anti-abuse), install, rate, comments, reports, UGC closed loop
+
+### Files Modified
+1. `web/public/mock/community/index.json` — Expanded from 4 to 10 playbooks, aligned shape from `author: {id, name, avatar}` to `author_id` + `author_name` flat fields matching CommunityPackage type
+2. `web/src/components/widgets/CommunityFeed.tsx` — Rewrote from static mock JSON loader to API-calling widget with sort tabs, search, tag filter, pagination, AbortController for cleanup, dashboard widget mode (maxItems prop)
+3. `web/src/app/community/page.tsx` — Converted from server component with hardcoded HTML to client component with interactive search bar, category sidebar (8 categories), sort/filter state management
+4. `web/src/app/api/community/playbook/route.ts` — Added `tags` search params, `sort` param support
+5. `web/src/lib/community/types.ts` — Added Sprint 8 types: CommunityPackage, InstallRecord, RatingRecord, CommentRecord, ReportRecord, SearchQuery, FeedSortType, PublishPackageRequest, RateRequest, CommentRequest, ReportRequest, ReportSeverity, ReportStatus
+6. `web/tests/e2e/community.spec.ts` — Expanded from 5 to 9 tests: search, category filter, sort, detail page navigation, rating UI, comment section, report link
+
+### CI Verification
+- tsc: 0 errors
+- eslint: 0 errors, 0 warnings
+- vitest: 485 passed (30 test files)
+- build: success
+
+### Key Design Decisions
+- CommunityFeed uses inline useEffect with AbortController instead of useCallback+useEffect to avoid `react-hooks/set-state-in-effect` eslint rule
+- Detail page loads all 3 API endpoints in parallel via Promise.all
+- Install is idempotent (same user reinstalling doesn't double-count)
+- Rating dedup: 1 per user per package, re-rate updates sum
+- Comment depth: max 2 levels (parent→reply, no reply-to-reply)
+- Report auto-flag: high severity OR 3+ reports triggers flagged moderation_status
+- DEMO_USER hardcoded in API routes (Phase 1, no auth)
+
+### Commit
+- `88c666b` - feat(EP07): Sprint 8 Share and Community full implementation (14 files, +2482/-301)
+- Pushed to origin/main
 - Pushed to origin/main successfully
 
 ---
