@@ -21,6 +21,12 @@ Accepted
   - Hourly timeframe support (may need streaming/chunking for Worker CPU limit)
   - Durable Objects or Queue for long-running backtests (hourly × 5 years)
 
+## Phase-2 Implementation Notes
+
+- **Implemented in Phase 2 (2026-07-21)**: Walk-forward analysis (sample_split / in-sample + out-of-sample split) implemented in `web/src/lib/backtest/walk-forward.ts`. Supports configurable `sample_split` ratio (default 0.7 = 70/30 chronological split) and runs the backtest pipeline twice for in-sample and out-of-sample periods, producing separate metrics for overfitting detection per §In/Out-of-Sample Split.
+- **Implemented in Phase 2 (2026-07-21)**: CSV export for backtest results implemented in `web/src/lib/backtest/csv-export.ts`. Enables download of equity curves, trade logs, and metrics as CSV for external analysis.
+- **Still deferred**: `benchmark_return` + `alpha` + `beta` (requires SPY data feed — external service dependency), hourly timeframe support, Durable Objects for long-running backtests.
+
 ## Date
 
 2026-07-19

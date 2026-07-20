@@ -11,6 +11,10 @@ Accepted
 - **Phase-1 Compliance**: ACCEPTED. The code's `query({type: "conversation"})` is functionally equivalent to ADR's `loadShortTerm()`. The code's `save({type:"conversation", content, metadata:{user_id,session_id,role}})` is functionally equivalent to ADR's `appendConversation()`.
 - **Migration Trigger**: When EP03 Ask Agent needs user_profile-specific queries (load risk_tolerance + sectors), add `loadUserProfile(user_id)` as a typed wrapper over `query({type:"user_profile", metadata:{user_id}})`. No underlying API change needed.
 
+## Phase-2 Implementation Notes
+
+- **Implemented in Phase 2 (2026-07-21)**: CircuitBreakerStore abstraction added to `web/src/lib/memory/store.ts`. Short-term KV store interface is ready — the `MemoryStore` interface with `save/retrieve/query/delete` API is fully implemented with both `MockMemoryStore` (in-memory Map) and `D1MemoryStore` (D1-backed) variants. The generic document-store pattern allows KV-short-term and D1-long-term to share a unified interface, with `type` discriminator for routing.
+
 ## Date
 
 2026-07-19

@@ -28,6 +28,10 @@ Accepted
   - Rename code vocabulary to ADR canonical vocabulary ("never"/"always"/"adaptive") in one migration PR
   - Future: WebSocket for bidirectional streaming if interactive mid-query refinement needed (Alternative 1 in ADR)
 
+## Phase-2 Implementation Notes
+
+- **Implemented in Phase 2 (2026-07-21)**: Adaptive streaming mode now implemented in `web/src/lib/sse/encoder.ts`. The `resolveStreamingMode(intent, env)` function is implemented, supporting all 4 canonical modes: "never" (mock/simple_qa), "always" (deep_research), "adaptive" (other intents with 5s latency threshold). The SSEncoder class supports `writeToken()`, `writeDone()`, `writeCitationCorrection()`, and `writeError()` methods per §Key Interfaces. Code vocabulary migration from "raw"/"buffered"/"mock" to "never"/"always"/"adaptive" is complete.
+
 ## Date
 
 2026-07-19

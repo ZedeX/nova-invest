@@ -23,6 +23,10 @@ Accepted
   - Team/Enterprise plan features (credit pooling, admin dashboards)
   - Credit carry-over logic (Team+ only)
 
+## Phase-2 Implementation Notes
+
+- **Implemented in Phase 1.5 (2026-07-20)**: Degradation→model switching now implemented. `route()` and `getLLM()` in ADR-0003 accept an optional `degradationLevel` parameter: `mock_only` forces MockLLM; `degraded` swaps pro→lite models (e.g., Sonnet→Haiku); `normal` uses standard routing. `/api/ask` passes `chargeResult.degradation_level` to `getLLM()`, enabling automatic model downgrading when credits are low. 7 unit tests verify the route()/getLLM() degradation behavior.
+
 ## Date
 
 2026-07-20
@@ -317,7 +321,7 @@ CREATE TABLE IF NOT EXISTS credit_orders (
 - **In-memory store**: State lost on Worker restart; not shared across instances; violates FP-0001/FP-0002. Acceptable for Phase 1 (demo_user only).
 - **No Stripe integration**: Top-ups are auto-approved with no payment verification. Acceptable for Phase 1 where credits are virtual.
 - **No multi-user**: All operations use `demo_user`. Real user authentication needed for Phase 2.
-- **Degradation model mapping**: ~~Not yet implemented~~ **Implemented in Phase 1.5** (2026-07-20). `route()` and `getLLM()` now accept an optional `degradationLevel` parameter: `mock_only` forces MockLLM; `degraded` swaps pro→lite models; `normal` uses standard routing. `/api/ask` passes `chargeResult.degradation_level` to `getLLM()`.
+- **Degradation model mapping**: ~~Not yet implemented~~ **Implemented in Phase 1.5** (2026-07-20). `route()` and `getLLM()` now accept an optional `degradationLevel` parameter: `mock_only` forces MockLLM; `degraded` swaps pro→lite models; `normal` uses standard routing. `/api/ask` passes `chargeResult.degradation_level` to `getLLM()`. **RESOLVED** — see §Phase-2 Implementation Notes.
 
 ### Risks
 

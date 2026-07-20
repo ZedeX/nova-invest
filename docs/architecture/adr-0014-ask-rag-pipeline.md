@@ -23,6 +23,11 @@ Accepted
   - Reciprocal Rank Fusion (RRF) with source weights (k=60)
   - Vectorize index `NOVA_RAG_INDEX` binding + Workers AI embedding model
 
+## Phase-2 Implementation Notes
+
+- **Implemented in Phase 2 (2026-07-21)**: RAG adapters now implemented in `web/src/lib/rag/adapters/`: KlineAdapter (`kline-adapter.ts`), FundamentalsAdapter (`fundamentals-adapter.ts`), NewsAdapter (`news-adapter.ts`), PlaybookAdapter (`playbook-adapter.ts`). All implement the `RAGSourceAdapter` interface with `search(queryEmb, topK, env)` method.
+- **Implemented in Phase 2 (2026-07-21)**: Reciprocal Rank Fusion (RRF) with source weights (k=60) now implemented in `web/src/lib/rag/pipeline.ts`. The `mergeAndRank()` method computes RRF scores per source, deduplicates by `(source_type, source_id)`, and returns ranked results capped by `totalResults`. This resolves the Phase-1 single-adapter limitation.
+
 ## Date
 
 2026-07-19

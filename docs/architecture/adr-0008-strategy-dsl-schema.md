@@ -11,6 +11,10 @@ Accepted
 - **Phase-1 Compliance**: ACCEPTED. Missing 5 indicators (MACD/Bollinger/ATR/OBV/VWAP) are Phase-2. Bollinger Bands can be computed from existing SMA + std; ATR requires true range; OBV/VWAP require volume accumulation.
 - **Migration Trigger**: When EP04 §Advanced Strategies (mean reversion + volatility breakout) ship, add MACD/Bollinger/ATR in one PR. OBV/VWAP ship with EP06 broker integration (volume-aware order routing).
 
+## Phase-2 Implementation Notes
+
+- **Implemented in Phase 2 (2026-07-21)**: DSL parser (BNF grammar) implemented in `web/src/lib/dsl/parser.ts`. The 3-stage validation pipeline (YAML parse → JSON Schema validate → expression parse) is now complete with the BNF-based expression parser replacing the prior jsep-only approach. Signal expressions are parsed into ASTs supporting AND/OR/NOT/comparison operators on indicator values per §Signal expression parser requirement.
+
 ## Date
 
 2026-07-19

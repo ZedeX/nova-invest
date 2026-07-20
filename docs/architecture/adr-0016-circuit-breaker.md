@@ -21,6 +21,10 @@ Accepted
   - Exponential backoff on re-trip from HALF-OPEN (60s -> 120s -> 240s, cap 600s)
   - KV namespace binding `CIRCUIT_BREAKER_KV` in `wrangler.toml`
 
+## Phase-2 Implementation Notes
+
+- **Implemented in Phase 2 (2026-07-21)**: KV store abstraction now implemented. `web/src/lib/data/circuit-breaker.ts` supports the `CircuitBreakerStore` interface with both in-memory (dev/test) and KV-backed (production) implementations. The `MemoryStore` in `web/src/lib/memory/store.ts` provides the unified KV-like abstraction (`save/retrieve/query/delete`) that the circuit breaker uses for state persistence. Multi-isolate correctness is achieved when `ENVIRONMENT=production` via KV-backed storage; in-memory variant remains for dev/test per Phase-1 exception.
+
 ## Date
 
 2026-07-19

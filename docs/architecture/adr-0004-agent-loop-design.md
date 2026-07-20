@@ -466,6 +466,7 @@ No existing `AgentLoop` code. Migration is greenfield:
 
 1. Create `web/src/lib/agent/loop.ts` with `LoopState`, `LoopContext`, `LoopResult`, `TraceStep`, `StepHandler`, `AgentLoop` (per §Key Interfaces above).
 2. Create `web/src/lib/agent/supervisor.ts` - instantiates `AgentLoop` with the correct `StepHandler` based on `classifyIntent()` (ADR-0003) result.
+   - **Implemented in Phase 2 (2026-07-21)**: Supervisor Pattern implemented in `web/src/lib/agent/supervisor.ts`. Dispatches `AgentLoop` with correct `StepHandler` based on `classifyIntent()` result, enforcing EP01 §反模式 "Sub-Agent 之间直接调用（必须通过 Supervisor）".
 3. Implement `AskHandler` in `web/src/lib/agent/ask.ts` (per EP03 §2.7).
 4. Implement `BuildHandler` in `web/src/lib/agent/build.ts` (per EP04, future).
 5. Implement `DashboardHandler` in `web/src/lib/agent/dashboard.ts` (per EP05, future).

@@ -22,6 +22,11 @@ Accepted
   - Replace `Function()` with jsep-based safe expression parser (C17 resolution gate)
   - Durable Objects for long-running compositions exceeding 30s Worker CPU limit
 
+## Phase-2 Implementation Notes
+
+- **Implemented in Phase 2 (2026-07-21)**: Safe expression parser — `Function()` constructor replaced by DSL parser (`web/src/lib/dsl/parser.ts`) which uses BNF grammar to parse conditional expressions into ASTs. This resolves the C17 resolution gate and the §Negative Consequences security concern about `Function()` in `evaluateCondition()`. The jsep-based safe expression parser supports `==`, `!=`, `<`, `>`, `<=`, `>=`, `&&`, `||` operators, string/number literals, and context variable access — all without `eval()` or `Function()`.
+- **Implemented in Phase 2 (2026-07-21)**: PlaybookExecutor now connects to the backtest engine. `web/src/lib/playbook/executor.ts` delegates `kind=strategy` playbooks to `runBacktest()` (ADR-0009), enabling single-strategy playbooks to produce backtest results. Composition executors (parallel/sequential/conditional) remain Phase-2 deferred items.
+
 ## Date
 
 2026-07-19
@@ -759,6 +764,7 @@ export interface ExecutionContext {
 
 - PlaybookExecutor conditional evaluation uses `Function()` constructor for expression evaluation — potential security risk if conditions come from untrusted input.
   - Mitigation: Phase 1 conditions are authored by the Playbook creator (trusted). Phase 2 replaces `Function()` with jsep-based safe expression parser.
+  - **RESOLVED in Phase 2 (2026-07-21)**: `Function()` replaced with DSL parser in `web/src/lib/dsl/parser.ts`. See §Phase-2 Implementation Notes.
   - **Phase 2 Migration Plan (Function() → jsep)**:
     1. **Trigger**: When community_playbooks moderation pipeline allows user-authored conditions (C17 resolution gate).
     2. **Scope**: Replace `evaluateCondition()` with `jsep.parse(condition)` + recursive evaluator supporting `==`, `!=`, `<`, `>`, `<=`, `>=`, `&&`, `||`, string/number literals, and context variable access.

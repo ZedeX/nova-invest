@@ -402,6 +402,10 @@ CREATE INDEX idx_url_check_status ON url_check_queue(status, created_at);
 - **SSRF mitigation (CWE-918)**: Implemented - `redirect: "manual"` + `opaqueredirect` detection
 - **Dual Citation shape**: validator's Citation domain (`citation/types.ts`) vs LLM-output Citation (`types.ts`) - documented
 
+### Phase-2 Implementation Notes
+
+- **Verified (2026-07-21)**: Stages 1 and 2 remain implemented as noted above. Stage 3 async URL check still requires Cloud mode D1 wiring (external service dependency — not yet implemented). No new Phase 2 items to mark as implemented beyond what was already documented on 2026-07-20.
+
 ## Alternatives Considered
 
 ### Alternative 1: Strict reject only (any violation = reject entire answer)
