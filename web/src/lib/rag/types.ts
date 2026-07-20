@@ -47,9 +47,63 @@ export interface RAGResult {
 }
 
 /**
- * Pluggable source adapter. Real adapter wraps Cloudflare Vectorize +
+ * Phase-1 simple source adapter (single-adapter, keyword-boost rerank).
+ * Used by AskRAGPipeline. Real adapter wraps Cloudflare Vectorize +
  * D1 + R2; mock adapter returns canned results from qa_samples.
  */
-export interface RAGSourceAdapter {
+export interface SimpleRAGSourceAdapter {
   retrieve(query: RAGQuery): Promise<RAGSource[]>;
+}
+
+// ============================================================
+// Phase-2 Multi-Adapter RRF Pipeline Types
+// ============================================================
+
+/** Multi-adapter RAG source adapter interface (RRF pipeline). */
+export interface RAGSourceAdapter {
+  /** Unique source identifier */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Weight for Reciprocal Rank Fusion (higher = more trusted) */
+  weight: number;
+  /** Retrieve relevant documents for a query */
+  retrieve(query: string, options?: RAGRetrieveOptions): Promise<RAGDocument[]>;
+}
+
+export interface RAGRetrieveOptions {
+  /** Maximum number of documents to return */
+  limit?: number;
+  /** Filter by source type */
+  sourceType?: string;
+  /** Minimum relevance score (0-1) */
+  minScore?: number;
+}
+
+export interface RAGDocument {
+  /** Document ID */
+  id: string;
+  /** Source adapter that produced this document */
+  source: string;
+  /** Document content / snippet */
+  content: string;
+  /** Relevance score (0-1) from the source adapter */
+  score: number;
+  /** Metadata (URL, date, symbol, etc.) */
+  metadata: Record<string, unknown>;
+  /** Timestamp of the original document */
+  timestamp?: string;
+}
+
+export interface RAGPipelineResult {
+  /** Merged and ranked documents */
+  documents: RAGDocument[];
+  /** Total documents before dedup */
+  totalRetrieved: number;
+  /** Pipeline execution metadata */
+  meta: {
+    sources_queried: string[];
+    elapsed_ms: number;
+    fusion_method: "rrf";
+  };
 }

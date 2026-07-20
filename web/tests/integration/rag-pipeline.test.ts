@@ -12,7 +12,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AskRAGPipeline, MockRAGSourceAdapter } from "@/lib/rag/pipeline";
-import type { RAGQuery, RAGSource, RAGSourceAdapter } from "@/lib/rag/types";
+import type { RAGQuery, RAGSource, SimpleRAGSourceAdapter } from "@/lib/rag/types";
 
 // ---- Fixtures ----
 
@@ -66,7 +66,7 @@ describe("ADR-0014 integration: full pipeline (question → retrieve → rerank 
 
 describe("ADR-0014 integration: graceful degradation on adapter failure", () => {
   it("throwing adapter → pipeline returns empty sources, does not throw", async () => {
-    const throwingAdapter: RAGSourceAdapter = {
+    const throwingAdapter: SimpleRAGSourceAdapter = {
       retrieve: vi.fn(async () => {
         throw new Error("Vectorize binding missing");
       }),
@@ -98,7 +98,7 @@ describe("ADR-0014 integration: citation validation failure is non-fatal", () =>
         source: "random",
       }),
     ];
-    const adapter: RAGSourceAdapter = {
+    const adapter: SimpleRAGSourceAdapter = {
       retrieve: vi.fn(async () => sources),
     };
     const pipeline = new AskRAGPipeline(adapter);
@@ -127,7 +127,7 @@ describe("ADR-0014 integration: deduplication by URL", () => {
       // A source with a distinct URL — must survive dedup.
       makeSource({ id: "unique", url: "https://sec.gov/Archives/unique.htm", score: 0.5 }),
     ];
-    const adapter: RAGSourceAdapter = {
+    const adapter: SimpleRAGSourceAdapter = {
       retrieve: vi.fn(async () => sources),
     };
     const pipeline = new AskRAGPipeline(adapter);
@@ -157,7 +157,7 @@ describe("ADR-0014 integration: top-k limit", () => {
         score: 1 - i * 0.05, // 1.0, 0.95, 0.90, ... 0.55
       }),
     );
-    const adapter: RAGSourceAdapter = {
+    const adapter: SimpleRAGSourceAdapter = {
       retrieve: vi.fn(async () => sources),
     };
     const pipeline = new AskRAGPipeline(adapter);
@@ -177,7 +177,7 @@ describe("ADR-0014 integration: top-k limit", () => {
         score: 1 - i * 0.05,
       }),
     );
-    const adapter: RAGSourceAdapter = {
+    const adapter: SimpleRAGSourceAdapter = {
       retrieve: vi.fn(async () => sources),
     };
     const pipeline = new AskRAGPipeline(adapter);

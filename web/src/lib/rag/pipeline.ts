@@ -26,7 +26,11 @@ import type {
   RAGQuery,
   RAGResult,
   RAGSource,
+  SimpleRAGSourceAdapter,
   RAGSourceAdapter,
+  RAGDocument,
+  RAGPipelineResult,
+  RAGRetrieveOptions,
 } from "./types";
 
 /**
@@ -62,7 +66,7 @@ const KEYWORD_BOOST_PER_MATCH = 0.1;
 
 export class AskRAGPipeline {
   constructor(
-    private readonly adapter: RAGSourceAdapter,
+    private readonly adapter: SimpleRAGSourceAdapter,
     private readonly citationValidator: CitationValidator = defaultCitationValidator,
     private readonly env?: ValidatorEnv,
   ) {}
@@ -211,7 +215,7 @@ function countTokenMatches(content: string, tokens: string[]): number {
  * This is dev/test-only: reads from the filesystem via Node's `fs`.
  * Production uses a Vectorize-backed adapter.
  */
-export class MockRAGSourceAdapter implements RAGSourceAdapter {
+export class MockRAGSourceAdapter implements SimpleRAGSourceAdapter {
   private readonly samplesDir: string;
 
   constructor(samplesDir?: string) {
@@ -329,4 +333,149 @@ function sampleToSources(sample: QaSample): RAGSource[] {
   });
 
   return sources;
+}
+
+// ============================================================
+// Phase-2: Multi-Adapter RAGPipeline with Reciprocal Rank Fusion
+// ============================================================
+
+/**
+ * Multi-source RAG pipeline with Reciprocal Rank Fusion (RRF).
+ *
+ * Queries all registered adapters in parallel, merges their results
+ * via RRF, and returns a ranked list of documents. Adapter failures
+ * are non-fatal: the failed adapter contributes an empty list and
+ * the pipeline continues.
+ */
+export class RAGPipeline {
+  private adapters: RAGSourceAdapter[];
+
+  constructor(adapters: RAGSourceAdapter[] = []) {
+    this.adapters = adapters;
+  }
+
+  /** Run RAG retrieval across all adapters, merge via RRF */
+  async retrieve(query: string, options?: RAGRetrieveOptions): Promise<RAGPipelineResult> {
+    const start = Date.now();
+    const sourcesQueried: string[] = [];
+
+    // Query all adapters in parallel; failures are non-fatal.
+    const resultsByAdapter = await Promise.all(
+      this.adapters.map(async (adapter) => {
+        sourcesQueried.push(adapter.id);
+        try {
+          const docs = await adapter.retrieve(query, options);
+          return { adapterId: adapter.id, weight: adapter.weight, documents: docs };
+        } catch (err) {
+          console.error(`[RAGPipeline] adapter ${adapter.id} failed:`, err);
+          return { adapterId: adapter.id, weight: adapter.weight, documents: [] as RAGDocument[] };
+        }
+      }),
+    );
+
+    const documentsBySource = new Map<string, { documents: RAGDocument[]; weight: number }>();
+    let totalRetrieved = 0;
+    for (const entry of resultsByAdapter) {
+      totalRetrieved += entry.documents.length;
+      documentsBySource.set(entry.adapterId, {
+        documents: entry.documents,
+        weight: entry.weight,
+      });
+    }
+
+    const merged = reciprocalRankFusion(documentsBySource);
+
+    // Apply post-merge limit and minScore filter
+    const limit = options?.limit ?? 10;
+    const minScore = options?.minScore ?? 0;
+    const documents = merged
+      .filter((d) => {
+        // After RRF, score is the RRF score (not the original adapter score).
+        // For minScore filtering, use the original adapter score stored in metadata.
+        const originalScore = d.metadata._originalScore as number | undefined;
+        return originalScore === undefined || originalScore >= minScore;
+      })
+      .slice(0, limit);
+
+    return {
+      documents,
+      totalRetrieved,
+      meta: {
+        sources_queried: sourcesQueried,
+        elapsed_ms: Date.now() - start,
+        fusion_method: "rrf",
+      },
+    };
+  }
+
+  /** Add a source adapter */
+  addAdapter(adapter: RAGSourceAdapter): void {
+    this.adapters.push(adapter);
+  }
+
+  /** Remove a source adapter by ID */
+  removeAdapter(id: string): void {
+    this.adapters = this.adapters.filter((a) => a.id !== id);
+  }
+}
+
+/**
+ * Reciprocal Rank Fusion (RRF).
+ *
+ * Formula: rrf_score(d) = Σ_{s∈sources} weight_s / (k + rank_s(d))
+ * Where k = 60 (standard constant to reduce impact of high ranks).
+ *
+ * Documents from all sources are merged and re-ranked by RRF score.
+ * Deduplication: same document content from different sources → keep highest RRF score.
+ */
+export function reciprocalRankFusion(
+  documentsBySource: Map<string, { documents: RAGDocument[]; weight: number }>,
+  k: number = 60,
+): RAGDocument[] {
+  const rrfScores = new Map<string, { doc: RAGDocument; rrfScore: number }>();
+
+  for (const [, { documents, weight }] of documentsBySource) {
+    // Sort by descending original score within each source for ranking
+    const sorted = [...documents].sort((a, b) => b.score - a.score);
+
+    for (let rank = 0; rank < sorted.length; rank++) {
+      const doc = sorted[rank];
+      const contribution = weight / (k + rank + 1);
+      const key = dedupKey(doc);
+
+      const existing = rrfScores.get(key);
+      if (existing) {
+        // Accumulate RRF score from multiple sources for the same document
+        existing.rrfScore += contribution;
+        // Keep the doc with the higher original score
+        if (doc.score > existing.doc.score) {
+          existing.doc = { ...doc, score: existing.doc.score };
+        }
+      } else {
+        rrfScores.set(key, {
+          doc: { ...doc, metadata: { ...doc.metadata, _originalScore: doc.score } },
+          rrfScore: contribution,
+        });
+      }
+    }
+  }
+
+  // Sort by descending RRF score
+  const results = Array.from(rrfScores.values())
+    .sort((a, b) => b.rrfScore - a.rrfScore)
+    .map((entry) => {
+      // Replace the RRF score into the document's score field
+      entry.doc.score = entry.rrfScore;
+      return entry.doc;
+    });
+
+  return results;
+}
+
+/** Generate a dedup key for a document based on content similarity */
+function dedupKey(doc: RAGDocument): string {
+  // Dedup by content preview only — same document from different sources
+  // should be merged into one with accumulated RRF score.
+  const contentPreview = doc.content.slice(0, 100).toLowerCase().trim();
+  return contentPreview;
 }
