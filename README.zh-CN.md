@@ -63,6 +63,24 @@ SEC EDGAR / Yahoo Finance / Bloomberg 来源。
 
 ---
 
+## 📸 产品截图
+
+Mock 模式下运行的实际 UI（无需 API Key）：
+
+| 仪表盘 | Ask Agent |
+|:-----:|:---------:|
+| ![仪表盘](./docs/assets/01-dashboard.png) | ![Ask Agent](./docs/assets/02-ask-agent.png) |
+
+| 策略编辑器 | K线图表 (AAPL) |
+|:---------:|:-------------:|
+| ![策略](./docs/assets/03-strategy.png) | ![K线 AAPL](./docs/assets/04-chart-aapl.png) |
+
+| 回测 | 社区 |
+|:----:|:----:|
+| ![回测](./docs/assets/05-backtest.png) | ![社区](./docs/assets/06-community.png) |
+
+---
+
 ## 🚀 快速开始
 
 ### 前置条件

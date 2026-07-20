@@ -67,6 +67,24 @@ trading strategies"*.
 
 ---
 
+## 📸 Product Screenshots
+
+Actual UI running in Mock mode (no API keys required):
+
+| Dashboard | Ask Agent |
+|:---------:|:---------:|
+| ![Dashboard](./docs/assets/01-dashboard.png) | ![Ask Agent](./docs/assets/02-ask-agent.png) |
+
+| Strategy Editor | Chart View (AAPL) |
+|:---------------:|:-----------------:|
+| ![Strategy](./docs/assets/03-strategy.png) | ![Chart AAPL](./docs/assets/04-chart-aapl.png) |
+
+| Backtest | Community |
+|:--------:|:---------:|
+| ![Backtest](./docs/assets/05-backtest.png) | ![Community](./docs/assets/06-community.png) |
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
