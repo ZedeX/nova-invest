@@ -68,6 +68,7 @@ test.describe("Ask Agent (EP01 + EP03)", () => {
     await expect(answer).toBeVisible({ timeout: 10000 });
 
     // Citations section renders when response.citations.length > 0
-    await expect(page.locator("text=Citations")).toBeVisible({ timeout: 10000 });
+    // Use .first() to avoid strict mode violation when multiple elements match
+    await expect(page.locator("text=Citations").first()).toBeVisible({ timeout: 10000 });
   });
 });
