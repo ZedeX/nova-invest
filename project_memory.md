@@ -645,3 +645,110 @@ User instruction: "继续下一步" (continuing from Sprint 5 Dashboard + Fronte
 - T+1结算模拟：当前实时结算，Phase 2可添加
 
 ---
+
+## 2026-07-20 23:30 (Asia/Shanghai) - Roadmap Sprint 7: Playbook System Complete
+
+### Task
+Execute Roadmap §2.8 Sprint 7: Playbook System (Epic 08, ADR-0013).
+User instruction: "把warning修复一下，然后开始sprint 7".
+
+### Pre-Sprint: Lint Warnings Cleanup
+Fixed all 7 pre-existing lint warnings (commit `a86735e`):
+- broker/index.ts: removed unused isMockMode import
+- broker/paper-broker.ts: removed unused OrderSide/OrderType/ValidationResult type imports
+- provider-router.test.ts: removed unused result variable assignment
+- sse-streaming.test.ts: removed unused SSEEvent/StreamingMode type imports
+Result: 0 errors, 0 warnings (was 0 errors, 7 warnings).
+
+### Files Created / Modified
+
+**Core Library (web/src/lib/playbook/)**
+1. `types.ts` - Extended to full Epic 08 schema (preserving Phase 1 simplified shape for system.ts):
+   - 6 PlaybookKind: strategy/composite/data_fetcher/risk_manager/alert/narrative
+   - 3 CompositionType: parallel/sequential/conditional
+   - Narrative (why/how/risks required, references/lessons_learned/faq optional)
+   - Versioning (semantic_version + changelog)
+   - Dependencies (data/tools/playbooks)
+   - ExecutionConfig, ComplianceConfig
+   - Full PlaybookYAML interface
+   - Store/API types: PlaybookRecord, PlaybookVersionRecord, CreatePlaybookRequest, etc.
+   - ExecutionContext, ExecutionResult
+
+2. `validator.ts` - 5-stage validation pipeline:
+   - `parseSemver` / `isSemverGreater` / `validateSemver` - SemVer parse + compare
+   - `validateNarrative` - why/how/risks required
+   - `validateComposition` - parallel weight sum = 1.0 (±0.001), sequential depends_on validity, conditional if/then
+   - `detectCircularDependency` - DFS white/gray/black coloring, O(V+E), returns cycle path
+   - `buildDependencyGraph` - resolves nested composition via loader function
+   - `validatePlaybookYAML` - full schema validation (api_version, kind, metadata, versioning, narrative, kind-specific)
+
+3. `executor.ts` - `PlaybookExecutor` class:
+   - `execute(playbook, context)` dispatches by kind
+   - `runStrategy` - Phase 1: log + return dsl_ref
+   - `runParallel` - split capital by weight, Promise.all children
+   - `runSequential` - run in order, pass state between steps, stop on failure
+   - `runConditional` - evaluate if-rule (>, <, >=, <=, ==, !=), run then/else
+   - data_fetcher/risk_manager/alert - Phase 1 stubs (log only)
+   - narrative - not executable, returns skipped
+
+4. `store.ts` - In-memory store + 5 mock seeds:
+   - CRUD: listPlaybooks, getPlaybook, createPlaybook, publishVersion, updateLifecycleStatus, deletePlaybook
+   - listVersions - list all versions of a playbook
+   - `_resetStoreForTest` - test helper
+   - `seedMockPlaybooks` - auto-seeds 5 playbooks on module load:
+     1. pb_nvda_macross (strategy, v1.2.0) - NVDA 双均线金叉
+     2. pb_aapl_rsi (strategy, v1.0.0) - AAPL RSI Oversold
+     3. pb_momentum_combo (composite, parallel 50/30/20, v1.0.0)
+     4. pb_tsla_bollinger (strategy, v1.1.0) - TSLA Bollinger Breakout
+     5. pb_nvda_thesis (narrative, v1.0.0) - NVDA Investment Thesis
+
+**API Routes (web/src/app/api/playbooks/)**
+5. `route.ts` - GET list (filter ?kind=&status=) + POST create
+6. `[id]/route.ts` - GET (with ?version=) + DELETE + PATCH (lifecycle status)
+7. `[id]/versions/route.ts` - GET list versions + POST publish new version
+8. `[id]/execute/route.ts` - POST execute with capital + state context
+
+**Tests**
+9. `tests/unit/playbook.test.ts` - 45 tests:
+   - Validator: 20 tests (SemVer 4, Narrative 4, Composition 7, Circular 5)
+   - Executor: 7 tests (strategy, parallel, sequential, conditional then/else, narrative skip, missing child)
+   - Store: 12 tests (seed 5, filter, get by ID, create, duplicate reject, publish version, version reject, lifecycle, delete, version retrieval)
+   - Full PlaybookYAML: 6 tests
+
+### Errors Encountered and Corrections
+1. **store.ts type errors** - `semverCheck.reason` and `validation.reason` are `string | undefined`
+   but return type requires `string`. Fix: `?? "Validation failed"` fallback.
+2. **Unused `pb` variable in test** - `getPlaybook` result not used after lifecycle status test.
+   Fix: removed the unused assignment.
+
+### Verification (all CI gates passed locally)
+- `pnpm lint` - 0 errors, 0 warnings
+- `pnpm exec tsc --noEmit` - 0 errors
+- `pnpm test` - 423 passed (45 new, no regressions)
+- `pnpm build` - success (Compiled successfully in 1902ms)
+
+### Commits
+- `a86735e` - fix: clean up all lint warnings (0 errors, 0 warnings)
+- `cdfb943` - feat(sprint-7-playbook): full Playbook system - 6 kinds, 3 compositions, SemVer, executor
+  (9 files, +2018/-27 lines)
+- Both pushed to `origin/main`
+
+### Roadmap Sprint 7 Exit Criteria Status
+- ✅ Playbook YAML Schema v1 完整定义
+- ✅ 6 种 kind 支持 (strategy/composite/data_fetcher/risk_manager/alert/narrative)
+- ✅ 3 种组合类型 (parallel/sequential/conditional)
+- ✅ 组合权重校验 (= 1.0, ±0.001 tolerance)
+- ✅ 循环依赖检测 (DFS white/gray/black)
+- ✅ SemVer 版本化 (parse + compare + new > current)
+- ✅ 叙事字段必填 (why/how/risks)
+- ⚠️ R2 存储 YAML - Phase 1 in-memory, Phase 2 R2
+- ✅ PlaybookExecutor 3 种组合执行
+- ✅ Mock 预置 5 个 Playbook
+
+### Open Items / Future Work
+- R2持久化：当前in-memory store，Phase 2迁移到R2(YAML) + D1(metadata)
+- PlaybookExecutor的strategy执行：Phase 1 log only，Phase 2接BacktestEngine/Broker
+- 社区集成：Playbook发布到Community Feed (Epic 07 Sprint 8)
+- UI：Playbook详情页 + YAML编辑器 + 叙事渲染
+
+---
