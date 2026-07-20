@@ -200,3 +200,35 @@ Replace placeholder images in documentation with actual UI screenshots.
 - Pushed to origin/main successfully
 
 ---
+
+## 2026-07-20 12:50 (Asia/Shanghai) — Fix Incorrect Screenshots
+
+### Problem
+User reported screenshots were incorrect:
+- Files 1, 2, 3, 6 showed the same page (incorrect)
+- File 4 (chart-aapl.png) did not show AAPL chart, while file 1 did
+
+### Root Cause
+Browser agent saved screenshots to temp directory but naming/ordering was incorrect.
+
+### Resolution
+Re-captured all 6 screenshots with proper navigation:
+1. `http://localhost:3000/` → Dashboard
+2. `http://localhost:3000/ask` → Ask Agent
+3. `http://localhost:3000/strategy` → Strategy
+4. `http://localhost:3000/chart/AAPL` → Chart AAPL
+5. `http://localhost:3000/backtest` → Backtest
+6. `http://localhost:3000/community` → Community
+
+### Files Modified (5 files - dashboard unchanged)
+- `docs/assets/02-ask-agent.png` - Actual Ask Agent chat interface
+- `docs/assets/03-strategy.png` - Strategy list and DSL editor
+- `docs/assets/04-chart-aapl.png` - AAPL candlestick chart (fixed)
+- `docs/assets/05-backtest.png` - Backtest results page
+- `docs/assets/06-community.png` - Community/Playbook page
+
+### Commit
+- `a0e9c3f` - fix: replace incorrect screenshots with correct page captures (5 files, binary changes)
+- Pushed to origin/main successfully
+
+---
