@@ -1271,3 +1271,59 @@ User provided API keys for Alpaca Paper Trading + Stripe Test Mode. Cloudflare w
 
 ***
 
+## Session 2026-07-21 09:30 — Epic checkbox sync + doc translation to English
+
+### User Request
+
+- Reviewed `.github/epic_*_body.md` and found checkboxes not synced with actual code state
+- Asked to complete all remaining epic items
+- Additional rule: all non-frontend markdown docs (excluding zh-CN variants) must be in English, including `project_memory.md`
+
+### Investigation Outcome
+
+Most "incomplete" items in epic_*.md were actually already implemented in code — the epic_body.md files were stale:
+
+| Epic | Marked Incomplete | Actual State |
+|------|-------------------|--------------|
+| 01 Agent Harness | Supervisor pattern, short-term memory, OTel | ✅ Implemented in `web/src/lib/agent/supervisor.ts`, `memory/store.ts`, `telemetry/index.ts` |
+| 01 | RAG via Vectorize | ⚠️ Pipeline + 4 adapters done; real Vectorize backend needs Workers paid plan (Phase 2 external) |
+| 01 | Agent loop ≤5 iterations | ⚠️ Inconsistency — ADR-0004 sets MAX_STEPS=20; epic_body.md had early-PRD "5" value |
+| 01 | OTel → Grafana | ⚠️ Console export done; OTLP→Grafana needs Grafana Cloud account (Phase 2 external) |
+| 02 Data Layer | D1 schema deployed | ✅ 10/10 migrations confirmed |
+| 04 Strategy DSL | DSL parser, IS/OOS 70/30, CSV export | ✅ All implemented in `dsl/parser.ts`, `backtest/walk-forward.ts`, `backtest/csv-export.ts` |
+| 06 Broker | MCP broker server (Phase 2) | ❌ Not implemented, but `AlpacaBrokerAdapter` supersedes it for live trading |
+
+All 8 Epic GitHub Issues already CLOSED at 2026-07-21 08:30.
+
+### Actions Taken
+
+1. **Synced epic_*.md checkboxes** (4 files: epic_01, 02, 04, 06) with actual code state, using `[~]` for partial/external-dependency items
+2. **Aligned Epic 01 acceptance criteria** with ADR-0004: "5 iterations" → "MAX_STEPS=20 per ADR-0004 §Constants"
+3. **Translated 42 markdown files** from Chinese to English via 6 parallel subagents:
+   - 4 `.github/epic_*_body.md`
+   - 17 ADR files + 5 architecture reviews + `architecture.md`
+   - 8 PRD epics + `Master_PRD.md` + 4 appendix files
+   - 3 spec files + 1 TDD file
+   - `README.md`, `web/README.md`, `project_memory.md`, `production/session-state/active.md`
+   - `Roadmap.md`, `trae-code-review-2026-07-20.md`
+4. **Preserved per user choice**: Chinese string literals inside code blocks and inline code (regex patterns like `(?:当前|现在)`, test inputs like `classifyIntent("AAPL 现在多少钱")`, API examples like `"query": "NVDA 当前价格"`) — translating these would break ADR-0003's Chinese-input classification design intent
+5. **Verification**: `npx tsc --noEmit` pass; `npm test` 813/813 passed (45 test files, 6.48s)
+
+### Remaining Chinese (intentional, all in code literals)
+
+- `adr-0003-llm-routing-cost-cap.md` (8 lines) — regex patterns + test inputs
+- `api_spec.md` (3 lines) — API JSON examples with Chinese query strings
+- `01-unit-tests.md` (3 lines) — test inputs + regex character references
+
+### Commits Pushed
+
+- `c9f9073` — docs: sync epic checkboxes and translate non-frontend docs to English (43 files, +4327/-4252)
+
+### Open Items
+
+- **MCP broker server** (Epic 06 Phase 2): Not implemented. `AlpacaBrokerAdapter` already covers live/paper trading. MCP server is optional for AI-agent-driven trading. Awaiting user decision on whether to implement.
+- **RAG Vectorize real backend**: Requires Cloudflare Workers paid plan ($5/mo+)
+- **OTLP → Grafana Cloud**: Requires Grafana Cloud account
+
+***
+
