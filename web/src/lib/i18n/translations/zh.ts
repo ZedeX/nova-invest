@@ -1,0 +1,75 @@
+import type { TranslationMessages } from "../types";
+
+export const zh: TranslationMessages = {
+  common: {
+    search: "搜索",
+    loading: "加载中...",
+    error: "错误",
+    save: "保存",
+    cancel: "取消",
+    delete: "删除",
+    edit: "编辑",
+    close: "关闭",
+  },
+  nav: {
+    dashboard: "仪表盘",
+    strategies: "策略",
+    backtest: "回测",
+    community: "社区",
+    settings: "设置",
+  },
+  dashboard: {
+    overview: "总览",
+    positions: "持仓",
+    watchlist: "自选",
+    market_data: "行情数据",
+  },
+  strategy: {
+    create: "创建策略",
+    validate: "验证",
+    dsl_editor: "DSL 编辑器",
+    backtest_run: "运行回测",
+  },
+  backtest: {
+    run: "运行回测",
+    results: "结果",
+    equity_curve: "权益曲线",
+    trade_log: "交易日志",
+    metrics: "指标",
+    csv_export: "导出 CSV",
+  },
+  community: {
+    publish: "发布",
+    install: "安装",
+    rate: "评分",
+    comment: "评论",
+    report: "举报",
+    feed: "动态",
+  },
+  settings: {
+    account: "账户",
+    credits: "额度",
+    llm_provider: "LLM 提供商",
+    mock_mode: "模拟模式",
+  },
+  credits: {
+    balance: "余额",
+    usage: "用量",
+    top_up: "充值",
+    plan: "套餐",
+    charge: "扣费",
+  },
+  ask: {
+    ask_agent: "提问助手",
+    thinking: "思考中...",
+    answer: "回答",
+    citations: "引用来源",
+    numeric_facts: "数值事实",
+  },
+  errors: {
+    network_error: "网络错误，请重试。",
+    rate_limit: "请求过于频繁，请稍后再试。",
+    credit_exhausted: "额度已用尽，请充值。",
+    not_found: "未找到。",
+  },
+};

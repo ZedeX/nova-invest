@@ -1,0 +1,75 @@
+import type { TranslationMessages } from "../types";
+
+export const en: TranslationMessages = {
+  common: {
+    search: "Search",
+    loading: "Loading...",
+    error: "Error",
+    save: "Save",
+    cancel: "Cancel",
+    delete: "Delete",
+    edit: "Edit",
+    close: "Close",
+  },
+  nav: {
+    dashboard: "Dashboard",
+    strategies: "Strategies",
+    backtest: "Backtest",
+    community: "Community",
+    settings: "Settings",
+  },
+  dashboard: {
+    overview: "Overview",
+    positions: "Positions",
+    watchlist: "Watchlist",
+    market_data: "Market Data",
+  },
+  strategy: {
+    create: "Create Strategy",
+    validate: "Validate",
+    dsl_editor: "DSL Editor",
+    backtest_run: "Run Backtest",
+  },
+  backtest: {
+    run: "Run Backtest",
+    results: "Results",
+    equity_curve: "Equity Curve",
+    trade_log: "Trade Log",
+    metrics: "Metrics",
+    csv_export: "Export CSV",
+  },
+  community: {
+    publish: "Publish",
+    install: "Install",
+    rate: "Rate",
+    comment: "Comment",
+    report: "Report",
+    feed: "Feed",
+  },
+  settings: {
+    account: "Account",
+    credits: "Credits",
+    llm_provider: "LLM Provider",
+    mock_mode: "Mock Mode",
+  },
+  credits: {
+    balance: "Balance",
+    usage: "Usage",
+    top_up: "Top Up",
+    plan: "Plan",
+    charge: "Charge",
+  },
+  ask: {
+    ask_agent: "Ask Agent",
+    thinking: "Thinking...",
+    answer: "Answer",
+    citations: "Citations",
+    numeric_facts: "Numeric Facts",
+  },
+  errors: {
+    network_error: "Network error. Please try again.",
+    rate_limit: "Rate limit exceeded. Please wait.",
+    credit_exhausted: "Credits exhausted. Please top up.",
+    not_found: "Not found.",
+  },
+};
