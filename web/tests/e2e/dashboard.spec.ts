@@ -28,12 +28,13 @@ test.describe("Dashboard (EP05)", () => {
     await page.goto("/");
 
     // Each widget renders a heading with its name; assert at least 6 are visible
-    await expect(page.locator("h3", { hasText: "Watchlist" })).toBeVisible();
-    await expect(page.locator("h3", { hasText: "Positions" })).toBeVisible();
-    await expect(page.locator("h3", { hasText: "Credits" })).toBeVisible();
+    // Use .first() to avoid strict mode violation when multiple h3 elements match
+    await expect(page.locator("h3", { hasText: "Watchlist" }).first()).toBeVisible();
+    await expect(page.locator("h3", { hasText: "Positions" }).first()).toBeVisible();
+    await expect(page.locator("h3", { hasText: "Credits" }).first()).toBeVisible();
     await expect(page.locator("h3", { hasText: "Ask Agent" }).first()).toBeVisible();
-    await expect(page.locator("h3", { hasText: "Strategies" })).toBeVisible();
-    await expect(page.locator("h3", { hasText: "Community Playbooks" })).toBeVisible();
+    await expect(page.locator("h3", { hasText: "Strategies" }).first()).toBeVisible();
+    await expect(page.locator("h3", { hasText: "Community Playbooks" }).first()).toBeVisible();
   });
 
   test("Widgets render with mock data (AAPL chart + positions table)", async ({ page }) => {
@@ -62,7 +63,8 @@ test.describe("Dashboard (EP05)", () => {
     await page.goto("/");
 
     // Header renders MockBadge globally when USE_MOCK=true
-    await expect(page.locator("text=MOCK MODE")).toBeVisible();
+    // Use .first() to avoid strict mode violation when multiple elements match
+    await expect(page.locator("text=MOCK MODE").first()).toBeVisible();
   });
 
   test("CreditBalance widget shows remaining balance", async ({ page }) => {

@@ -11,7 +11,7 @@
 [![Vitest](https://img.shields.io/badge/Vitest-284%20passing-brightgreen?logo=vitest)](https://vitest.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE)
 
-![Nova Invest 首页横幅](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20sleek%20modern%20fintech%20dashboard%20interface%20with%20AI%20chat%20panel%20on%20left%2C%20candlestick%20stock%20charts%20in%20center%2C%20and%20strategy%20backtest%20equity%20curve%20on%20right%2C%20dark%20theme%20with%20cyan%20and%20purple%20accents%2C%20professional%20trading%20workstation%2C%20glassmorphism%20UI%2C%204k%20render&image_size=landscape_16_9)
+![Nova Invest 首页横幅](./docs/assets/hero-banner.svg)
 
 ---
 
@@ -119,7 +119,7 @@ pnpm deploy                          # wrangler 部署到 Cloudflare
 
 ## 🏗️ 架构一览
 
-![架构图](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20clean%20architecture%20diagram%20showing%20Next%20js%2016%20frontend%20connected%20to%20Cloudflare%20Workers%204%20backend%20with%20D1%20SQLite%20database%2C%20R2%20object%20storage%20for%20kline%20cache%2C%20KV%20namespace%20for%20session%20state%2C%20and%20Vectorize%20for%20RAG%20embeddings%2C%20with%20LLM%20router%20in%20the%20middle%2C%20minimal%20flat%20design%20with%20labeled%20boxes%20and%20arrows&image_size=landscape_4_3)
+![架构图](./docs/assets/architecture-diagram.svg)
 
 ### 技术栈
 
@@ -165,7 +165,7 @@ pnpm deploy                          # wrangler 部署到 Cloudflare
 Nova Invest 最具差异化的能力。AI 生成回答中的每个数字都会经过
 **3 阶段验证管线**：
 
-![引用验证管线](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20flowchart%20showing%203%20stages%20of%20citation%20validation%3A%20Stage%201%20Structural%20Validation%20checking%20URL%20and%20source%20allowlist%2C%20Stage%202%20Quote%20Substring%20Verification%20matching%20exact%20text%20against%20RAG%20context%2C%20Stage%203%20URL%20Reachability%20async%20HTTP%20check%2C%20with%20green%20checkmarks%20and%20red%20X%20marks%2C%20clean%20technical%20diagram%20style&image_size=landscape_4_3)
+![引用验证管线](./docs/assets/citation-pipeline.svg)
 
 | 阶段 | 检查内容 | 失败行为 |
 |------|---------|---------|

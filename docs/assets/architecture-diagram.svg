@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700">
+  <defs>
+    <linearGradient id="layer1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc"/>
+      <stop offset="100%" style="stop-color:#e2e8f0"/>
+    </linearGradient>
+    <linearGradient id="layer2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#dbeafe"/>
+      <stop offset="100%" style="stop-color:#bfdbfe"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="700" fill="#f8fafc"/>
+
+  <!-- Title -->
+  <text x="500" y="40" text-anchor="middle" font-size="24" font-weight="bold" fill="#1e293b">9-Layer Agent Harness Architecture</text>
+
+  <!-- Layer 1: UI -->
+  <g transform="translate(50, 70)">
+    <rect width="900" height="50" rx="8" fill="url(#layer1)" stroke="#cbd5e1"/>
+    <text x="20" y="30" font-size="14" font-weight="600" fill="#334155">Layer 1: UI (Next.js 16 + React 19)</text>
+    <text x="450" y="30" text-anchor="middle" font-size="12" fill="#64748b">Dashboard · Chart · Ask · Strategy · Backtest</text>
+  </g>
+
+  <!-- Layer 2: Orchestration -->
+  <g transform="translate(50, 135)">
+    <rect width="900" height="50" rx="8" fill="url(#layer2)" stroke="#93c5fd"/>
+    <text x="20" y="30" font-size="14" font-weight="600" fill="#1e40af">Layer 2: Orchestration (Cloudflare Workers)</text>
+    <text x="450" y="30" text-anchor="middle" font-size="12" fill="#3b82f6">API Routes · SSE Streaming · Auth</text>
+  </g>
+
+  <!-- Layer 3: Agent Loop -->
+  <g transform="translate(50, 200)">
+    <rect width="900" height="50" rx="8" fill="#fef3c7" stroke="#fcd34d"/>
+    <text x="20" y="30" font-size="14" font-weight="600" fill="#92400e">Layer 3: Agent Loop (State Machine)</text>
+    <text x="450" y="30" text-anchor="middle" font-size="12" fill="#b45309">Query → Intent → Route → Execute → Respond</text>
+  </g>
+
+  <!-- Layer 4: Planning -->
+  <g transform="translate(50, 265)">
+    <rect width="900" height="50" rx="8" fill="#d1fae5" stroke="#6ee7b7"/>
+    <text x="20" y="30" font-size="14" font-weight="600" fill="#065f46">Layer 4: Planning (Strategy DSL)</text>
+    <text x="450" y="30" text-anchor="middle" font-size="12" fill="#059669">YAML Rules · Backtest · Risk Manager</text>
+  </g>
+
+  <!-- Layer 5: Tools -->
+  <g transform="translate(50, 330)">
+    <rect width="900" height="50" rx="8" fill="#ede9fe" stroke="#c4b5fd"/>
+    <text x="20" y="30" font-size="14" font-weight="600" fill="#5b21b6">Layer 5: Tools (MCP + Native)</text>
+    <text x="450" y="30" text-anchor="middle" font-size="12" fill="#7c3aed">9 Native Tools · Broker MCP · Data Providers</text>
+  </g>
+
+  <!-- Layer 6: Memory -->
+  <g transform="translate(50, 395)">
+    <rect width="900" height="50" rx="8" fill="#fce7f3" stroke="#f9a8d4"/>
+    <text x="20" y="30" font-size="14" font-weight="600" fill="#9d174d">Layer 6: Memory (KV + D1)</text>
+    <text x="450" y="30" text-anchor="middle" font-size="12" fill="#db2777">Session · User Profile · Playbook Cache</text>
+  </g>
+
+  <!-- Layer 7: RAG -->
+  <g transform="translate(50, 460)">
+    <rect width="900" height="50" rx="8" fill="#cffafe" stroke="#5eead4"/>
+    <text x="20" y="30" font-size="14" font-weight="600" fill="#0f766e">Layer 7: RAG (Vectorize + D1)</text>
+    <text x="450" y="30" text-anchor="middle" font-size="12" fill="#14b8a6">Multi-source Retrieval · Citation Validation</text>
+  </g>
+
+  <!-- Layer 8: LLM -->
+  <g transform="translate(50, 525)">
+    <rect width="900" height="50" rx="8" fill="#fef9c3" stroke="#fde047"/>
+    <text x="20" y="30" font-size="14" font-weight="600" fill="#854d0e">Layer 8: LLM (Multi-provider Router)</text>
+    <text x="450" y="30" text-anchor="middle" font-size="12" fill="#ca8a04">Claude · GPT · Gemini · Volcano Ark · LM Studio</text>
+  </g>
+
+  <!-- Layer 9: Observability -->
+  <g transform="translate(50, 590)">
+    <rect width="900" height="50" rx="8" fill="#f1f5f9" stroke="#cbd5e1"/>
+    <text x="20" y="30" font-size="14" font-weight="600" fill="#334155">Layer 9: Observability (OpenTelemetry + Grafana)</text>
+    <text x="450" y="30" text-anchor="middle" font-size="12" fill="#64748b">Traces · Metrics · Logs · Cost Tracking</text>
+  </g>
+
+  <!-- Arrow indicators -->
+  <path d="M500 120 L500 135" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M500 185 L500 200" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M500 250 L500 265" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M500 315 L500 330" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M500 380 L500 395" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M500 445 L500 460" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M500 510 L500 525" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M500 575 L500 590" stroke="#94a3b8" stroke-width="2"/>
+</svg>

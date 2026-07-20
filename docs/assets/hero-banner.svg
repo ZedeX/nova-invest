@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#06b6d4"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#bg)"/>
+
+  <!-- Logo/Title -->
+  <text x="600" y="100" text-anchor="middle" fill="white" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold">Nova Invest</text>
+
+  <!-- Tagline -->
+  <text x="600" y="160" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="24">AI-Powered Investment Platform for Prosumers</text>
+
+  <!-- Feature boxes -->
+  <g transform="translate(150, 220)">
+    <rect x="0" y="0" width="200" height="100" rx="12" fill="#1e293b" stroke="url(#accent)" stroke-width="2"/>
+    <text x="100" y="40" text-anchor="middle" fill="white" font-size="18" font-weight="600">Agent Harness</text>
+    <text x="100" y="70" text-anchor="middle" fill="#94a3b8" font-size="14">9-layer architecture</text>
+  </g>
+
+  <g transform="translate(500, 220)">
+    <rect x="0" y="0" width="200" height="100" rx="12" fill="#1e293b" stroke="url(#accent)" stroke-width="2"/>
+    <text x="100" y="40" text-anchor="middle" fill="white" font-size="18" font-weight="600">Strategy DSL</text>
+    <text x="100" y="70" text-anchor="middle" fill="#94a3b8" font-size="14">YAML-based rules</text>
+  </g>
+
+  <g transform="translate(850, 220)">
+    <rect x="0" y="0" width="200" height="100" rx="12" fill="#1e293b" stroke="url(#accent)" stroke-width="2"/>
+    <text x="100" y="40" text-anchor="middle" fill="white" font-size="18" font-weight="600">Citation Validator</text>
+    <text x="100" y="70" text-anchor="middle" fill="#94a3b8" font-size="14">Anti-hallucination</text>
+  </g>
+
+  <!-- Bottom accent line -->
+  <rect x="0" y="390" width="1200" height="10" fill="url(#accent)"/>
+</svg>

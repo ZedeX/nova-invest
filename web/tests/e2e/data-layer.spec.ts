@@ -41,7 +41,8 @@ test.describe("Data Layer (EP02)", () => {
     // last close price ($XXX.XX) and a Daily label.
     await expect(page.locator("text=Daily · Last")).toBeVisible({ timeout: 10000 });
     // Y-axis price labels are rendered as <text> nodes ($XX.XX)
-    await expect(page.locator("svg text").filter({ hasText: /\$/ })).toBeVisible({ timeout: 10000 });
+    // Use .first() to avoid strict mode violation when multiple price labels exist
+    await expect(page.locator("svg text").filter({ hasText: /\$/ }).first()).toBeVisible({ timeout: 10000 });
   });
 
   // GAP: KlineChart does not render a timeframe selector UI yet (no
