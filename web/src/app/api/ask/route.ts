@@ -4,6 +4,7 @@ import { classifyIntent, getLLM } from "@/lib/llm/router";
 import { chargeCredit } from "@/lib/credit/store";
 import type { CreditAction } from "@/lib/credit/types";
 import type { AskResponse, Citation, NumericFact, QueryIntent } from "@/lib/types";
+import { startSpan, recordMetric } from "@/lib/telemetry";
 
 const DEMO_USER = "demo_user";
 
@@ -118,11 +119,13 @@ function mockAskResponse(query: string, intent: QueryIntent): AskResponse {
 
 export async function POST(request: NextRequest) {
   const trace_id = makeTraceId();
+  const span = startSpan("api.ask", { trace_id });
 
   try {
     const body = (await request.json()) as AskRequest;
 
     if (!body.query) {
+      span.end({ status_code: 400 });
       return NextResponse.json(
         { error: "Missing required field: query", trace_id },
         { status: 400 },
@@ -131,6 +134,7 @@ export async function POST(request: NextRequest) {
 
     // Classify intent (shared between Mock and Real modes)
     const intent = classifyIntent(body.query);
+    span.addEvent("intent_classified", { intent });
 
     // Charge credits per billing_credit_system.md §3.1
     // Mock mode → 0 charge; Real mode → per action cost
@@ -141,7 +145,16 @@ export async function POST(request: NextRequest) {
       session_id: body.session_id,
     });
 
+    // Record credit metric
+    recordMetric("credits.charged", chargeResult.amount, "counter", {
+      action: creditAction,
+      degraded: String(chargeResult.degraded),
+      degradation_level: chargeResult.degradation_level,
+    });
+
     if (!chargeResult.ok) {
+      span.setError({ reason: "credit_exhausted" });
+      span.end({ status_code: 402 });
       return NextResponse.json(
         {
           error: chargeResult.reason ?? "Credit exhausted",
@@ -163,10 +176,17 @@ export async function POST(request: NextRequest) {
       // Phase 1.5: pass degradation_level from credit billing to LLM router
       // When degraded → pro→lite model swap; when mock_only → force MockLLM
       try {
+        const llmSpan = startSpan("llm.complete", { intent, degradation_level: chargeResult.degradation_level }, span);
         const llm = getLLM(intent, undefined, chargeResult.degradation_level);
         answer = await llm.complete(body.query, intent);
+        llmSpan.end({
+          model: answer.cost?.model ?? "unknown",
+          credits_used: answer.cost?.credits_used ?? 0,
+        });
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
+        span.setError({ error: message });
+        span.end({ status_code: 502 });
         return NextResponse.json(
           {
             error: `LLM call failed: ${message}`,
@@ -176,6 +196,13 @@ export async function POST(request: NextRequest) {
         );
       }
     }
+
+    span.end({
+      intent,
+      mock_mode: String(mock),
+      credits_used: answer.cost?.credits_used ?? 0,
+      degradation_level: chargeResult.degradation_level,
+    });
 
     return NextResponse.json({
       data: { answer },
@@ -189,6 +216,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
+    span.setError({ error: message });
+    span.end({ status_code: 500 });
     return NextResponse.json(
       { error: message, trace_id },
       { status: 500 },
