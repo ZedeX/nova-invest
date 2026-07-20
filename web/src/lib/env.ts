@@ -21,6 +21,11 @@ export interface Env {
   SESSION_KV?: KVNamespace;
   VECTORIZE?: VectorizeIndex;
 
+  // Alpaca Paper Trading (Epic 06 Phase 2)
+  ALPACA_API_KEY?: string;
+  ALPACA_SECRET_KEY?: string;
+  ALPACA_BASE_URL?: string;
+
   // Environment
   ENVIRONMENT?: "development" | "staging" | "production";
 }
