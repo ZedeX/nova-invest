@@ -1,53 +1,52 @@
 /**
  * SSE Streaming types (ADR-0015).
  *
- * Per task spec: event types are "token" | "done" | "citation" | "error".
- * The "delta" event type is intentionally NOT allowed — ADR-0015 uses "token"
- * for partial text chunks (NOT "delta").
+ * ADR-canonical vocabulary (Phase-2):
+ *   - SSEEventType: "token" | "citation" | "metric" | "done" | "error"
+ *   - StreamingMode: "never" | "always" | "adaptive"
  *
- * Wire format (per task spec):
- *   data: {"type":"token","data":"hello"}\n\n
+ * The "metric" event type is added per task spec for streaming metrics
+ * (latency, cost, step count) during deep research.
  *
- * The event type is encoded inside the JSON payload, NOT as a separate
- * `event:` SSE field. This matches the task spec's validation criteria #1.
+ * Wire format follows W3C SSE spec:
+ *   event: token\n
+ *   data: {"text":"hello"}\n
+ *   \n
  *
  * See: docs/architecture/adr-0015-sse-streaming.md
  */
 
 /**
- * SSE event type. The 4 canonical types per ADR-0015:
- *   - "token":     partial text chunk from LLM
- *   - "done":      complete response with full AskResponse
- *   - "citation":  post-validation citation correction
- *   - "error":     stream aborted with reason
+ * SSE event types for Ask Agent streaming.
  *
- * NOTE: "delta" is NOT a valid type. ADR-0015 uses "token" for partial text.
+ *   - "token":    partial text chunk from LLM
+ *   - "citation": post-validation citation correction
+ *   - "metric":   streaming metrics (latency, cost, step count)
+ *   - "done":     complete response with full AskResponse
+ *   - "error":    stream aborted with reason
  */
-export type SSEEventType = "token" | "done" | "citation" | "error";
+export type SSEEventType = "token" | "citation" | "metric" | "done" | "error";
 
 /**
- * A single SSE event.
+ * A single SSE event per W3C spec.
  *
- * - `type`: one of the 4 canonical SSEEventType values
- * - `data`: string payload (for "token" = raw text; for "done"/"citation" = JSON-stringified object)
- * - `id`:   optional sequential event ID for client reconnection
- * - `code`: optional machine-readable error code, only emitted for `type: "error"`.
- *           When present, `encode()` includes it as a top-level field in the
- *           JSON payload so downstream parsers can branch on `code` without
- *           parsing the human-readable `data` message.
+ *   - `event`: SSE event type (becomes `event:` line in wire format)
+ *   - `data`:  string payload (becomes `data:` line(s))
+ *   - `id`:    optional sequential event ID for client reconnection
+ *   - `retry`: optional reconnection time in milliseconds
  */
 export interface SSEEvent {
-  type: SSEEventType;
+  event?: SSEEventType;
   data: string;
   id?: string;
-  code?: string;
+  retry?: number;
 }
 
 /**
- * Streaming mode decision (per task spec, NOT the ADR's "never"|"always"|"adaptive").
+ * Streaming mode decision (ADR-canonical vocabulary).
  *
- * - "mock":     USE_MOCK=true — never stream, return JSON
- * - "raw":      client requests text/event-stream — stream tokens directly
- * - "buffered": regular HTTP — collect all then send as a single response
+ *   - "never":    Mock mode or simple_qa — no SSE, return JSON
+ *   - "always":   deep_research — force SSE from the start
+ *   - "adaptive": other intents — start non-streaming, switch if >5s
  */
-export type StreamingMode = "raw" | "buffered" | "mock";
+export type StreamingMode = "never" | "always" | "adaptive";

@@ -1,275 +1,176 @@
 /**
- * SSE Streaming encoder + stream wrapper (ADR-0015).
+ * SSE Streaming encoder + adaptive mode (ADR-0015 Phase-2).
  *
- * Implements the task-spec API (NOT the ADR's canonical StreamingMode values):
- *   - SSEncoder: pure encoder (no I/O) returning SSE wire-format strings
- *   - resolveStreamingMode(request, env): "mock" | "raw" | "buffered"
- *   - SSEStream: writable wrapper around ReadableStreamDefaultController
- *   - createSSEResponse: returns Response with text/event-stream headers
+ * Implements the ADR-canonical API:
+ *   - encodeSSE(event): encode a single SSE event to W3C wire format
+ *   - SSEncoder: wraps a ReadableStream for SSE output (push/close/stream)
+ *   - resolveStreamingMode(intent, env): "never" | "always" | "adaptive"
+ *   - createSSEResponse(encoder): Response with text/event-stream headers
  *
- * Wire format (per task spec):
- *   data: {"type":"token","data":"hello"}\n\n
+ * Wire format follows W3C SSE spec:
+ *   event: token\n
+ *   data: {"text":"hello"}\n
+ *   \n
  *
- * With an id:
- *   id: <id>\n
- *   data: {"type":"token","data":"hello"}\n\n
- *
- * The event type is encoded inside the JSON payload (NOT as a separate
- * `event:` SSE field). This matches the task spec's validation criteria #1.
+ * Multi-line data: each line prefixed with `data: `.
+ * Termination signal: `data: [DONE]\n\n`.
  *
  * See: docs/architecture/adr-0015-sse-streaming.md
  */
 
-import type { SSEEvent, SSEEventType, StreamingMode } from "./types";
+import type { SSEEvent, StreamingMode } from "./types";
+import type { QueryIntent } from "../types";
+
+// ---------- encodeSSE ----------
 
 /**
- * Canonical list of valid SSE event types. Used by `encode()` to reject
- * invalid types at runtime (e.g., "delta").
+ * Encode a single SSE event to string per W3C spec.
+ *
+ * Output format:
+ *   event: <type>\n
+ *   data: <line1>\n
+ *   data: <line2>\n   (for multi-line data)
+ *   id: <id>\n       (if present)
+ *   retry: <retry>\n (if present)
+ *   \n               (blank line terminates event)
+ *
+ * Field order: event, data, id, retry, blank line.
+ * This is a valid ordering per the W3C SSE specification.
  */
-const VALID_EVENT_TYPES: readonly SSEEventType[] = [
-  "token",
-  "done",
-  "citation",
-  "error",
-];
+export function encodeSSE(event: SSEEvent): string {
+  let out = "";
+
+  if (event.event !== undefined) {
+    out += `event: ${event.event}\n`;
+  }
+
+  // Multi-line data: each line prefixed with `data: `
+  const lines = event.data.split("\n");
+  for (const line of lines) {
+    out += `data: ${line}\n`;
+  }
+
+  if (event.id !== undefined) {
+    out += `id: ${event.id}\n`;
+  }
+
+  if (event.retry !== undefined) {
+    out += `retry: ${event.retry}\n`;
+  }
+
+  out += "\n"; // blank line terminates the event
+  return out;
+}
+
+// ---------- SSEncoder ----------
 
 /**
- * SSE protocol encoder. Pure (no I/O) — methods return SSE wire-format strings.
+ * SSEncoder — wraps a ReadableStream for SSE output.
  *
  * Usage:
- *   const enc = new SSEncoder();
- *   const chunk = enc.encodeToken("hello"); // 'data: {"type":"token","data":"hello"}\n\n'
+ *   const encoder = new SSEncoder();
+ *   encoder.push({ event: "token", data: "hello" });
+ *   encoder.push({ event: "done", data: JSON.stringify(answer) });
+ *   encoder.close();
+ *   const response = createSSEResponse(encoder);
  *
- * For streaming to a ReadableStream, use SSEStream instead (it wraps a
- * controller and calls encode + enqueue internally).
+ * The internal ReadableStream uses TransformStream for Cloudflare Workers
+ * compatibility. Pushed events are encoded via encodeSSE() and written
+ * as Uint8Array chunks to the readable side.
  */
 export class SSEncoder {
-  /** Internal buffer for any buffered output. Currently unused by encode*
-   * methods (they return strings directly); flush() drains and returns it. */
-  private buffer = "";
+  private readonly transform: TransformStream<string, Uint8Array>;
+  private readonly writer: WritableStreamDefaultWriter<string>;
+  private readonly textEncoder: TextEncoder;
+  private closed = false;
+
+  constructor() {
+    this.textEncoder = new TextEncoder();
+    this.transform = new TransformStream<string, Uint8Array>({
+      transform: (chunk, controller) => {
+        controller.enqueue(this.textEncoder.encode(chunk));
+      },
+    });
+    this.writer = this.transform.writable.getWriter();
+  }
 
   /**
-   * Encode an SSEEvent into the SSE wire format.
+   * Push an event to the stream. Encodes via encodeSSE() and writes
+   * the wire-format string to the TransformStream's writable side.
    *
-   * Output:
-   *   data: {"type":"<type>","data":"<data>"}\n\n
-   *
-   * With an id:
-   *   id: <id>\n
-   *   data: {"type":"<type>","data":"<data>"}\n\n
-   *
-   * Throws if `event.type` is not one of the 4 canonical types
-   * (token | done | citation | error). "delta" is rejected.
+   * No-op if the stream has been closed.
    */
-  encode(event: SSEEvent): string {
-    if (!VALID_EVENT_TYPES.includes(event.type)) {
-      throw new Error(
-        `Invalid SSE event type: ${String(event.type)}. ` +
-          `Allowed: token | done | citation | error (NOT "delta").`,
-      );
-    }
-    // Build payload — only `code` is included when present (and only
-    // meaningful for `type: "error"`). Other extra fields on SSEEvent are
-    // ignored to keep the wire format stable.
-    const payload: Record<string, unknown> = { type: event.type, data: event.data };
-    if (event.code !== undefined) {
-      payload.code = event.code;
-    }
-    let out = "";
-    if (event.id !== undefined) {
-      out += `id: ${event.id}\n`;
-    }
-    out += `data: ${JSON.stringify(payload)}\n\n`;
-    return out;
+  push(event: SSEEvent): void {
+    if (this.closed) return;
+    const encoded = encodeSSE(event);
+    // write() returns a promise but we fire-and-forget for non-blocking
+    // push. The TransformStream handles backpressure internally.
+    void this.writer.write(encoded);
   }
 
   /**
-   * Convenience: encode a "token" event with raw text.
-   * Returns: `data: {"type":"token","data":"<text>"}\n\n`
-   */
-  encodeToken(text: string): string {
-    return this.encode({ type: "token", data: text });
-  }
-
-  /**
-   * Convenience: encode a "done" event with a JSON-serialized payload.
-   * The payload is JSON.stringify'd into the `data` field of the SSE JSON.
-   * Returns: `data: {"type":"done","data":"<JSON>"}\n\n`
-   */
-  encodeDone(payload: object): string {
-    return this.encode({ type: "done", data: JSON.stringify(payload) });
-  }
-
-  /**
-   * Convenience: encode a "citation" event with a JSON-serialized citation.
-   * Returns: `data: {"type":"citation","data":"<JSON>"}\n\n`
-   */
-  encodeCitation(citation: object): string {
-    return this.encode({ type: "citation", data: JSON.stringify(citation) });
-  }
-
-  /**
-   * Convenience: encode an "error" event with message + optional code.
-   * Routes through `encode()` so the type is re-validated against
-   * `VALID_EVENT_TYPES` (defense-in-depth: a typo like "erorr" would
-   * throw here instead of silently producing malformed wire bytes).
-   *
-   * Returns: `data: {"type":"error","data":"<msg>"}\n\n`
-   * When `code` is provided:
-   *   `data: {"type":"error","data":"<msg>","code":"<code>"}\n\n`
-   */
-  encodeError(message: string, code?: string): string {
-    return this.encode({ type: "error", data: message, code });
-  }
-
-  /**
-   * Return any buffered output. The encode* methods do not buffer (they
-   * return strings directly), so flush() returns "" unless something has
-   * explicitly written to the internal buffer.
-   *
-   * SSEStream.close() calls flush() before closing the controller to ensure
-   * any trailing buffered bytes are emitted.
-   */
-  flush(): string {
-    const out = this.buffer;
-    this.buffer = "";
-    return out;
-  }
-}
-
-/**
- * Determine the streaming mode based on the request + environment.
- *
- * Decision order (per task spec):
- *   1. USE_MOCK=true → "mock" (Mock mode returns instantly, no streaming)
- *   2. Accept: text/event-stream header present → "raw" (stream tokens directly)
- *   3. Otherwise → "buffered" (collect all then send as a single response)
- *
- * USE_MOCK takes precedence over ENVIRONMENT — even in production, Mock mode
- * returns instantly without streaming (ADR-0001 compliance).
- */
-export function resolveStreamingMode(
-  request: Request,
-  env: { USE_MOCK: string; ENVIRONMENT: string },
-): StreamingMode {
-  if (env.USE_MOCK === "true") {
-    return "mock";
-  }
-  const accept = request.headers.get("Accept");
-  if (accept !== null && accept.includes("text/event-stream")) {
-    return "raw";
-  }
-  return "buffered";
-}
-
-/**
- * Writable stream wrapper around a ReadableStreamDefaultController.
- *
- * Usage (inside a ReadableStream's `start(controller)` callback):
- *   const sse = new SSEStream(controller);
- *   sse.write({ type: "token", data: "hello" });
- *   sse.close();
- *
- * For backpressure handling:
- *   sse.onBackpressure(() => { /* pause producer *\/ });
- *
- * For cancellation cleanup:
- *   const readable = new ReadableStream({
- *     start(controller) { sse = new SSEStream(controller); },
- *     cancel() { sse.cancel(); },
- *   });
- */
-export class SSEStream {
-  private readonly controller: ReadableStreamDefaultController<Uint8Array>;
-  private backpressureHandler: (() => void) | null = null;
-  private readonly encoder = new SSEncoder();
-  private readonly textEncoder = new TextEncoder();
-
-  constructor(controller: ReadableStreamDefaultController<Uint8Array>) {
-    this.controller = controller;
-  }
-
-  /**
-   * Encode `event` and enqueue the bytes on the underlying controller.
-   * After enqueue, if desiredSize < 0 (backpressure signal), invoke the
-   * registered backpressure handler (if any).
-   *
-   * If the underlying controller has been closed (e.g., client navigated
-   * away, network dropped, cancel() already invoked), `enqueue()` throws
-   * a TypeError. We swallow that specific error silently — the stream is
-   * already closed, there is nothing to recover. Any OTHER error is
-   * re-thrown so it surfaces in trace logs.
-   */
-  write(event: SSEEvent): void {
-    const encoded = this.encoder.encode(event);
-    try {
-      this.controller.enqueue(this.textEncoder.encode(encoded));
-    } catch (err) {
-      // Only swallow the "controller closed" TypeError; rethrow others.
-      if (!(err instanceof TypeError)) throw err;
-      return;
-    }
-    const desired = this.controller.desiredSize;
-    if (desired !== null && desired < 0) {
-      this.backpressureHandler?.();
-    }
-  }
-
-  /**
-   * Flush any buffered output and close the underlying controller.
-   * After close(), the stream is sealed — further writes will throw.
+   * Signal stream completion. Releases the writer lock and closes
+   * the writable side. After close(), push() is a no-op.
    */
   close(): void {
-    const flushed = this.encoder.flush();
-    if (flushed.length > 0) {
-      this.controller.enqueue(this.textEncoder.encode(flushed));
-    }
-    this.controller.close();
+    if (this.closed) return;
+    this.closed = true;
+    void this.writer.close();
   }
 
   /**
-   * Register a backpressure handler. Invoked from `write()` whenever
-   * `controller.desiredSize < 0` (the consumer is slower than the producer).
-   *
-   * The handler should pause the producer (e.g., stop pulling from the
-   * upstream LLM stream) until the consumer catches up.
+   * Get the ReadableStream<Uint8Array> for piping to an HTTP Response.
    */
-  onBackpressure(handler: () => void): void {
-    this.backpressureHandler = handler;
-  }
-
-  /**
-   * Cancel hook — called when the underlying ReadableStream is cancelled
-   * by the consumer (e.g., user navigates away, network drops).
-   *
-   * Delegates to close() to flush + close the controller. Wire this into
-   * the ReadableStream constructor's `cancel` callback:
-   *
-   *   new ReadableStream({ cancel() { sseStream.cancel(); } })
-   */
-  cancel(): void {
-    this.close();
+  get stream(): ReadableStream<Uint8Array> {
+    return this.transform.readable;
   }
 }
 
+// ---------- resolveStreamingMode ----------
+
 /**
- * Create an SSE HTTP Response wrapping a ReadableStream.
+ * Resolve streaming mode based on intent and environment.
  *
- * Sets the canonical SSE headers:
+ * Decision order (per ADR-0015 §Decision):
+ *   1. ENVIRONMENT === "test" → "never" (test mode, no streaming)
+ *   2. intent === "deep_research" → "always" (Sonnet-tier + RAG is slow)
+ *   3. intent === "simple_qa"    → "never"  (Haiku-tier is fast)
+ *   4. Otherwise → "adaptive" (measure first call, switch if >5s)
+ *
+ * USE_MOCK is not checked here — it's handled at the route level.
+ * When USE_MOCK=true, the route should not call this function at all
+ * (mock returns instantly, per ADR-0001).
+ */
+export function resolveStreamingMode(
+  intent: QueryIntent,
+  env?: { ENVIRONMENT?: string },
+): StreamingMode {
+  if (env?.ENVIRONMENT === "test") {
+    return "never";
+  }
+  if (intent === "deep_research") {
+    return "always";
+  }
+  if (intent === "simple_qa") {
+    return "never";
+  }
+  return "adaptive";
+}
+
+// ---------- createSSEResponse ----------
+
+/**
+ * Create a streaming Response with SSE body and canonical headers.
+ *
+ * Headers (per ADR-0015 §HTTP Response Headers):
  *   Content-Type:  text/event-stream
  *   Cache-Control: no-cache
- *   Connection:    keep-alive
- *
- * Per ADR-0015 §HTTP Response Headers (X-Accel-Buffering and X-Stream-Id
- * are optional and not set here — they're transport concerns for the
- * route handler, not the SSE response factory).
  */
-export function createSSEResponse(stream: ReadableStream<Uint8Array>): Response {
-  return new Response(stream, {
+export function createSSEResponse(encoder: SSEncoder): Response {
+  return new Response(encoder.stream, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      Connection: "keep-alive",
     },
   });
 }

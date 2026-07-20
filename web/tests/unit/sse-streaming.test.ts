@@ -1,269 +1,194 @@
 /**
- * TDD Spec — ADR-0015: SSE Streaming
+ * TDD Spec — ADR-0015: SSE Streaming (Phase-2 canonical API).
  *
- * Validates the validation criteria in:
- *   docs/architecture/adr-0015-sse-streaming.md
+ * Validates the Phase-2 ADR-canonical API:
+ *   - encodeSSE(event): W3C SSE wire format encoding
+ *   - SSEncoder: push/close/stream (ReadableStream wrapper)
+ *   - resolveStreamingMode(intent, env): "never" | "always" | "adaptive"
+ *   - createSSEResponse(encoder): Response with SSE headers
  *
- * Implementation per task spec (NOT the ADR's canonical StreamingMode):
- *   - SSEEventType = "token" | "done" | "citation" | "error"  (NO "delta")
- *   - SSEncoder: pure encoder (no I/O) returning SSE wire-format strings
- *   - resolveStreamingMode(request, env): "mock" | "raw" | "buffered"
- *   - SSEStream: writable wrapper around ReadableStreamDefaultController
- *   - createSSEResponse: returns Response with text/event-stream headers
+ * Wire format follows W3C SSE spec:
+ *   event: token\n
+ *   data: hello\n
+ *   \n
  *
- * Wire format (per task spec test #1):
- *   data: {"type":"token","data":"hello"}\n\n
- * (type encoded inside JSON payload, NOT as a separate `event:` line)
+ * See: docs/architecture/adr-0015-sse-streaming.md
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   SSEncoder,
-  SSEStream,
   createSSEResponse,
+  encodeSSE,
   resolveStreamingMode,
 } from "@/lib/sse/encoder";
-import type { SSEEventType } from "@/lib/sse/types";
+import type { SSEEvent } from "@/lib/sse/types";
 
-describe("ADR-0015: SSE Streaming", () => {
-  beforeEach(() => {
-    vi.resetModules();
+// ---------- encodeSSE ----------
+
+describe("encodeSSE", () => {
+  it("encodes a basic event with data only", () => {
+    const result = encodeSSE({ data: "hello" });
+    expect(result).toBe("data: hello\n\n");
   });
 
-  // ---------- SSEncoder.encode* (tests 1-6, 18, 20) ----------
-
-  it("SSEncoder.encodeToken returns data: {\"type\":\"token\",\"data\":\"hello\"}\\n\\n", () => {
-    const enc = new SSEncoder();
-    const payload = JSON.stringify({ type: "token", data: "hello" });
-    expect(enc.encodeToken("hello")).toBe(`data: ${payload}\n\n`);
+  it("encodes an event with type", () => {
+    const result = encodeSSE({ event: "token", data: "hello" });
+    expect(result).toBe("event: token\ndata: hello\n\n");
   });
 
-  it("SSEncoder.encodeDone serializes payload as JSON string in data field", () => {
-    const enc = new SSEncoder();
-    const payload = JSON.stringify({
-      type: "done",
-      data: JSON.stringify({ answer: "test" }),
-    });
-    expect(enc.encodeDone({ answer: "test" })).toBe(`data: ${payload}\n\n`);
+  it("encodes an event with id and retry", () => {
+    const result = encodeSSE({ event: "token", data: "hello", id: "1", retry: 3000 });
+    expect(result).toBe("event: token\ndata: hello\nid: 1\nretry: 3000\n\n");
   });
 
-  it("SSEncoder.encodeCitation produces SSE format with type citation", () => {
-    const enc = new SSEncoder();
-    const out = enc.encodeCitation({ url: "https://example.com" });
-    expect(out.startsWith("data: ")).toBe(true);
-    expect(out.endsWith("\n\n")).toBe(true);
-    // Outer SSE envelope: { type: "citation", data: "<JSON-stringified citation>" }
-    const jsonStr = out.slice("data: ".length, out.length - 2); // strip "data: " and "\n\n"
-    const envelope = JSON.parse(jsonStr);
-    expect(envelope.type).toBe("citation");
-    // Inner data field: the citation object, JSON-stringified
-    const inner = JSON.parse(envelope.data);
-    expect(inner.url).toBe("https://example.com");
+  it("encodes multi-line data with each line prefixed by data:", () => {
+    const result = encodeSSE({ event: "done", data: "line1\nline2\nline3" });
+    expect(result).toBe("event: done\ndata: line1\ndata: line2\ndata: line3\n\n");
   });
 
-  it("SSEncoder.encodeError includes code field when provided", () => {
-    const enc = new SSEncoder();
-    const payload = JSON.stringify({
-      type: "error",
-      data: "fail",
-      code: "TIMEOUT",
-    });
-    expect(enc.encodeError("fail", "TIMEOUT")).toBe(`data: ${payload}\n\n`);
+  it("encodes data: [DONE] termination signal", () => {
+    const result = encodeSSE({ data: "[DONE]" });
+    expect(result).toBe("data: [DONE]\n\n");
   });
 
-  it("SSEncoder.encode with id field includes `id: ...\\n` line", () => {
-    const enc = new SSEncoder();
-    const out = enc.encode({ type: "token", data: "x", id: "abc" });
-    expect(out).toContain("id: abc\n");
-    expect(out).toContain('data: {"type":"token","data":"x"}');
-    expect(out.endsWith("\n\n")).toBe(true);
+  it("encodes event with id only (no retry)", () => {
+    const result = encodeSSE({ event: "citation", data: "ref1", id: "5" });
+    expect(result).toBe("event: citation\ndata: ref1\nid: 5\n\n");
   });
 
-  it("SSEncoder.flush returns empty string when nothing buffered", () => {
-    const enc = new SSEncoder();
-    expect(enc.flush()).toBe("");
+  it("encodes event with retry only (no id)", () => {
+    const result = encodeSSE({ event: "error", data: "timeout", retry: 5000 });
+    expect(result).toBe("event: error\ndata: timeout\nretry: 5000\n\n");
+  });
+});
+
+// ---------- SSEncoder ----------
+
+describe("SSEncoder", () => {
+  it("push + close produces correct stream", async () => {
+    const encoder = new SSEncoder();
+    encoder.push({ event: "token", data: "hello" });
+    encoder.close();
+
+    const reader = encoder.stream.getReader();
+    const { value } = await reader.read();
+    const text = new TextDecoder().decode(value);
+    expect(text).toBe("event: token\ndata: hello\n\n");
+
+    const { done } = await reader.read();
+    expect(done).toBe(true);
+    reader.releaseLock();
   });
 
-  it("Multiple encodeToken calls produce concatenated SSE chunks", () => {
-    const enc = new SSEncoder();
-    const out = enc.encodeToken("a") + enc.encodeToken("b");
-    const chunkA = `data: ${JSON.stringify({ type: "token", data: "a" })}\n\n`;
-    const chunkB = `data: ${JSON.stringify({ type: "token", data: "b" })}\n\n`;
-    expect(out).toBe(chunkA + chunkB);
+  it("multiple events in sequence", async () => {
+    const encoder = new SSEncoder();
+    encoder.push({ event: "token", data: "a" });
+    encoder.push({ event: "token", data: "b" });
+    encoder.push({ event: "done", data: "[DONE]" });
+    encoder.close();
+
+    const reader = encoder.stream.getReader();
+    const chunks: string[] = [];
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      chunks.push(new TextDecoder().decode(value));
+    }
+    reader.releaseLock();
+
+    expect(chunks).toHaveLength(3);
+    expect(chunks[0]).toBe("event: token\ndata: a\n\n");
+    expect(chunks[1]).toBe("event: token\ndata: b\n\n");
+    expect(chunks[2]).toBe("event: done\ndata: [DONE]\n\n");
   });
 
-  it("encode throws on invalid event type", () => {
-    const enc = new SSEncoder();
-    expect(() =>
-      enc.encode({ type: "delta" as unknown as SSEEventType, data: "x" }),
-    ).toThrow();
-    expect(() =>
-      enc.encode({ type: "invalid" as unknown as SSEEventType, data: "x" }),
-    ).toThrow();
+  it("push after close is a no-op", async () => {
+    const encoder = new SSEncoder();
+    encoder.push({ event: "token", data: "first" });
+    encoder.close();
+    // push after close should be silently ignored
+    encoder.push({ event: "token", data: "after-close" });
+
+    const reader = encoder.stream.getReader();
+    const chunks: string[] = [];
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      chunks.push(new TextDecoder().decode(value));
+    }
+    reader.releaseLock();
+
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toBe("event: token\ndata: first\n\n");
   });
 
-  // ---------- SSEEventType type contract (test 19) ----------
+  it("stream returns a ReadableStream", () => {
+    const encoder = new SSEncoder();
+    expect(encoder.stream).toBeInstanceOf(ReadableStream);
+    encoder.close();
+  });
+});
 
-  it("SSEEventType only allows token | done | citation | error (no delta)", () => {
-    const validTypes: SSEEventType[] = ["token", "done", "citation", "error"];
-    expect(validTypes).toEqual(["token", "done", "citation", "error"]);
-    expect(validTypes).not.toContain("delta");
+// ---------- resolveStreamingMode ----------
 
-    // Compile-time check: "delta" is not assignable to SSEEventType
-    // @ts-expect-error - "delta" is intentionally not a valid SSEEventType
-    const _invalid: SSEEventType = "delta";
-    expect(_invalid).toBe("delta");
+describe("resolveStreamingMode", () => {
+  it("adaptive mode streams for deep_research", () => {
+    expect(resolveStreamingMode("deep_research")).toBe("always");
   });
 
-  // ---------- resolveStreamingMode (tests 7-10) ----------
-
-  it("resolveStreamingMode returns mock when USE_MOCK=true", () => {
-    const request = new Request("https://example.com", {
-      headers: { Accept: "text/event-stream" },
-    });
-    const mode = resolveStreamingMode(request, {
-      USE_MOCK: "true",
-      ENVIRONMENT: "test",
-    });
-    expect(mode).toBe<"mock">("mock");
+  it("adaptive mode returns JSON for simple_qa", () => {
+    expect(resolveStreamingMode("simple_qa")).toBe("never");
   });
 
-  it("resolveStreamingMode returns raw when Accept: text/event-stream header present", () => {
-    const request = new Request("https://example.com", {
-      headers: { Accept: "text/event-stream" },
-    });
-    const mode = resolveStreamingMode(request, {
-      USE_MOCK: "false",
-      ENVIRONMENT: "test",
-    });
-    expect(mode).toBe<"raw">("raw");
+  it("always mode streams everything (deep_research regardless of env)", () => {
+    expect(resolveStreamingMode("deep_research", { ENVIRONMENT: "production" })).toBe("always");
   });
 
-  it("resolveStreamingMode returns buffered for regular HTTP requests", () => {
-    const request = new Request("https://example.com", {
-      headers: { Accept: "application/json" },
-    });
-    const mode = resolveStreamingMode(request, {
-      USE_MOCK: "false",
-      ENVIRONMENT: "test",
-    });
-    expect(mode).toBe<"buffered">("buffered");
+  it("never mode returns JSON (simple_qa regardless of env)", () => {
+    expect(resolveStreamingMode("simple_qa", { ENVIRONMENT: "production" })).toBe("never");
   });
 
-  it("resolveStreamingMode returns mock for production env when USE_MOCK=true (precedence)", () => {
-    const request = new Request("https://example.com", {
-      headers: { Accept: "text/event-stream" },
-    });
-    const mode = resolveStreamingMode(request, {
-      USE_MOCK: "true",
-      ENVIRONMENT: "production",
-    });
-    expect(mode).toBe<"mock">("mock");
+  it("other intents return adaptive", () => {
+    expect(resolveStreamingMode("clarify")).toBe("adaptive");
+    expect(resolveStreamingMode("tool_call")).toBe("adaptive");
   });
 
-  // ---------- SSEStream (tests 11-13, 17) ----------
-
-  it("SSEStream.write calls controller.enqueue with encoded bytes", () => {
-    const controller = {
-      enqueue: vi.fn(),
-      close: vi.fn(),
-      desiredSize: 1,
-    };
-    const stream = new SSEStream(
-      controller as unknown as ReadableStreamDefaultController<Uint8Array>,
-    );
-    stream.write({ type: "token", data: "hello" });
-    expect(controller.enqueue).toHaveBeenCalledTimes(1);
-    const arg = controller.enqueue.mock.calls[0][0];
-    // TextEncoder().encode() returns Node's Uint8Array; in jsdom the global
-    // Uint8Array is a different constructor, so toBeInstanceOf(Uint8Array)
-    // is unreliable. Verify by constructor name + decoded content instead.
-    expect((arg as Uint8Array).constructor.name).toBe("Uint8Array");
-    const expected =
-      `data: ${JSON.stringify({ type: "token", data: "hello" })}\n\n`;
-    expect(new TextDecoder().decode(arg as Uint8Array)).toBe(expected);
+  it("test environment returns never regardless of intent", () => {
+    expect(resolveStreamingMode("deep_research", { ENVIRONMENT: "test" })).toBe("never");
+    expect(resolveStreamingMode("clarify", { ENVIRONMENT: "test" })).toBe("never");
   });
 
-  it("SSEStream.close calls controller.close", () => {
-    const controller = {
-      enqueue: vi.fn(),
-      close: vi.fn(),
-      desiredSize: 1,
-    };
-    const stream = new SSEStream(
-      controller as unknown as ReadableStreamDefaultController<Uint8Array>,
-    );
-    stream.close();
-    expect(controller.close).toHaveBeenCalledTimes(1);
+  it("production environment with deep_research returns always", () => {
+    expect(resolveStreamingMode("deep_research", { ENVIRONMENT: "production" })).toBe("always");
   });
 
-  it("SSEStream.onBackpressure invokes handler when desiredSize < 0", () => {
-    const handler = vi.fn();
-    const controller = {
-      enqueue: vi.fn(),
-      close: vi.fn(),
-      desiredSize: -1,
-    };
-    const stream = new SSEStream(
-      controller as unknown as ReadableStreamDefaultController<Uint8Array>,
-    );
-    stream.onBackpressure(handler);
-    stream.write({ type: "token", data: "x" });
-    expect(handler).toHaveBeenCalledTimes(1);
+  it("production environment with simple_qa returns never", () => {
+    expect(resolveStreamingMode("simple_qa", { ENVIRONMENT: "production" })).toBe("never");
   });
 
-  it("Connection cleanup: SSEStream.close called when stream cancelled", async () => {
-    const controller = {
-      enqueue: vi.fn(),
-      close: vi.fn(),
-      desiredSize: 1,
-    };
-    const sseStream = new SSEStream(
-      controller as unknown as ReadableStreamDefaultController<Uint8Array>,
-    );
-
-    // Wire SSEStream.cancel into a ReadableStream's cancel hook
-    const readable = new ReadableStream<Uint8Array>({
-      cancel() {
-        sseStream.cancel();
-      },
-    });
-
-    await readable.cancel("user disconnected");
-    expect(controller.close).toHaveBeenCalledTimes(1);
+  it("production environment with other intents returns adaptive", () => {
+    expect(resolveStreamingMode("clarify", { ENVIRONMENT: "production" })).toBe("adaptive");
   });
+});
 
-  // ---------- createSSEResponse (tests 14-16) ----------
+// ---------- createSSEResponse ----------
 
-  it("createSSEResponse returns Response with Content-Type: text/event-stream", () => {
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode("data: test\n\n"));
-        controller.close();
-      },
-    });
-    const response = createSSEResponse(stream);
+describe("createSSEResponse", () => {
+  it("returns Response with Content-Type: text/event-stream", () => {
+    const encoder = new SSEncoder();
+    encoder.close();
+    const response = createSSEResponse(encoder);
     expect(response).toBeInstanceOf(Response);
     expect(response.headers.get("Content-Type")).toBe("text/event-stream");
   });
 
-  it("createSSEResponse sets Cache-Control: no-cache", () => {
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.close();
-      },
-    });
-    const response = createSSEResponse(stream);
+  it("sets Cache-Control: no-cache", () => {
+    const encoder = new SSEncoder();
+    encoder.close();
+    const response = createSSEResponse(encoder);
     expect(response.headers.get("Cache-Control")).toBe("no-cache");
-  });
-
-  it("createSSEResponse sets Connection: keep-alive", () => {
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.close();
-      },
-    });
-    const response = createSSEResponse(stream);
-    expect(response.headers.get("Connection")).toBe("keep-alive");
   });
 });
