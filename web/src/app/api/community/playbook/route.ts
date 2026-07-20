@@ -1,92 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
+import { listPackages, publishPackage } from "@/lib/community/store";
+import type { PublishPackageRequest, SearchQuery } from "@/lib/community/types";
 
 /**
- * Community Playbook API
- * - GET  /api/community/playbook       - List published playbooks
- * - POST /api/community/playbook       - Publish a new playbook
+ * /api/community/playbook
+ * - GET  : list packages with search + sort + pagination
+ *   ?q=keyword&tags=momentum,nvda&author=brenda&sort=trending&limit=20&offset=0
+ * - POST : publish a new package (anti-abuse: rate limit + duplicate check)
  */
 
-// In-memory store for Phase 1
-declare global {
-  var __COMMUNITY_PLAYBOOKS: CommunityPlaybook[] | undefined;
-}
+const DEMO_USER = "demo_user";
+const DEMO_USER_NAME = "Demo User";
 
-interface CommunityPlaybook {
-  package_id: string;
-  playbook_id: string;
-  author_id: string;
-  title: string;
-  description: string;
-  tags: string[];
-  version: string;
-  moderation_status: "pending" | "approved" | "rejected";
-  installed_count: number;
-  rating_avg: number;
-  rating_count: number;
-  created_at: string;
-}
-
-function getStore(): CommunityPlaybook[] {
-  if (!globalThis.__COMMUNITY_PLAYBOOKS) {
-    globalThis.__COMMUNITY_PLAYBOOKS = [];
-  }
-  return globalThis.__COMMUNITY_PLAYBOOKS;
-}
-
-function genId(): string {
-  return `pkg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-/**
- * GET /api/community/playbook - List published playbooks
- * Query params: ?sort=rating|installed|recent&limit=20&offset=0
- */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const sort = searchParams.get("sort") || "recent";
-  const limit = parseInt(searchParams.get("limit") || "20", 10);
-  const offset = parseInt(searchParams.get("offset") || "0", 10);
+  const query: SearchQuery = {
+    q: searchParams.get("q") ?? undefined,
+    tags: searchParams.get("tags")?.split(",").filter(Boolean),
+    author: searchParams.get("author") ?? undefined,
+    sort: (searchParams.get("sort") as SearchQuery["sort"]) ?? "recent",
+    limit: searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : 20,
+    offset: searchParams.get("offset") ? parseInt(searchParams.get("offset")!, 10) : 0,
+  };
 
-  const playbooks = getStore().filter(p => p.moderation_status === "approved");
-
-  // Sort
-  switch (sort) {
-    case "rating":
-      playbooks.sort((a, b) => b.rating_avg - a.rating_avg);
-      break;
-    case "installed":
-      playbooks.sort((a, b) => b.installed_count - a.installed_count);
-      break;
-    case "recent":
-    default:
-      playbooks.sort((a, b) => b.created_at.localeCompare(a.created_at));
-  }
-
-  // Paginate
-  const paginated = playbooks.slice(offset, offset + limit);
-
-  return NextResponse.json({
-    count: paginated.length,
-    total: playbooks.length,
-    data: paginated,
-  });
+  const { packages, total } = listPackages(query);
+  return NextResponse.json({ count: packages.length, total, data: packages });
 }
 
-/**
- * POST /api/community/playbook - Publish a new playbook
- * Body: { title, description, tags?, playbook_id, version, yaml_content }
- */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as {
-      title?: string;
-      description?: string;
-      tags?: string[];
-      playbook_id?: string;
-      version?: string;
-      yaml_content?: string;
-    };
-
+    const body = (await request.json()) as Partial<PublishPackageRequest>;
     if (!body.title || !body.playbook_id || !body.version) {
       return NextResponse.json(
         { error: "Missing required fields: title, playbook_id, version" },
@@ -94,24 +37,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const record: CommunityPlaybook = {
-      package_id: genId(),
-      playbook_id: body.playbook_id,
-      author_id: "demo_user", // Phase 1: single user
-      title: body.title,
-      description: body.description || "",
-      tags: body.tags || [],
-      version: body.version,
-      moderation_status: "pending", // All UGC starts as pending per ADR-0012
-      installed_count: 0,
-      rating_avg: 0,
-      rating_count: 0,
-      created_at: new Date().toISOString(),
-    };
+    const result = publishPackage(
+      {
+        playbook_id: body.playbook_id,
+        title: body.title,
+        description: body.description ?? "",
+        tags: body.tags,
+        version: body.version,
+      },
+      DEMO_USER,
+      DEMO_USER_NAME,
+    );
 
-    getStore().push(record);
-
-    return NextResponse.json(record, { status: 201 });
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 422 });
+    }
+    return NextResponse.json({ data: result.package }, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

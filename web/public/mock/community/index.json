@@ -3,112 +3,184 @@
     {
       "package_id": "pkg_mock_001",
       "playbook_id": "pb_mock_macross",
+      "author_id": "brenda@example.com",
+      "author_name": "Brenda Liu",
       "title": "NVDA Momentum Master",
       "description": "50/200 SMA crossover strategy for NVDA, optimized for momentum capture.",
-      "author": {
-        "id": "mock-brenda",
-        "name": "Brenda Liu",
-        "avatar": "/mock/avatars/brenda.png"
-      },
-      "tags": [
-        "momentum",
-        "single-stock",
-        "sma"
-      ],
-      "version": "1.0.0",
+      "tags": ["momentum", "single-stock", "sma"],
+      "version": "1.2.0",
+      "moderation_status": "approved",
       "installed_count": 234,
-      "rating_avg": 4.5,
+      "rating_sum": 392,
       "rating_count": 87,
+      "rating_avg": 4.5,
+      "fork_count": 5,
       "created_at": "2025-10-15T10:00:00Z",
-      "performance": {
-        "total_return": 28.5,
-        "sharpe": 1.62,
-        "max_drawdown": 8.3,
-        "win_rate": 58
-      }
+      "updated_at": "2025-12-15T10:00:00Z"
     },
     {
       "package_id": "pkg_mock_002",
       "playbook_id": "pb_mock_rsi",
-      "title": "RSI Reversal Strategy",
+      "author_id": "brenda@example.com",
+      "author_name": "Brenda Liu",
       "description": "Buy on RSI < 30 (oversold), sell on RSI > 70 (overbought).",
-      "author": {
-        "id": "mock-brenda",
-        "name": "Brenda Liu",
-        "avatar": "/mock/avatars/brenda.png"
-      },
-      "tags": [
-        "reversal",
-        "oversold",
-        "rsi"
-      ],
+      "title": "RSI Reversal Strategy",
+      "tags": ["reversal", "oversold", "rsi"],
       "version": "1.0.0",
+      "moderation_status": "approved",
       "installed_count": 189,
-      "rating_avg": 4.2,
+      "rating_sum": 273,
       "rating_count": 65,
+      "rating_avg": 4.2,
+      "fork_count": 2,
       "created_at": "2025-10-20T10:00:00Z",
-      "performance": {
-        "total_return": 15.3,
-        "sharpe": 1.05,
-        "max_drawdown": 5.8,
-        "win_rate": 62
-      }
+      "updated_at": "2025-12-15T10:00:00Z"
     },
     {
       "package_id": "pkg_mock_003",
       "playbook_id": "pb_mock_bollinger",
+      "author_id": "alice@example.com",
+      "author_name": "Alice Chen",
       "title": "Bollinger Breakout",
       "description": "Trade breakouts above upper Bollinger Band, exit at middle band.",
-      "author": {
-        "id": "mock-alex",
-        "name": "Alex Chen",
-        "avatar": "/mock/avatars/alex.png"
-      },
-      "tags": [
-        "breakout",
-        "volatility",
-        "bollinger"
-      ],
-      "version": "1.0.0",
+      "tags": ["breakout", "volatility", "bollinger"],
+      "version": "1.1.0",
+      "moderation_status": "approved",
       "installed_count": 156,
-      "rating_avg": 4.0,
+      "rating_sum": 208,
       "rating_count": 52,
+      "rating_avg": 4.0,
+      "fork_count": 3,
       "created_at": "2025-11-01T10:00:00Z",
-      "performance": {
-        "total_return": 19.7,
-        "sharpe": 1.18,
-        "max_drawdown": 7.2,
-        "win_rate": 55
-      }
+      "updated_at": "2025-12-15T10:00:00Z"
     },
     {
       "package_id": "pkg_mock_004",
       "playbook_id": "pb_mock_combo",
+      "author_id": "brenda@example.com",
+      "author_name": "Brenda Liu",
       "title": "Multi-Strategy Combo",
       "description": "50% MA Cross + 30% RSI + 20% Bollinger, diversified approach.",
-      "author": {
-        "id": "mock-charles",
-        "name": "Charles Wang",
-        "avatar": "/mock/avatars/charles.png"
-      },
-      "tags": [
-        "diversified",
-        "multi-strategy",
-        "balanced"
-      ],
+      "tags": ["diversified", "multi-strategy", "balanced"],
       "version": "1.0.0",
+      "moderation_status": "approved",
       "installed_count": 98,
-      "rating_avg": 4.8,
+      "rating_sum": 163,
       "rating_count": 34,
+      "rating_avg": 4.8,
+      "fork_count": 12,
       "created_at": "2025-11-15T10:00:00Z",
-      "performance": {
-        "total_return": 22.1,
-        "sharpe": 1.42,
-        "max_drawdown": 6.5,
-        "win_rate": 60
-      }
+      "updated_at": "2025-12-15T10:00:00Z"
+    },
+    {
+      "package_id": "pkg_mock_005",
+      "playbook_id": "pb_mock_nvda_thesis",
+      "author_id": "brenda@example.com",
+      "author_name": "Brenda Liu",
+      "title": "NVDA Investment Thesis 2026",
+      "description": "Long-term thesis: AI infra monopoly + data center growth.",
+      "tags": ["thesis", "nvda", "long-term"],
+      "version": "1.0.0",
+      "moderation_status": "approved",
+      "installed_count": 89,
+      "rating_sum": 384,
+      "rating_count": 80,
+      "rating_avg": 4.8,
+      "fork_count": 8,
+      "created_at": "2025-09-01T10:00:00Z",
+      "updated_at": "2025-12-15T10:00:00Z"
+    },
+    {
+      "package_id": "pkg_mock_006",
+      "playbook_id": "pb_mock_msft_dca",
+      "author_id": "bob@example.com",
+      "author_name": "Bob Wang",
+      "title": "MSFT Weekly DCA Strategy",
+      "description": "Dollar-cost average into MSFT every Monday.",
+      "tags": ["dca", "msft", "passive"],
+      "version": "1.0.0",
+      "moderation_status": "approved",
+      "installed_count": 15,
+      "rating_sum": 65,
+      "rating_count": 13,
+      "rating_avg": 5.0,
+      "fork_count": 1,
+      "created_at": "2025-11-20T10:00:00Z",
+      "updated_at": "2025-12-15T10:00:00Z"
+    },
+    {
+      "package_id": "pkg_mock_007",
+      "playbook_id": "pb_mock_spy_hold",
+      "author_id": "carol@example.com",
+      "author_name": "Carol Zhang",
+      "title": "SPY Buy and Hold with Drawdown Protection",
+      "description": "Hold SPY, trim when drawdown > 15%.",
+      "tags": ["etf", "spy", "risk-management"],
+      "version": "1.0.0",
+      "moderation_status": "approved",
+      "installed_count": 52,
+      "rating_sum": 220,
+      "rating_count": 45,
+      "rating_avg": 4.9,
+      "fork_count": 4,
+      "created_at": "2025-10-05T10:00:00Z",
+      "updated_at": "2025-12-15T10:00:00Z"
+    },
+    {
+      "package_id": "pkg_mock_008",
+      "playbook_id": "pb_mock_qqq_momentum",
+      "author_id": "alice@example.com",
+      "author_name": "Alice Chen",
+      "title": "QQQ Momentum Rotator",
+      "description": "Rotate between QQQ top 10 by momentum score.",
+      "tags": ["rotation", "qqq", "momentum"],
+      "version": "1.0.0",
+      "moderation_status": "approved",
+      "installed_count": 23,
+      "rating_sum": 95,
+      "rating_count": 20,
+      "rating_avg": 4.75,
+      "fork_count": 2,
+      "created_at": "2025-11-10T10:00:00Z",
+      "updated_at": "2025-12-15T10:00:00Z"
+    },
+    {
+      "package_id": "pkg_mock_009",
+      "playbook_id": "pb_mock_bond_ladder",
+      "author_id": "carol@example.com",
+      "author_name": "Carol Zhang",
+      "title": "Treasury Bond Ladder",
+      "description": "Build 5-year Treasury ladder, rebalance annually.",
+      "tags": ["bonds", "passive", "income"],
+      "version": "1.0.0",
+      "moderation_status": "approved",
+      "installed_count": 18,
+      "rating_sum": 72,
+      "rating_count": 15,
+      "rating_avg": 4.8,
+      "fork_count": 0,
+      "created_at": "2025-10-25T10:00:00Z",
+      "updated_at": "2025-12-15T10:00:00Z"
+    },
+    {
+      "package_id": "pkg_mock_010",
+      "playbook_id": "pb_mock_crypto_dca",
+      "author_id": "bob@example.com",
+      "author_name": "Bob Wang",
+      "title": "BTC+ETH Daily DCA",
+      "description": "Daily DCA into BTC (60%) + ETH (40%).",
+      "tags": ["crypto", "dca", "btc"],
+      "version": "1.0.0",
+      "moderation_status": "approved",
+      "installed_count": 41,
+      "rating_sum": 175,
+      "rating_count": 35,
+      "rating_avg": 5.0,
+      "fork_count": 6,
+      "created_at": "2025-11-05T10:00:00Z",
+      "updated_at": "2025-12-15T10:00:00Z"
     }
   ],
-  "total": 4,
-  "generated_at": "2026-07-19T05:22:19Z"
+  "total": 10,
+  "generated_at": "2026-07-20T10:00:00Z"
 }

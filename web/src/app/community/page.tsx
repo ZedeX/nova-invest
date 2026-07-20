@@ -1,22 +1,34 @@
+"use client";
+
 /**
- * Community Feed Page (Epic 07).
- * Browse, install, rate community-shared Playbooks.
+ * Community Feed Page (Epic 07, Sprint 8).
+ * Browse, search, install, rate community-shared Playbooks.
  */
 
+import { useState } from "react";
 import { CommunityFeed } from "@/components/widgets/CommunityFeed";
 
-const FILTERS = ["Trending", "Top Rated", "New", "Most Installed"];
-
 const CATEGORIES = [
-  { name: "Momentum",    count: 23 },
-  { name: "Mean Reversion", count: 18 },
-  { name: "Breakout",    count: 15 },
-  { name: "Earnings",    count: 11 },
-  { name: "Risk Mgmt",   count: 9 },
-  { name: "Data Fetchers", count: 7 },
+  { name: "momentum", label: "Momentum" },
+  { name: "reversal", label: "Mean Reversion" },
+  { name: "breakout", label: "Breakout" },
+  { name: "dca", label: "DCA" },
+  { name: "etf", label: "ETF" },
+  { name: "bonds", label: "Bonds" },
+  { name: "crypto", label: "Crypto" },
+  { name: "risk-management", label: "Risk Mgmt" },
 ];
 
 export default function CommunityPage() {
+  const [search, setSearch] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+  const [activeTag, setActiveTag] = useState<string | undefined>();
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    setActiveSearch(search);
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -26,36 +38,73 @@ export default function CommunityPage() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f, i) => (
+      {/* Search bar */}
+      <form onSubmit={handleSearch} className="flex gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search playbooks by title or description..."
+          className="flex-1 px-3 py-2 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          type="submit"
+          className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
+        >
+          Search
+        </button>
+        {activeSearch && (
           <button
-            key={f}
-            className={`px-3 py-1.5 rounded text-sm ${i === 0 ? "bg-blue-600 text-white" : "border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
+            type="button"
+            onClick={() => { setSearch(""); setActiveSearch(""); }}
+            className="px-3 py-2 rounded border border-zinc-300 dark:border-zinc-700 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
-            {f}
+            Clear
           </button>
-        ))}
-      </div>
+        )}
+      </form>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Sidebar: categories */}
         <aside className="lg:col-span-3">
           <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
             <h3 className="text-sm font-semibold mb-2">Categories</h3>
             <ul className="space-y-1">
-              {CATEGORIES.map(c => (
-                <li key={c.name} className="flex justify-between text-sm">
-                  <a href="#" className="hover:underline">{c.name}</a>
-                  <span className="text-zinc-500 text-xs">{c.count}</span>
+              <li>
+                <button
+                  onClick={() => setActiveTag(undefined)}
+                  className={`w-full text-left text-sm px-2 py-1 rounded ${
+                    !activeTag ? "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium" : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  All
+                </button>
+              </li>
+              {CATEGORIES.map((c) => (
+                <li key={c.name}>
+                  <button
+                    onClick={() => setActiveTag(activeTag === c.name ? undefined : c.name)}
+                    className={`w-full text-left text-sm px-2 py-1 rounded ${
+                      activeTag === c.name
+                        ? "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium"
+                        : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    {c.label}
+                  </button>
                 </li>
               ))}
             </ul>
           </div>
         </aside>
+
+        {/* Main feed */}
         <main className="lg:col-span-9">
-          <CommunityFeed />
+          <CommunityFeed searchQuery={activeSearch || undefined} tagFilter={activeTag} />
         </main>
       </div>
 
+      {/* Publish CTA */}
       <div className="rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 p-4 text-center">
         <h3 className="text-sm font-semibold mb-1">Publish Your Playbook</h3>
         <p className="text-xs text-zinc-500 mb-3">

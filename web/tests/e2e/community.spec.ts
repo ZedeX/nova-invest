@@ -1,16 +1,14 @@
 /**
- * E2E: Community (EP07).
+ * E2E: Community (EP07, Sprint 8).
  *
  * Covers:
- *   - EP07 (Share & Community): /community page, CommunityFeed widget,
- *     playbook cards, ratings, detail link.
+ *   - EP07 (Share & Community): /community page, search, sort, categories,
+ *     playbook detail page, install, rate, comment, report.
  *
- * TR-IDs: TR-EP07-001, TR-EP07-002
+ * TR-IDs: TR-EP07-001 through TR-EP07-008
  * ADRs:   ADR-0012 (comment moderation, depth limit, report tiers)
  *
  * Runs in Mock mode (USE_MOCK=true) per playwright.config.ts webServer.env.
- * Note: CommunityFeed loads from /mock/community/index.json (10 playbooks).
- * Fork button is not yet implemented; that assertion is marked test.fixme.
  */
 
 import { test, expect } from "@playwright/test";
@@ -20,45 +18,108 @@ test.describe("Community (EP07)", () => {
     await page.goto("/community");
 
     await expect(page.locator("h1")).toContainText("Community");
-    // Filter chips
-    await expect(page.locator("button", { hasText: "Trending" })).toBeVisible();
-    await expect(page.locator("button", { hasText: "Top Rated" })).toBeVisible();
+    // Search bar
+    await expect(page.locator("input[placeholder*='Search']")).toBeVisible();
+    // Category sidebar
+    await expect(page.locator("text=Momentum")).toBeVisible();
   });
 
   test("User sees a list of shared playbooks (CommunityFeed)", async ({ page }) => {
     await page.goto("/community");
 
-    // CommunityFeed widget heading
-    await expect(page.locator("h3", { hasText: "Community Playbooks" })).toBeVisible();
-    // First mock playbook title from /mock/community/index.json
-    await expect(page.locator("text=NVDA Momentum Master").first()).toBeVisible({ timeout: 10000 });
+    // Wait for API data to load — at least one playbook card
+    await expect(page.locator("li a[href*='/community/playbook/']").first()).toBeVisible({ timeout: 10000 });
+    // Verify sort tabs
+    await expect(page.locator("button", { hasText: "Trending" })).toBeVisible();
+    await expect(page.locator("button", { hasText: "Top Rated" })).toBeVisible();
   });
 
-  test("User can click a playbook to see details", async ({ page }) => {
+  test("User can search playbooks by keyword", async ({ page }) => {
     await page.goto("/community");
 
-    // Wait for mock data to load, then click the first playbook card link.
-    const firstCard = page.locator("a[href*='/playbook/']").first();
+    // Type search and submit
+    await page.locator("input[placeholder*='Search']").fill("NVDA");
+    await page.locator("button", { hasText: "Search" }).click();
+
+    // Wait for filtered results
+    await expect(page.locator("li a[href*='/community/playbook/']").first()).toBeVisible({ timeout: 10000 });
+    // All visible cards should contain NVDA
+    const cards = page.locator("li a[href*='/community/playbook/']");
+    const count = await cards.count();
+    for (let i = 0; i < count; i++) {
+      await expect(cards.nth(i)).toContainText("NVDA");
+    }
+  });
+
+  test("User can filter by category (tag)", async ({ page }) => {
+    await page.goto("/community");
+
+    // Click "Momentum" category
+    await page.locator("aside button", { hasText: "Momentum" }).click();
+
+    // Wait for filtered results
+    await expect(page.locator("li a[href*='/community/playbook/']").first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test("User can sort by Top Rated", async ({ page }) => {
+    await page.goto("/community");
+
+    // Click "Top Rated" sort
+    await page.locator("button", { hasText: "Top Rated" }).click();
+
+    // Wait for sorted results
+    await expect(page.locator("li a[href*='/community/playbook/']").first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test("User can click a playbook to see detail page", async ({ page }) => {
+    await page.goto("/community");
+
+    // Wait for feed and click first card
+    const firstCard = page.locator("li a[href*='/community/playbook/']").first();
     await expect(firstCard).toBeVisible({ timeout: 10000 });
     await firstCard.click();
 
-    // Navigates to /playbook/{playbook_id}
-    await expect(page).toHaveURL(/\/playbook\//);
+    // Should navigate to detail page
+    await expect(page).toHaveURL(/\/community\/playbook\//);
+
+    // Detail page should have Install button and rating UI
+    await expect(page.locator("button", { hasText: "Install" })).toBeVisible();
+    await expect(page.locator("h1")).toBeVisible();
   });
 
-  test("User sees rating UI (star rating per playbook)", async ({ page }) => {
+  test("User sees rating UI on detail page", async ({ page }) => {
     await page.goto("/community");
 
-    // CommunityFeed renders "★ {rating_avg}" for each playbook card
-    await expect(page.locator("text=/★ [0-9]/").first()).toBeVisible({ timeout: 10000 });
+    const firstCard = page.locator("li a[href*='/community/playbook/']").first();
+    await expect(firstCard).toBeVisible({ timeout: 10000 });
+    await firstCard.click();
+
+    // Star rating buttons
+    await expect(page.locator("text=Rate this Playbook")).toBeVisible();
+    const stars = page.locator("button", { hasText: "★" });
+    await expect(stars.first()).toBeVisible();
   });
 
-  // GAP: CommunityFeed does not render a "Fork" button — only an href to
-  // /playbook/{id}. Marking fixme until the fork (clone-to-personal)
-  // action lands per EP07 §"Validation criteria".
-  test.fixme("Fork button visible on a community playbook card", async ({ page }) => {
+  test("User can see comment section on detail page", async ({ page }) => {
     await page.goto("/community");
-    // Expected once implemented: a button labeled "Fork" or "Remix"
-    // appears on each playbook card.
+
+    const firstCard = page.locator("li a[href*='/community/playbook/']").first();
+    await expect(firstCard).toBeVisible({ timeout: 10000 });
+    await firstCard.click();
+
+    // Comment section
+    await expect(page.locator("text=Comments")).toBeVisible();
+    await expect(page.locator("textarea")).toBeVisible();
+  });
+
+  test("User can see report link on detail page", async ({ page }) => {
+    await page.goto("/community");
+
+    const firstCard = page.locator("li a[href*='/community/playbook/']").first();
+    await expect(firstCard).toBeVisible({ timeout: 10000 });
+    await firstCard.click();
+
+    // Report link
+    await expect(page.locator("text=Report this Playbook")).toBeVisible();
   });
 });

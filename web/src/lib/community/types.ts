@@ -1,69 +1,148 @@
 /**
- * Community UGC types — ADR-0012.
+ * Community UGC types - ADR-0012 + Epic 07 Sprint 8.
  *
  * Phase 1 scope: SharePackage has NO `signature` and NO `license` field.
  * Author signing and CC-BY-NC licensing are explicitly Phase 2 per
  * ADR-0012 §"Critical Implementation Rules".
  *
- * NOTE: This is the simplified Phase 1 SharePackage shape used by the
- * ModerationQueue anti-abuse pipeline. The full SharePackage (with
- * performance_json, yaml_r2_key, etc.) lives in `web/src/lib/types.ts`
- * as `CommunityPlaybook` for feed display.
+ * Sprint 8 additions: Rating, Comment (nested 2 levels), Report (severity),
+ * Install (reference, no copy), SearchQuery, FeedSortType.
  */
 
-/**
- * SharePackage submitted by a user for community publication.
- * Per ADR-0012 Phase 1: NO signature, NO license field.
- */
+// ============ Phase 1 shapes (preserved for ugc.ts) ============
+
 export interface SharePackage {
-  /** Unique package identifier. */
   id: string;
-  /** Author user id (references users.id). */
   author_id: string;
-  /** Underlying playbook id (references playbooks.id per ADR-0011). */
   playbook_id: string;
-  /** Display title (1–100 chars per anti-abuse check). */
   title: string;
-  /** Short description (0–500 chars per anti-abuse check). */
   description: string;
-  /** Searchable tags (0–5 per anti-abuse check). */
   tags: string[];
-  /** ISO timestamp of submission. */
   created_at: string;
 }
 
-/**
- * Community playbook aggregate — tracks fork count and rating aggregates.
- * Used by computeTrendingScore.
- */
 export interface CommunityPlaybook {
-  /** Unique playbook identifier. */
   id: string;
-  /** References SharePackage.id. */
   share_package_id: string;
-  /** Number of times this playbook has been forked. */
   fork_count: number;
-  /** Sum of all ratings (1–5 stars each). */
   rating_sum: number;
-  /** Total number of ratings. */
   rating_count: number;
-  /** ISO timestamp of creation. */
   created_at: string;
 }
 
-/**
- * Result of a moderation action on a submitted package.
- * - approve: package passes all anti-abuse checks
- * - reject: package fails a hard check (length, tag count)
- * - flag: package triggers soft check (banned words) — needs human review
- */
 export interface ModerationResult {
-  /** Package id this result applies to. */
   id: string;
-  /** Moderation action taken. */
   action: "approve" | "reject" | "flag";
-  /** Optional human-readable reason for reject/flag. */
   reason?: string;
-  /** Optional severity for flagged packages. */
   severity?: "low" | "med" | "high";
+}
+
+// ============ Sprint 8: Full Community UGC types ============
+
+export type ModerationStatus = "pending" | "approved" | "rejected" | "flagged";
+
+export type FeedSortType = "recent" | "rating" | "installed" | "trending";
+
+/** Published community package (extends SharePackage with moderation + metrics). */
+export interface CommunityPackage {
+  package_id: string;
+  playbook_id: string;
+  author_id: string;
+  author_name: string;
+  title: string;
+  description: string;
+  tags: string[];
+  version: string;
+  moderation_status: ModerationStatus;
+  installed_count: number;
+  rating_sum: number;
+  rating_count: number;
+  rating_avg: number;
+  fork_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** User install record (reference, not copy). */
+export interface InstallRecord {
+  user_id: string;
+  package_id: string;
+  playbook_id: string;
+  installed_version: string;
+  installed_at: string;
+}
+
+/** User rating (1-5 stars, one per user per package). */
+export interface RatingRecord {
+  id: string;
+  package_id: string;
+  user_id: string;
+  rating: number; // 1-5
+  created_at: string;
+  updated_at: string;
+}
+
+/** Comment (supports nested 2 levels via parent_id). */
+export interface CommentRecord {
+  id: string;
+  package_id: string;
+  user_id: string;
+  user_name: string;
+  parent_id: string | null; // null = top-level; id = reply (max depth 2)
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ReportSeverity = "low" | "med" | "high";
+export type ReportStatus = "pending" | "reviewing" | "resolved" | "dismissed";
+
+/** User report (severity-graded). */
+export interface ReportRecord {
+  id: string;
+  package_id: string;
+  reporter_id: string;
+  reason: string;
+  severity: ReportSeverity;
+  status: ReportStatus;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+// ============ API request/response types ============
+
+export interface SearchQuery {
+  q?: string; // search in title + description
+  tags?: string[]; // filter by tags
+  author?: string; // filter by author_id or name
+  sort?: FeedSortType;
+  limit?: number;
+  offset?: number;
+}
+
+export interface PublishPackageRequest {
+  playbook_id: string;
+  title: string;
+  description: string;
+  tags?: string[];
+  version: string;
+}
+
+export interface RateRequest {
+  rating: number; // 1-5
+}
+
+export interface CommentRequest {
+  content: string;
+  parent_id?: string | null;
+}
+
+export interface ReportRequest {
+  reason: string;
+  severity: ReportSeverity;
+}
+
+export interface ValidationResult {
+  ok: boolean;
+  reason?: string;
 }
