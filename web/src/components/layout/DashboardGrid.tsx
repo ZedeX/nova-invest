@@ -12,13 +12,26 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Layout, ResponsiveLayouts } from "react-grid-layout";
-import { KlineChart } from "@/components/widgets/KlineChart";
-import { PositionsTable } from "@/components/widgets/PositionsTable";
 import { Watchlist } from "@/components/widgets/Watchlist";
-import { AskAgentPanel } from "@/components/widgets/AskAgentPanel";
 import { CreditBalance } from "@/components/widgets/CreditBalance";
-import { StrategyList } from "@/components/widgets/StrategyList";
-import { CommunityFeed } from "@/components/widgets/CommunityFeed";
+
+// Lazy-load heavy widgets for LCP optimization (Phase 2 target: LCP < 1s)
+// KlineChart pulls in lightweight-charts (~120KB); AskAgentPanel has complex state
+const KlineChart = dynamic(() => import("@/components/widgets/KlineChart").then((m) => ({ default: m.KlineChart })), {
+  loading: () => <div className="h-full flex items-center justify-center text-zinc-400 text-sm">Loading chart...</div>,
+});
+const PositionsTable = dynamic(() => import("@/components/widgets/PositionsTable").then((m) => ({ default: m.PositionsTable })), {
+  loading: () => <div className="h-32 animate-pulse bg-zinc-100 dark:bg-zinc-900 rounded" />,
+});
+const AskAgentPanel = dynamic(() => import("@/components/widgets/AskAgentPanel").then((m) => ({ default: m.AskAgentPanel })), {
+  loading: () => <div className="h-32 animate-pulse bg-zinc-100 dark:bg-zinc-900 rounded" />,
+});
+const StrategyList = dynamic(() => import("@/components/widgets/StrategyList").then((m) => ({ default: m.StrategyList })), {
+  loading: () => <div className="h-32 animate-pulse bg-zinc-100 dark:bg-zinc-900 rounded" />,
+});
+const CommunityFeed = dynamic(() => import("@/components/widgets/CommunityFeed").then((m) => ({ default: m.CommunityFeed })), {
+  loading: () => <div className="h-32 animate-pulse bg-zinc-100 dark:bg-zinc-900 rounded" />,
+});
 
 // react-grid-layout needs window; load only on client.
 // v2.x: WidthProvider is in the legacy export path.
