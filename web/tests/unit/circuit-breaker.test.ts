@@ -21,7 +21,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CircuitBreaker } from "@/lib/data/circuit-breaker";
+import {
+  CircuitBreaker,
+  CircuitBreakerStore,
+  KVCircuitBreakerStore,
+  MemoryCircuitBreakerStore,
+} from "@/lib/data/circuit-breaker";
 
 describe("ADR-0016: Circuit Breaker (in-memory state machine)", () => {
   beforeEach(() => {
@@ -123,5 +128,224 @@ describe("ADR-0016: Circuit Breaker (in-memory state machine)", () => {
     vi.advanceTimersByTime(60_000);
     expect(cb.getState("yahoo")).toBe("HALF_OPEN");
     expect(cb.isTripped("yahoo")).toBe(false);
+  });
+});
+
+// ============ Store Abstraction Tests ============
+
+describe("MemoryCircuitBreakerStore", () => {
+  it("get returns null for missing key", async () => {
+    const store = new MemoryCircuitBreakerStore();
+    expect(await store.get("missing")).toBeNull();
+  });
+
+  it("set/get round-trip", async () => {
+    const store = new MemoryCircuitBreakerStore();
+    await store.set("key1", "value1");
+    expect(await store.get("key1")).toBe("value1");
+  });
+
+  it("set with TTL: value available before expiry, null after", async () => {
+    vi.useFakeTimers();
+    const store = new MemoryCircuitBreakerStore();
+    await store.set("ttl_key", "ttl_value", 1000);
+    expect(await store.get("ttl_key")).toBe("ttl_value");
+
+    vi.advanceTimersByTime(999);
+    expect(await store.get("ttl_key")).toBe("ttl_value");
+
+    vi.advanceTimersByTime(1);
+    expect(await store.get("ttl_key")).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it("set without TTL: value persists indefinitely", async () => {
+    vi.useFakeTimers();
+    const store = new MemoryCircuitBreakerStore();
+    await store.set("no_ttl", "permanent");
+    vi.advanceTimersByTime(999_999_999);
+    expect(await store.get("no_ttl")).toBe("permanent");
+    vi.useRealTimers();
+  });
+
+  it("delete removes a key", async () => {
+    const store = new MemoryCircuitBreakerStore();
+    await store.set("del_key", "value");
+    expect(await store.get("del_key")).toBe("value");
+    await store.delete("del_key");
+    expect(await store.get("del_key")).toBeNull();
+  });
+
+  it("implements CircuitBreakerStore interface", () => {
+    const store: CircuitBreakerStore = new MemoryCircuitBreakerStore();
+    expect(typeof store.get).toBe("function");
+    expect(typeof store.set).toBe("function");
+    expect(typeof store.delete).toBe("function");
+  });
+});
+
+describe("KVCircuitBreakerStore", () => {
+  /** Create a mock KVNamespace for testing. */
+  function createMockKV(): KVNamespace {
+    const data = new Map<string, string>();
+    return {
+      get: vi.fn(async (key: string) => data.get(key) ?? null),
+      put: vi.fn(async (key: string, value: string, opts?: { expirationTtl?: number }) => {
+        data.set(key, value);
+      }),
+      delete: vi.fn(async (key: string) => {
+        data.delete(key);
+      }),
+    } as unknown as KVNamespace;
+  }
+
+  it("get returns null for missing key", async () => {
+    const kv = createMockKV();
+    const store = new KVCircuitBreakerStore(kv);
+    expect(await store.get("missing")).toBeNull();
+  });
+
+  it("set/get round-trip", async () => {
+    const kv = createMockKV();
+    const store = new KVCircuitBreakerStore(kv);
+    await store.set("key1", "value1");
+    expect(await store.get("key1")).toBe("value1");
+  });
+
+  it("set with ttlMs passes expirationTtl in seconds (ceiling)", async () => {
+    const kv = createMockKV();
+    const store = new KVCircuitBreakerStore(kv);
+    await store.set("key1", "value1", 2500); // 2500ms → 3 seconds
+    expect(kv.put).toHaveBeenCalledWith("key1", "value1", { expirationTtl: 3 });
+  });
+
+  it("set without ttlMs passes undefined expirationTtl", async () => {
+    const kv = createMockKV();
+    const store = new KVCircuitBreakerStore(kv);
+    await store.set("key1", "value1");
+    expect(kv.put).toHaveBeenCalledWith("key1", "value1", { expirationTtl: undefined });
+  });
+
+  it("delete delegates to kv.delete", async () => {
+    const kv = createMockKV();
+    const store = new KVCircuitBreakerStore(kv);
+    await store.set("key1", "value1");
+    await store.delete("key1");
+    expect(kv.delete).toHaveBeenCalledWith("key1");
+    expect(await store.get("key1")).toBeNull();
+  });
+
+  it("implements CircuitBreakerStore interface", () => {
+    const kv = createMockKV();
+    const store: CircuitBreakerStore = new KVCircuitBreakerStore(kv);
+    expect(typeof store.get).toBe("function");
+    expect(typeof store.set).toBe("function");
+    expect(typeof store.delete).toBe("function");
+  });
+});
+
+// ============ CircuitBreaker with injected store ============
+
+describe("CircuitBreaker with injected store", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("CircuitBreaker without store works the same as before (backward compat)", () => {
+    const cb = new CircuitBreaker();
+    expect(cb.getState("yahoo")).toBe("CLOSED");
+
+    for (let i = 0; i < 5; i++) cb.recordFailure("yahoo");
+    expect(cb.getState("yahoo")).toBe("OPEN");
+    expect(cb.isTripped("yahoo")).toBe(true);
+
+    vi.advanceTimersByTime(60_000);
+    expect(cb.getState("yahoo")).toBe("HALF_OPEN");
+
+    cb.recordSuccess("yahoo");
+    expect(cb.getState("yahoo")).toBe("CLOSED");
+  });
+
+  it("CircuitBreaker with MemoryCircuitBreakerStore works the same", () => {
+    const store = new MemoryCircuitBreakerStore();
+    const cb = new CircuitBreaker({}, store);
+    expect(cb.getState("yahoo")).toBe("CLOSED");
+
+    for (let i = 0; i < 5; i++) cb.recordFailure("yahoo");
+    expect(cb.getState("yahoo")).toBe("OPEN");
+    expect(cb.isTripped("yahoo")).toBe(true);
+
+    vi.advanceTimersByTime(60_000);
+    expect(cb.getState("yahoo")).toBe("HALF_OPEN");
+
+    cb.recordSuccess("yahoo");
+    expect(cb.getState("yahoo")).toBe("CLOSED");
+  });
+
+  it("hydrate restores state from the store", async () => {
+    const store = new MemoryCircuitBreakerStore();
+    const cb1 = new CircuitBreaker({}, store);
+
+    // Trip the breaker
+    for (let i = 0; i < 5; i++) cb1.recordFailure("yahoo");
+
+    // Wait for persist to settle (fire-and-forget uses microtask)
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Create a new breaker with the same store and hydrate
+    const cb2 = new CircuitBreaker({}, store);
+    expect(cb2.getState("yahoo")).toBe("CLOSED"); // Not yet hydrated
+
+    await cb2.hydrate("yahoo");
+    expect(cb2.getState("yahoo")).toBe("OPEN"); // Restored from store
+  });
+
+  it("reset deletes from both in-memory and store", async () => {
+    const store = new MemoryCircuitBreakerStore();
+    const cb = new CircuitBreaker({}, store);
+
+    for (let i = 0; i < 5; i++) cb.recordFailure("yahoo");
+    expect(cb.getState("yahoo")).toBe("OPEN");
+
+    cb.reset("yahoo");
+    expect(cb.getState("yahoo")).toBe("CLOSED");
+
+    // Wait for delete to settle
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Hydrate should find nothing in the store
+    const cb2 = new CircuitBreaker({}, store);
+    await cb2.hydrate("yahoo");
+    expect(cb2.getState("yahoo")).toBe("CLOSED");
+  });
+
+  it("CircuitBreaker with KVCircuitBreakerStore works via hydrate", async () => {
+    const kvData = new Map<string, string>();
+    const mockKV = {
+      get: vi.fn(async (key: string) => kvData.get(key) ?? null),
+      put: vi.fn(async (key: string, value: string) => { kvData.set(key, value); }),
+      delete: vi.fn(async (key: string) => { kvData.delete(key); }),
+    } as unknown as KVNamespace;
+
+    const store = new KVCircuitBreakerStore(mockKV);
+    const cb = new CircuitBreaker({}, store);
+
+    for (let i = 0; i < 5; i++) cb.recordFailure("yahoo");
+    expect(cb.getState("yahoo")).toBe("OPEN");
+
+    // Allow fire-and-forget persist to complete
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Verify data was written to KV
+    expect(kvData.has("cb:yahoo")).toBe(true);
+
+    // Hydrate a fresh breaker from the same KV
+    const cb2 = new CircuitBreaker({}, store);
+    await cb2.hydrate("yahoo");
+    expect(cb2.getState("yahoo")).toBe("OPEN");
   });
 });

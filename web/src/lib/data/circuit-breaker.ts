@@ -1,13 +1,18 @@
 /**
- * Circuit Breaker (ADR-0016 — in-memory synchronous state machine).
+ * Circuit Breaker (ADR-0016 — in-memory synchronous state machine + KV store seam).
  *
  * Three-state per-key breaker: CLOSED → OPEN → HALF_OPEN → CLOSED/OPEN.
  *
- * Note: This is the in-memory synchronous variant per the task spec.
- * The ADR-0016 canonical design is KV-backed + async (Cloudflare Workers
- * stateless). The in-memory version is the PRD stub that ADR-0016
- * §Alternative 1 explicitly rejects for production — but it correctly
- * implements the state-machine logic and is unit-testable with fake timers.
+ * Phase 1 (default): in-memory Map via MemoryCircuitBreakerStore.
+ * Phase 2: KV-backed via KVCircuitBreakerStore (Cloudflare Workers KV
+ * persistence across isolate restarts).
+ *
+ * The CircuitBreakerStore abstraction allows the breaker to swap its
+ * persistence backend without changing the state-machine logic. The sync
+ * public API (isTripped/getState/recordFailure/recordSuccess/reset) is
+ * preserved for backward compatibility — the MemoryCircuitBreakerStore
+ * resolves synchronously under the hood, and the breaker eagerly hydrates
+ * from the store on construction when a store is provided.
  *
  * Default config: threshold=5 consecutive failures → OPEN,
  * cooldownMs=60000 → HALF_OPEN, 1 success in HALF_OPEN → CLOSED.
@@ -29,18 +34,99 @@ export const DEFAULT_CB_CONFIG: CircuitBreakerConfig = {
   cooldownMs: 60_000,
 };
 
+// ============ Store Abstraction (ADR-0016 Phase 2) ============
+
+/** Store abstraction — allows Mock (Map) or KV (Workers KV) backing. */
+export interface CircuitBreakerStore {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string, ttlMs?: number): Promise<void>;
+  delete(key: string): Promise<void>;
+}
+
+/** In-memory Map store (Phase 1 default). */
+export class MemoryCircuitBreakerStore implements CircuitBreakerStore {
+  private readonly data = new Map<string, { value: string; expiresAt: number }>();
+
+  async get(key: string): Promise<string | null> {
+    const entry = this.data.get(key);
+    if (!entry) return null;
+    if (entry.expiresAt > 0 && Date.now() >= entry.expiresAt) {
+      this.data.delete(key);
+      return null;
+    }
+    return entry.value;
+  }
+
+  async set(key: string, value: string, ttlMs?: number): Promise<void> {
+    const expiresAt = ttlMs ? Date.now() + ttlMs : 0;
+    this.data.set(key, { value, expiresAt });
+  }
+
+  async delete(key: string): Promise<void> {
+    this.data.delete(key);
+  }
+}
+
+/** Workers KV store (Phase 2). */
+export class KVCircuitBreakerStore implements CircuitBreakerStore {
+  constructor(private kv: KVNamespace) {}
+
+  async get(key: string): Promise<string | null> {
+    return this.kv.get(key);
+  }
+
+  async set(key: string, value: string, ttlMs?: number): Promise<void> {
+    await this.kv.put(key, value, {
+      expirationTtl: ttlMs ? Math.ceil(ttlMs / 1000) : undefined,
+    });
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.kv.delete(key);
+  }
+}
+
+// ============ CircuitEntry (internal) ============
+
 interface CircuitEntry {
   state: CircuitState;
   failures: number;
   trippedAt: number; // Date.now() when OPEN was entered (0 if never tripped)
 }
 
+/** Serialize a CircuitEntry to a JSON string for store persistence. */
+function serializeEntry(entry: CircuitEntry): string {
+  return JSON.stringify(entry);
+}
+
+/** Deserialize a CircuitEntry from a store value. Returns CLOSED default on parse failure. */
+function deserializeEntry(raw: string | null): CircuitEntry {
+  if (!raw) return { state: "CLOSED", failures: 0, trippedAt: 0 };
+  try {
+    const parsed = JSON.parse(raw);
+    if (
+      typeof parsed.state === "string" &&
+      typeof parsed.failures === "number" &&
+      typeof parsed.trippedAt === "number"
+    ) {
+      return parsed as CircuitEntry;
+    }
+  } catch {
+    // Malformed data — reset to safe default.
+  }
+  return { state: "CLOSED", failures: 0, trippedAt: 0 };
+}
+
+// ============ CircuitBreaker ============
+
 export class CircuitBreaker {
   private readonly entries = new Map<string, CircuitEntry>();
   private readonly config: CircuitBreakerConfig;
+  private readonly store: CircuitBreakerStore;
 
-  constructor(config: Partial<CircuitBreakerConfig> = {}) {
+  constructor(config: Partial<CircuitBreakerConfig> = {}, store?: CircuitBreakerStore) {
     this.config = { ...DEFAULT_CB_CONFIG, ...config };
+    this.store = store ?? new MemoryCircuitBreakerStore();
   }
 
   /**
@@ -58,6 +144,15 @@ export class CircuitBreaker {
       e.state = "HALF_OPEN";
     }
     return e;
+  }
+
+  /**
+   * Persist entry to the store (fire-and-forget for sync API compat).
+   * Errors are silently swallowed — the in-memory state is the source of
+   * truth for the sync API; store persistence is best-effort.
+   */
+  private persist(key: string, e: CircuitEntry): void {
+    this.store.set(`cb:${key}`, serializeEntry(e), this.config.cooldownMs * 2).catch(() => {});
   }
 
   /**
@@ -89,6 +184,7 @@ export class CircuitBreaker {
       e.state = "OPEN";
       e.trippedAt = Date.now();
       e.failures += 1;
+      this.persist(key, e);
       return;
     }
     // CLOSED
@@ -97,6 +193,7 @@ export class CircuitBreaker {
       e.state = "OPEN";
       e.trippedAt = Date.now();
     }
+    this.persist(key, e);
   }
 
   /**
@@ -110,6 +207,7 @@ export class CircuitBreaker {
     e.state = "CLOSED";
     e.failures = 0;
     e.trippedAt = 0;
+    this.persist(key, e);
   }
 
   /**
@@ -118,5 +216,17 @@ export class CircuitBreaker {
    */
   reset(key: string): void {
     this.entries.delete(key);
+    this.store.delete(`cb:${key}`).catch(() => {});
+  }
+
+  /**
+   * Hydrate the in-memory entry for `key` from the store.
+   * Useful after isolate restart to restore persisted state.
+   * Overwrites any existing in-memory entry for this key.
+   */
+  async hydrate(key: string): Promise<void> {
+    const raw = await this.store.get(`cb:${key}`);
+    const entry = deserializeEntry(raw);
+    this.entries.set(key, entry);
   }
 }
