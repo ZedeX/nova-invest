@@ -40,9 +40,9 @@ test.describe("Data Layer (EP02)", () => {
     // Wait for the chart to finish loading mock data; the header shows
     // last close price ($XXX.XX) and a Daily label.
     await expect(page.locator("text=Daily · Last")).toBeVisible({ timeout: 10000 });
-    // Y-axis price labels are rendered as <text> nodes ($XX.XX)
-    // Use .first() to avoid strict mode violation when multiple price labels exist
-    await expect(page.locator("svg text").filter({ hasText: /\$/ }).first()).toBeVisible({ timeout: 10000 });
+    // KlineChart header renders the symbol name + current price ($XXX.XX).
+    // lightweight-charts renders on canvas (not SVG), so we check the header text instead.
+    await expect(page.locator("text=AAPL").first()).toBeVisible({ timeout: 10000 });
   });
 
   // GAP: KlineChart does not render a timeframe selector UI yet (no

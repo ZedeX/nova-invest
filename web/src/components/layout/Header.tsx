@@ -4,6 +4,7 @@
 
 import Link from "next/link";
 import { MockBadge } from "./MockBadge";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
@@ -43,6 +44,7 @@ export function Header() {
         </div>
         <div className="flex items-center gap-3">
           <MockBadge />
+          <ThemeToggle />
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-zinc-400 to-zinc-600 flex items-center justify-center text-white text-xs font-medium">
             B
           </div>

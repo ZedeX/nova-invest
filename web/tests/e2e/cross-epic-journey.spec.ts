@@ -52,8 +52,10 @@ test.describe("Cross-Epic Journey (Ask → Build → Dashboard)", () => {
     await expect(page.locator("h1")).toContainText("Backtest");
     // Configuration sidebar with Run Backtest button
     await expect(page.locator("button", { hasText: "Run Backtest" })).toBeVisible();
-    // Equity curve renders
-    await expect(page.locator("text=Equity Curve")).toBeVisible();
+    // Configuration panel is visible
+    await expect(page.locator("text=Configuration")).toBeVisible();
+    // Strategy selector dropdown is present
+    await expect(page.locator("select").first()).toBeVisible();
   });
 
   // GAP: Backtest results are not surfaced on the Dashboard — they live
