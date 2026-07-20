@@ -9,7 +9,6 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16.2-black?logo=next.js)](https://nextjs.org/)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange?logo=cloudflare)](https://workers.cloudflare.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-284%20passing-brightgreen?logo=vitest)](https://vitest.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE)
 
 ![Nova Invest Hero Banner](./docs/assets/hero-banner.svg)
@@ -20,7 +19,7 @@
 
 **Nova Invest** is an AI-native investment research workstation that collapses
 the traditional multi-tool research workflow (Bloomberg + Excel + TradingView +
-chatGPT + Discord) into a single, opinionated platform. Three core capabilities,
+ChatGPT + Discord) into a single, opinionated platform. Three core capabilities,
 one continuous flow:
 
 | # | Capability | Entry Point | Frequency |
@@ -28,6 +27,25 @@ one continuous flow:
 | 1 | **Ask** — Deep Research | Natural-language question | One-shot |
 | 2 | **Build Strategy** — NL → DSL → Backtest | NL description + DSL editor | Iterative |
 | 3 | **Build Dashboard** — Monitoring | Pinned strategy + signal config | Long-term |
+
+### One Example Workflow
+
+> *"Should I buy NVDA at current levels?"*
+
+1. **Ask** — Type the question. The Ask Agent pulls SEC filings, news, and
+   price data via RAG, then returns a structured answer with **every numeric
+   fact tied to a verifiable citation** (no hallucinated numbers).
+2. **Build Strategy** — Describe your thesis in plain English:
+   *"Buy NVDA when 20-day SMA crosses above 50-day SMA AND RSI(14) < 30"*.
+   The system translates it into a composable YAML DSL, then backtests against
+   10+ years of historical data with full metrics (Sharpe, Sortino, max
+   drawdown, win rate, profit factor).
+3. **Build Dashboard** — Pin the validated strategy to your dashboard. Get
+   real-time signals, execute paper trades, monitor positions — all in one
+   workspace.
+4. **Share** — Publish your strategy as a versioned "Playbook" (SemVer) to
+   the community. Install others' Playbooks, rate and comment. Think
+   *"GitHub for trading strategies"*.
 
 > 💡 **Design philosophy**: Every numeric value in an AI answer is traced back
 > to a verifiable source citation. No hallucinated numbers, ever.
@@ -135,8 +153,42 @@ pnpm deploy                          # wrangler deploy to Cloudflare
 | **Object Storage** | Cloudflare R2 | K-line cache, Playbook YAML, no egress fees |
 | **Vector DB** | Cloudflare Vectorize | RAG embeddings for SEC filings + news |
 | **Session State** | Cloudflare KV | Short-term memory + circuit breaker counters |
-| **LLM Routing** | OpenAI / Anthropic / Mock | Cost-capped routing with retry + fallback |
-| **Testing** | Vitest + Playwright | 284 unit/integration + 9 e2e specs |
+| **LLM Routing** | LM Studio (local) / Volcengine Ark (cloud) / Mock | Cost-capped routing with pro→lite auto-degrade |
+
+### Data Flow: 4-Tier Fallback
+
+When you request market data (e.g. AAPL K-line), the system tries each tier in
+order until one succeeds:
+
+```
+R2 Cache (instant, free)
+   ↓ miss
+Yahoo Finance (free, real-time)
+   ↓ rate-limited
+Alpha Vantage (freemium, key-required)
+   ↓ unreachable
+Mock Provider (local JSON, always works)
+```
+
+This guarantees the UI always renders, even when every external API is down.
+See [ADR-0002 R2 Cache Whitelist](./docs/architecture/adr-0002-r2-cache-whitelist.md)
+and [ADR-0016 Circuit Breaker](./docs/architecture/adr-0016-circuit-breaker.md).
+
+### LLM Routing: Cost Cap + Auto-Degrade
+
+Every query is classified into one of four intents, each with its own model
+tier and cost cap:
+
+| Intent | Local Model | Cloud Model | Cost Cap |
+|--------|-------------|-------------|----------|
+| `simple_qa` | qwen2.5-7b | doubao-lite-4k | $0.001 |
+| `deep_research` | qwen2.5-32b | doubao-pro-32k | $0.05 |
+| `tool_call` | qwen2.5-7b | doubao-pro-32k | $0.01 |
+| `clarify` | qwen2.5-7b | doubao-lite-4k | $0.0005 |
+
+Before each call, `estimateCost()` runs. If the estimate exceeds the cap, the
+model auto-degrades (pro → lite, 10× cheaper). See
+[ADR-0003 LLM Routing + Cost Cap](./docs/architecture/adr-0003-llm-routing-cost-cap.md).
 
 ### The 16 ADRs (Architecture Decision Records)
 
@@ -184,8 +236,6 @@ an AI-generated answer goes through a **3-stage validation pipeline**:
   *"I don't have reliable data for this question."*
 
 📖 **Full spec**: [ADR-0007](./docs/architecture/adr-0007-citation-validator.md)
-| **Implementation**: [web/src/lib/ask/citation.ts](./web/src/lib/ask/citation.ts)
-+ [web/src/lib/citation/validator.ts](./web/src/lib/citation/validator.ts)
 
 ---
 
@@ -198,11 +248,10 @@ nova-invest/
 │   ├── prd/                 # Master PRD + 8 Epic specs + appendices
 │   ├── roadmap/             # 3-phase roadmap (0-18 months)
 │   ├── spec/                # API spec, data model, DSL spec
-│   ├── tdd/                 # Test-driven development docs (5 files)
 │   └── reviews/             # Code/security review reports
 ├── web/                     # 🚀 Next.js 16 application
 │   ├── src/
-│   │   ├── app/             # Next.js App Router (9 routes)
+│   │   ├── app/             # Next.js App Router (9 routes + 6 API endpoints)
 │   │   ├── components/      # React components (Header, Sidebar, 7 widgets)
 │   │   └── lib/             # Business logic (16 modules)
 │   │       ├── agent/       # ADR-0004 Agent Loop
@@ -220,37 +269,11 @@ nova-invest/
 │   │       ├── sse/         # ADR-0015 SSE Streaming
 │   │       ├── strategy/    # ADR-0008 Strategy DSL
 │   │       └── tools/       # ADR-0006 Tool Protocol
-│   ├── tests/               # 284 unit/integration + 9 e2e specs
 │   ├── public/mock/         # Mock JSON data (10 symbols, 5 QA samples)
 │   └── migrations/          # D1 SQL migrations (001-009, 25 tables)
 ├── scripts/                 # Python mock data generator
 └── project_memory.md        # 🧠 Session memory (auto-updated by agents)
 ```
-
----
-
-## 🧪 Testing
-
-Nova Invest is built **test-first**. Every ADR has a corresponding TDD spec in
-[docs/tdd/](./docs/tdd/), and every code module has co-located unit tests.
-
-| Test Layer | Count | Runner | What it covers |
-|------------|-------|--------|----------------|
-| **Unit** | 263 | Vitest | All 16 lib modules + ADR compliance |
-| **Integration** | 12 | Vitest | Agent Loop + RAG Pipeline end-to-end |
-| **E2E** | 9 | Playwright | Cross-epic user journeys |
-| **Total** | **284 + 9** | — | — |
-
-```bash
-pnpm test              # run unit + integration
-pnpm test:watch        # watch mode
-pnpm test:coverage     # with V8 coverage
-pnpm test:e2e          # run Playwright e2e (requires `pnpm dev` running)
-pnpm test:all          # everything
-```
-
-📖 **TDD documentation**: [docs/tdd/](./docs/tdd/) (5 files: strategy, unit,
-integration, e2e, fixtures, coverage matrix)
 
 ---
 
@@ -294,7 +317,6 @@ Nova Invest takes security seriously. Key measures:
 | 📋 **Master PRD** | [docs/prd/Master_PRD.md](./docs/prd/Master_PRD.md) | Product requirements (8 Epics) |
 | 🏗️ **Architecture** | [docs/architecture/](./docs/architecture/) | 16 ADRs + architecture reviews |
 | 🗺️ **Roadmap** | [docs/roadmap/Roadmap.md](./docs/roadmap/Roadmap.md) | 3-phase 18-month plan |
-| 🧪 **TDD** | [docs/tdd/](./docs/tdd/) | Test strategy + coverage matrix |
 | 🔌 **API Spec** | [docs/spec/api_spec.md](./docs/spec/api_spec.md) | REST + SSE API contracts |
 | 📊 **Data Model** | [docs/spec/data_model.md](./docs/spec/data_model.md) | D1 schema + R2 layout |
 | ⚖️ **Strategy DSL** | [docs/spec/strategy_dsl_spec.md](./docs/spec/strategy_dsl_spec.md) | YAML DSL grammar |
@@ -309,13 +331,12 @@ Contributions are welcome! Please read:
 
 1. [Master PRD](./docs/prd/Master_PRD.md) — understand the product vision
 2. [Architecture](./docs/architecture/architecture.md) — understand the system
-3. [TDD Strategy](./docs/tdd/00-test-strategy.md) — write tests first
-4. Run `pnpm test` before submitting PR — all 284 tests must pass
+3. Run `pnpm test` before submitting PR — all tests must pass
 
 ### Code Style
 
 - **TypeScript** strict mode (0 `any`, 0 `unknown` casts in business logic)
-- **ESLint** + **Prettier** enforced (0 errors, 3 pre-existing warnings)
+- **ESLint** + **Prettier** enforced
 - **Conventional Commits** (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`)
 - **ADR-first**: any architectural change MUST come with an ADR update
 
@@ -339,5 +360,3 @@ Built with ❤️ using:
 [![Next.js](https://img.shields.io/badge/Next.js-16.2-black?logo=next.js)](https://nextjs.org/)
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-Workers-orange?logo=cloudflare)](https://workers.cloudflare.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![Vitest](https://img.shields.io/badge/Vitest-284%20passing-brightgreen?logo=vitest)](https://vitest.dev/)
-[![Playwright](https://img.shields.io/badge/Playwright-9%20e2e-green?logo=playwright)](https://playwright.dev/)
