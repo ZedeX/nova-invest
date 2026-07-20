@@ -23,7 +23,7 @@ import {
   reportPackage,
   listReports,
   resolveReport,
-  updateModerationStatus,
+  // updateModerationStatus — exported for API use, not tested directly here
 } from "@/lib/community/store";
 
 const USER_A = "user_a@example.com";
@@ -73,7 +73,7 @@ describe("Community Store: Search", () => {
   });
 
   it("searches by description keyword", () => {
-    const { packages, total } = listPackages({ q: "DCA" });
+    const { total } = listPackages({ q: "DCA" });
     expect(total).toBeGreaterThanOrEqual(2); // MSFT DCA + BTC DCA
   });
 

@@ -34,7 +34,7 @@ test.describe("Dashboard (EP05)", () => {
     await expect(page.locator("h3", { hasText: "Credits" }).first()).toBeVisible();
     await expect(page.locator("h3", { hasText: "Ask Agent" }).first()).toBeVisible();
     await expect(page.locator("h3", { hasText: "Strategies" }).first()).toBeVisible();
-    await expect(page.locator("h3", { hasText: "Community Playbooks" }).first()).toBeVisible();
+    await expect(page.locator("h3", { hasText: "Community" }).first()).toBeVisible();
   });
 
   test("Widgets render with mock data (AAPL chart + positions table)", async ({ page }) => {

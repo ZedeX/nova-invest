@@ -107,8 +107,8 @@ test.describe("Community (EP07)", () => {
     await expect(firstCard).toBeVisible({ timeout: 10000 });
     await firstCard.click();
 
-    // Comment section
-    await expect(page.locator("text=Comments")).toBeVisible();
+    // Comment section (use heading to avoid matching "Comments" in stats card or empty state)
+    await expect(page.locator("h3", { hasText: "Comments" })).toBeVisible();
     await expect(page.locator("textarea")).toBeVisible();
   });
 

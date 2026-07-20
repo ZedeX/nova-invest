@@ -79,6 +79,7 @@ export function CommunityFeed({
 
   return (
     <div className="space-y-4">
+      <h3 className="text-sm font-semibold">Community</h3>
       {/* Sort tabs (only when not in dashboard widget mode) */}
       {!maxItems && (
         <div className="flex items-center gap-2">
