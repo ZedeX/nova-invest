@@ -1,0 +1,325 @@
+# Nova Invest
+
+> **Turn natural language into verifiable trading strategies.**
+>
+> An AI-native investment research workstation that takes you from
+> *information* → *judgment* → *strategy* → *monitoring* in one workflow.
+
+[![CI](https://github.com/ZedeX/nova-invest/actions/workflows/tests.yml/badge.svg)](https://github.com/ZedeX/nova-invest/actions/workflows/tests.yml)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2-black?logo=next.js)](https://nextjs.org/)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange?logo=cloudflare)](https://workers.cloudflare.com/)
+[![Vitest](https://img.shields.io/badge/Vitest-284%20passing-brightgreen?logo=vitest)](https://vitest.dev/)
+[![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE)
+
+![Nova Invest Hero Banner](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20sleek%20modern%20fintech%20dashboard%20interface%20with%20AI%20chat%20panel%20on%20left%2C%20candlestick%20stock%20charts%20in%20center%2C%20and%20strategy%20backtest%20equity%20curve%20on%20right%2C%20dark%20theme%20with%20cyan%20and%20purple%20accents%2C%20professional%20trading%20workstation%2C%20glassmorphism%20UI%2C%204k%20render&image_size=landscape_16_9)
+
+---
+
+## ✨ What is Nova Invest?
+
+**Nova Invest** is an AI-native investment research workstation that collapses
+the traditional multi-tool research workflow (Bloomberg + Excel + TradingView +
+chatGPT + Discord) into a single, opinionated platform. Three core capabilities,
+one continuous flow:
+
+| # | Capability | Entry Point | Frequency |
+|---|------------|-------------|-----------|
+| 1 | **Ask** — Deep Research | Natural-language question | One-shot |
+| 2 | **Build Strategy** — NL → DSL → Backtest | NL description + DSL editor | Iterative |
+| 3 | **Build Dashboard** — Monitoring | Pinned strategy + signal config | Long-term |
+
+> 💡 **Design philosophy**: Every numeric value in an AI answer is traced back
+> to a verifiable source citation. No hallucinated numbers, ever.
+> ([ADR-0007 Anti-Hallucination Enforcer](./docs/architecture/adr-0007-citation-validator.md))
+
+---
+
+## 🎯 Why Nova Invest?
+
+### The Problem
+
+Retail and prosumer investors today juggle 5+ tools to answer a single question
+like *"Should I buy NVDA at current levels?"*:
+
+- ❌ ChatGPT hallucinates financial numbers with confident tone
+- ❌ Yahoo Finance gives data but no analysis
+- ❌ TradingView shows charts but no natural-language Q&A
+- ❌ Excel backtests are disconnected from real-time data
+- ❌ Discord/Reddit signal groups have no audit trail
+
+### The Nova Invest Way
+
+✅ **Ask Agent** — natural-language deep research with **3-stage citation
+validation** (structural + quote-substring + URL-reachability). Every number
+links to a verifiable SEC EDGAR / Yahoo Finance / Bloomberg source.
+
+✅ **Strategy DSL** — describe your thesis in plain English, the system
+translates it into a composable YAML DSL (`sma(20) > sma(50) AND rsi(14) < 30`),
+then backtests against 10+ years of historical data.
+
+✅ **Live Dashboard** — pin your validated strategy, get real-time signals,
+execute paper trades, monitor positions — all in one workspace.
+
+✅ **Community Playbooks** — share your strategy as a versioned "Playbook"
+(SemVer), install others' Playbooks, rate and comment. Think *"GitHub for
+trading strategies"*.
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Node.js** ≥ 20.0.0
+- **pnpm** ≥ 9.0.0
+- **Python** ≥ 3.10 (only for mock data regeneration)
+
+### Install & Run (Mock Mode — Zero API Keys Needed)
+
+```bash
+git clone https://github.com/ZedeX/nova-invest.git
+cd nova-invest/web
+pnpm install
+pnpm mock:generate    # generate 10 symbols × 1d klines + 5 QA samples
+pnpm dev              # http://localhost:3000
+```
+
+That's it. The `USE_MOCK=true` mode (default) requires **no external API keys,
+no Cloudflare bindings, no database** — perfect for local development and demos.
+
+### Production Deploy (Cloudflare Workers + D1 + R2 + Vectorize)
+
+```bash
+cd web
+cp .env.example .env.production      # fill in your API keys
+pnpm cf:create                       # create D1 + R2 + KV + Vectorize resources
+pnpm db:migrate:prod                 # apply 9 migrations (25 tables)
+pnpm db:seed                         # seed 10 mockup symbols + test user
+pnpm deploy                          # wrangler deploy to Cloudflare
+```
+
+📖 **Full deployment guide**: [docs/prd/appendix/deployment_cloudflare.md](./docs/prd/appendix/deployment_cloudflare.md)
+
+---
+
+## 🏗️ Architecture at a Glance
+
+![Architecture Diagram](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20clean%20architecture%20diagram%20showing%20Next%20js%2016%20frontend%20connected%20to%20Cloudflare%20Workers%204%20backend%20with%20D1%20SQLite%20database%2C%20R2%20object%20storage%20for%20kline%20cache%2C%20KV%20namespace%20for%20session%20state%2C%20and%20Vectorize%20for%20RAG%20embeddings%2C%20with%20LLM%20router%20in%20the%20middle%2C%20minimal%20flat%20design%20with%20labeled%20boxes%20and%20arrows&image_size=landscape_4_3)
+
+### Tech Stack
+
+| Layer | Technology | Why |
+|-------|------------|-----|
+| **Frontend** | Next.js 16.2 + React 19.2 + Tailwind 4 | App Router + RSC for streaming SSR |
+| **Edge Runtime** | Cloudflare Workers 4 | Sub-50ms global edge, pay-per-request |
+| **Database** | Cloudflare D1 (SQLite) | 25 tables, 5GB free tier, SQL FK enforcement |
+| **Object Storage** | Cloudflare R2 | K-line cache, Playbook YAML, no egress fees |
+| **Vector DB** | Cloudflare Vectorize | RAG embeddings for SEC filings + news |
+| **Session State** | Cloudflare KV | Short-term memory + circuit breaker counters |
+| **LLM Routing** | OpenAI / Anthropic / Mock | Cost-capped routing with retry + fallback |
+| **Testing** | Vitest + Playwright | 284 unit/integration + 9 e2e specs |
+
+### The 16 ADRs (Architecture Decision Records)
+
+Every major technical decision is documented as an ADR. The full registry
+lives at [docs/architecture/](./docs/architecture/).
+
+| # | ADR | Domain | Status |
+|---|-----|--------|--------|
+| 0001 | [USE_MOCK Dual-Mode Switch](./docs/architecture/adr-0001-use-mock-dual-mode-switch.md) | Cross-cutting | Accepted |
+| 0002 | [R2 Cache Whitelist](./docs/architecture/adr-0002-r2-cache-whitelist.md) | Data Layer | Accepted |
+| 0003 | [LLM Routing + Cost Cap](./docs/architecture/adr-0003-llm-routing-cost-cap.md) | Ask Agent | Accepted |
+| 0004 | [Agent Loop Design](./docs/architecture/adr-0004-agent-loop-design.md) | Ask Agent | Accepted |
+| 0005 | [Memory Layer (KV + D1)](./docs/architecture/adr-0005-memory-layer.md) | Ask Agent | Accepted |
+| 0006 | [Tool Protocol](./docs/architecture/adr-0006-tool-protocol.md) | Ask Agent | Accepted |
+| 0007 | [Citation Validator (Anti-Hallucination)](./docs/architecture/adr-0007-citation-validator.md) | Ask Agent | Accepted |
+| 0008 | [Strategy DSL Schema](./docs/architecture/adr-0008-strategy-dsl-schema.md) | Strategy | Accepted |
+| 0009 | [Backtest Engine](./docs/architecture/adr-0009-backtest-engine.md) | Strategy | Accepted |
+| 0010 | [Dashboard Layout](./docs/architecture/adr-0010-dashboard-layout.md) | Dashboard | Accepted |
+| 0011 | [D1 Schema Master (25 tables)](./docs/architecture/adr-0011-d1-schema-master.md) | Data Layer | Accepted |
+| 0012 | [Community UGC](./docs/architecture/adr-0012-community-ugc.md) | Community | Accepted |
+| 0013 | [Playbook System](./docs/architecture/adr-0013-playbook-system.md) | Playbook | Accepted |
+| 0014 | [Ask RAG Pipeline](./docs/architecture/adr-0014-ask-rag-pipeline.md) | Ask Agent | Accepted |
+| 0015 | [SSE Streaming](./docs/architecture/adr-0015-sse-streaming.md) | Cross-cutting | Accepted |
+| 0016 | [Circuit Breaker](./docs/architecture/adr-0016-circuit-breaker.md) | Data Layer | Accepted |
+
+---
+
+## 🧠 Anti-Hallucination: The Citation Validator
+
+The single most differentiated feature of Nova Invest. Every numeric value in
+an AI-generated answer goes through a **3-stage validation pipeline**:
+
+![Citation Validator Pipeline](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20flowchart%20showing%203%20stages%20of%20citation%20validation%3A%20Stage%201%20Structural%20Validation%20checking%20URL%20and%20source%20allowlist%2C%20Stage%202%20Quote%20Substring%20Verification%20matching%20exact%20text%20against%20RAG%20context%2C%20Stage%203%20URL%20Reachability%20async%20HTTP%20check%2C%20with%20green%20checkmarks%20and%20red%20X%20marks%2C%20clean%20technical%20diagram%20style&image_size=landscape_4_3)
+
+| Stage | Check | Failure Behavior |
+|-------|-------|------------------|
+| **1. Structural** | URL parses, HTTPS, hostname in allowlist, source label valid, confidence ∈ [0,1], value finite, unit non-empty | Strip fact, record `structural` failure |
+| **2. Quote Substring** | `fact.source.quote` appears as exact substring (case-sensitive, whitespace-normalized) in RAG context | Strip fact, record `quote_substring` failure |
+| **3. URL Reachability** | (Async, Cloud-only) HTTP GET with `redirect:"manual"` SSRF defence | Log to `url_check_queue` table; response NOT blocked |
+
+**Failure modes**:
+- ✅ **all_verified** — all facts pass Stages 1+2, response unchanged
+- ⚠️ **partial_strip** — some facts fail, kept verified ones + append disclaimer
+- 🚫 **strict_reject** — all facts fail, replace summary with
+  *"I don't have reliable data for this question."*
+
+📖 **Full spec**: [ADR-0007](./docs/architecture/adr-0007-citation-validator.md)
+| **Implementation**: [web/src/lib/ask/citation.ts](./web/src/lib/ask/citation.ts)
++ [web/src/lib/citation/validator.ts](./web/src/lib/citation/validator.ts)
+
+---
+
+## 📊 Project Structure
+
+```
+nova-invest/
+├── docs/                    # 📚 All project documentation
+│   ├── architecture/        # 16 ADRs + architecture review history
+│   ├── prd/                 # Master PRD + 8 Epic specs + appendices
+│   ├── roadmap/             # 3-phase roadmap (0-18 months)
+│   ├── spec/                # API spec, data model, DSL spec
+│   ├── tdd/                 # Test-driven development docs (5 files)
+│   └── reviews/             # Code/security review reports
+├── web/                     # 🚀 Next.js 16 application
+│   ├── src/
+│   │   ├── app/             # Next.js App Router (9 routes)
+│   │   ├── components/      # React components (Header, Sidebar, 7 widgets)
+│   │   └── lib/             # Business logic (16 modules)
+│   │       ├── agent/       # ADR-0004 Agent Loop
+│   │       ├── ask/         # ADR-0007 Stage 2 Citation Validator
+│   │       ├── backtest/    # ADR-0009 Backtest Engine
+│   │       ├── citation/    # ADR-0007 Stage 1 + Stage 3
+│   │       ├── community/   # ADR-0012 Community UGC
+│   │       ├── dashboard/   # ADR-0010 Dashboard Layout
+│   │       ├── data/        # ADR-0002 + ADR-0016 Data Layer + Circuit Breaker
+│   │       ├── db/          # ADR-0011 D1 Schema Master (25 tables)
+│   │       ├── llm/         # ADR-0003 LLM Router
+│   │       ├── memory/      # ADR-0005 Memory Layer (KV + D1)
+│   │       ├── playbook/    # ADR-0013 Playbook System
+│   │       ├── rag/         # ADR-0014 RAG Pipeline
+│   │       ├── sse/         # ADR-0015 SSE Streaming
+│   │       ├── strategy/    # ADR-0008 Strategy DSL
+│   │       └── tools/       # ADR-0006 Tool Protocol
+│   ├── tests/               # 284 unit/integration + 9 e2e specs
+│   ├── public/mock/         # Mock JSON data (10 symbols, 5 QA samples)
+│   └── migrations/          # D1 SQL migrations (001-009, 25 tables)
+├── scripts/                 # Python mock data generator
+└── project_memory.md        # 🧠 Session memory (auto-updated by agents)
+```
+
+---
+
+## 🧪 Testing
+
+Nova Invest is built **test-first**. Every ADR has a corresponding TDD spec in
+[docs/tdd/](./docs/tdd/), and every code module has co-located unit tests.
+
+| Test Layer | Count | Runner | What it covers |
+|------------|-------|--------|----------------|
+| **Unit** | 263 | Vitest | All 16 lib modules + ADR compliance |
+| **Integration** | 12 | Vitest | Agent Loop + RAG Pipeline end-to-end |
+| **E2E** | 9 | Playwright | Cross-epic user journeys |
+| **Total** | **284 + 9** | — | — |
+
+```bash
+pnpm test              # run unit + integration
+pnpm test:watch        # watch mode
+pnpm test:coverage     # with V8 coverage
+pnpm test:e2e          # run Playwright e2e (requires `pnpm dev` running)
+pnpm test:all          # everything
+```
+
+📖 **TDD documentation**: [docs/tdd/](./docs/tdd/) (5 files: strategy, unit,
+integration, e2e, fixtures, coverage matrix)
+
+---
+
+## 📈 Roadmap
+
+| Phase | Window | Theme | Exit Criteria |
+|-------|--------|-------|---------------|
+| **Phase 1: PMF Validation** | 0-6 mo | Validate product hypothesis, run minimal loop | 100 DAU + WAU-CW > 30 |
+| **Phase 2: PMF Scaling** | 7-12 mo | Grow user base, validate business model | 5000 registered + 5% paid |
+| **Phase 3: Platform** | 13-18 mo | Open ecosystem, multi-market expansion | 50K users + 5000+ UGC Playbooks |
+
+📖 **Full roadmap**: [docs/roadmap/Roadmap.md](./docs/roadmap/Roadmap.md)
+
+---
+
+## 🔒 Security
+
+Nova Invest takes security seriously. Key measures:
+
+- **SSRF Defence (CWE-918)**: All outbound HTTP calls (citation URL reachability)
+  use `redirect: "manual"` + `opaqueredirect` detection. No open-redirect
+  pivoting to internal addresses.
+- **SQL Injection Closure**: D1 table names are hardcoded `as const` literals,
+  never interpolated from caller input.
+- **Boundary Validation**: `validateMemoryRef()` runs at the top of every
+  `MemoryStore.save()` call to reject malformed refs before they reach storage.
+- **Fail-Fast Production Wiring**: `getMemoryStore()` throws when
+  `USE_MOCK='false'` but `env.DB` is missing — no silent Mock fallback in
+  production.
+- **Source Allowlist**: Citation URLs must have hostnames in
+  `{sec.gov, finance.yahoo.com, alphavantage.co, bloomberg.com, reuters.com}`.
+
+📖 **Security review**: [docs/reviews/security-review-2026-07-20.md](./docs/reviews/security-review-2026-07-20.md)
+
+---
+
+## 📚 Documentation Index
+
+| Document | Path | Description |
+|----------|------|-------------|
+| 📋 **Master PRD** | [docs/prd/Master_PRD.md](./docs/prd/Master_PRD.md) | Product requirements (8 Epics) |
+| 🏗️ **Architecture** | [docs/architecture/](./docs/architecture/) | 16 ADRs + architecture reviews |
+| 🗺️ **Roadmap** | [docs/roadmap/Roadmap.md](./docs/roadmap/Roadmap.md) | 3-phase 18-month plan |
+| 🧪 **TDD** | [docs/tdd/](./docs/tdd/) | Test strategy + coverage matrix |
+| 🔌 **API Spec** | [docs/spec/api_spec.md](./docs/spec/api_spec.md) | REST + SSE API contracts |
+| 📊 **Data Model** | [docs/spec/data_model.md](./docs/spec/data_model.md) | D1 schema + R2 layout |
+| ⚖️ **Strategy DSL** | [docs/spec/strategy_dsl_spec.md](./docs/spec/strategy_dsl_spec.md) | YAML DSL grammar |
+| 🔒 **Security Review** | [docs/reviews/security-review-2026-07-20.md](./docs/reviews/security-review-2026-07-20.md) | 2026-07-20 audit |
+| 🌐 **中文 README** | [README.zh-CN.md](./README.zh-CN.md) | 中文项目说明 |
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read:
+
+1. [Master PRD](./docs/prd/Master_PRD.md) — understand the product vision
+2. [Architecture](./docs/architecture/architecture.md) — understand the system
+3. [TDD Strategy](./docs/tdd/00-test-strategy.md) — write tests first
+4. Run `pnpm test` before submitting PR — all 284 tests must pass
+
+### Code Style
+
+- **TypeScript** strict mode (0 `any`, 0 `unknown` casts in business logic)
+- **ESLint** + **Prettier** enforced (0 errors, 3 pre-existing warnings)
+- **Conventional Commits** (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`)
+- **ADR-first**: any architectural change MUST come with an ADR update
+
+---
+
+## 📄 License
+
+[MIT](./LICENSE) © 2026 ZedeX
+
+---
+
+## 🙏 Acknowledgements
+
+Nova Invest is a portfolio project demonstrating AI-native full-stack
+engineering. It is **not** affiliated with Bloomberg, Reuters, or any
+financial data provider. All mock data is synthetically generated for
+educational purposes.
+
+Built with ❤️ using:
+
+[![Next.js](https://img.shields.io/badge/Next.js-16.2-black?logo=next.js)](https://nextjs.org/)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-Workers-orange?logo=cloudflare)](https://workers.cloudflare.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Vitest](https://img.shields.io/badge/Vitest-284%20passing-brightgreen?logo=vitest)](https://vitest.dev/)
+[![Playwright](https://img.shields.io/badge/Playwright-9%20e2e-green?logo=playwright)](https://playwright.dev/)

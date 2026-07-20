@@ -15,9 +15,9 @@ nova-invest follows the **classic test pyramid** with three layers, each backed 
 
 | Layer        | Tool          | Directory                  | Count target | Current count | Run in CI |
 |--------------|---------------|----------------------------|--------------|---------------|-----------|
-| Unit         | Vitest        | `web/tests/unit/`          | 80+ specs    | 4 specs       | Yes       |
-| Integration  | Vitest        | `web/tests/integration/`   | 20+ specs    | 1 spec (TODO) | Yes       |
-| E2E          | Playwright    | `web/tests/e2e/`           | 30+ specs    | 3 smoke specs | Yes       |
+| Unit         | Vitest        | `web/tests/unit/`          | 80+ specs    | 19 specs (263 tests) | Yes       |
+| Integration  | Vitest        | `web/tests/integration/`   | 20+ specs    | 2 specs (12 tests)   | Yes       |
+| E2E          | Playwright    | `web/tests/e2e/`           | 30+ specs    | 9 specs (smoke + cross-epic) | Yes       |
 
 **The TDD iron law on this project**: no production code under `web/src/lib/` ships without a failing test that justifies it. UI widgets may be validated through Playwright E2E if unit-testing them would require mocking React internals.
 
@@ -153,3 +153,4 @@ These rules are non-negotiable. PRs that break them must be blocked in review.
 | Date       | Change                                                                  | Author      |
 |------------|-------------------------------------------------------------------------|-------------|
 | 2026-07-20 | Initial TDD master plan created from ADR-0001..0016 and tr-registry v7. | Engineering |
+| 2026-07-20 | Updated: 19 unit specs (263 tests), 2 integration specs (12 tests), 9 e2e specs. ADR-0007 Stage 2 citation validator implemented. | Engineering |

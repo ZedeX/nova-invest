@@ -2,7 +2,14 @@
 
 > AI-powered investment platform for Prosumers. Phase 1 MVP running entirely on Cloudflare's free tier.
 >
-> 中文版请见 [README.zh-CN.md](./README.zh-CN.md)
+> 📖 **For the full project README with architecture diagrams, feature overview,
+> and quick start guide, see the [root README.md](../README.md).**
+>
+> 🌐 中文版请见 [README.zh-CN.md](../README.zh-CN.md)
+>
+> This `web/README.md` focuses on **developer setup, deployment, and
+> web/-specific commands**. For product vision, ADR index, and
+> anti-hallucination documentation, see the root README.
 
 ---
 
