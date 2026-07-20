@@ -796,3 +796,171 @@ Result: 0 errors, 0 warnings (was 0 errors, 7 warnings).
 - UI：Playbook详情页 + YAML编辑器 + 叙事渲染
 
 ---
+
+## 2026-07-20 19:17 (Asia/Shanghai) - Roadmap Sprint 8: Share & Community Complete
+
+### Task
+Execute Roadmap §2.9 Sprint 8: Share & Community (Epic 07, ADR-0012).
+User instruction: "继续sprint 8".
+
+### Files Created / Modified
+
+**Core Library (web/src/lib/community/)**
+1. `types.ts` - Community UGC types:
+   - SharePackage (manifest + strategy + narrative + stats)
+   - CommunityPlaybookExtended (extends CommunityPlaybook with author/tags/stats)
+   - FeedSort (trending/rating/recent/installed)
+   - ReportSeverity (low/medium/high/critical)
+
+2. `store.ts` - In-memory community store:
+   - `publishPackage()` - validates + creates community playbook from share package
+   - `feedPackages()` - sorted feed (trending by installs*0.6+rating*2, rating by avg_rating, recent by created_at, installed by install_count)
+   - `searchPackages()` - q/tags/author filter
+   - `installPackage()` - idempotent install
+   - `ratePackage()` - 1-5 rating with user dedup (update existing)
+   - `addComment()` - 2-level depth nesting
+   - `reportPackage()` - severity-based auto-flag (critical=auto_removed)
+   - `getStats()` - community-wide stats
+   - Anti-cheat: rate limit (max 5 posts/day) + content_hash dedup
+   - 10 mock playbooks via `seedMockPackages()`
+   - `_resetStoreForTest()` for test isolation
+
+**API Routes (web/src/app/api/community/)**
+3. `playbook/route.ts` - GET feed (sort/q/tags/author params) + POST publish
+4. `playbook/[packageId]/route.ts` - GET single + DELETE (author/admin only)
+5. `playbook/[packageId]/install/route.ts` - POST install
+6. `playbook/[packageId]/rate/route.ts` - POST rate (1-5, user dedup)
+7. `playbook/[packageId]/comment/route.ts` - POST comment (2-level depth)
+8. `playbook/[packageId]/report/route.ts` - POST report (severity auto-flag)
+
+**D1 Migration**
+9. `web/migrations/0007_community.sql` - 5 tables (community_playbooks, user_playbook_installs, playbook_ratings, playbook_comments, playbook_reports)
+   - community_playbooks: content_hash per ADR-0011 (anti-cheat dedup)
+
+**Tests**
+10. `tests/unit/community.test.ts` - 40+ unit tests
+11. `tests/integration/community-routes.test.ts` - 18 integration tests
+12. `tests/e2e/community.spec.ts` - 9 E2E tests
+
+### Verification
+- tsc 0 errors, eslint 0 warnings, vitest 485/485 passed
+- Commit: `88c666b` pushed to origin/main
+
+---
+
+## 2026-07-21 03:40 (Asia/Shanghai) - Roadmap Sprint 9: Credit Billing System Complete
+
+### Task
+Execute Roadmap §2.10 Sprint 9: Billing + Deployment (Epic 09, ADR-0017).
+User instruction: "继续sprint 9".
+
+### Files Created
+
+**Core Library (web/src/lib/credit/)**
+1. `types.ts` - Credit billing type definitions:
+   - `CreditPlan` (free/pro/team/enterprise)
+   - `CreditAction` (14 actions: ask_simple/ask_deep/ask_tool_call/strategy_validate/strategy_llm_generate/backtest_1y/backtest_5y/backtest_extra_symbol/backtest_walk_forward/paper_trade/playbook_publish/playbook_install/rag_advanced/realtime_quote_24h)
+   - `ACTION_COSTS` record (14 action → credit cost mappings)
+   - `PLAN_CONFIGS` (4 tiers: Free=50, Pro=1000, Team=5000, Enterprise=custom)
+   - `CreditBalance`, `CreditTransaction`, `ChargeResult`, `DegradationLevel`
+   - `CreditOrder` with `order_status` (NOT `status` per ADR-0011 Rule #6)
+
+2. `store.ts` - In-memory credit store:
+   - `getOrCreateBalance()` - auto-create with plan defaults
+   - `chargeCredit()` - mock mode 0 charge, free actions 0, degradation chain (normal/degraded/mock_only)
+   - `refundCredit()` - lookup original tx, credit back
+   - `topUpCredits()` - auto-approve Phase 1 (no Stripe)
+   - `listTransactions()` - time-filtered, sorted newest first
+   - `checkDegradationLevel()` - normal/degraded/mock_only
+   - `changePlan()` - switch plan, recalculate remaining
+   - `seedDemoBalance()` - demo_user (Pro, 1000 granted, 153 used, 847 remaining, burn rate 5.1/day)
+   - `_resetStoreForTest()` - test isolation
+
+**API Routes (web/src/app/api/credits/)**
+3. `balance/route.ts` - GET current balance
+4. `charge/route.ts` - POST charge action (validates against ACTION_COSTS, 402 on exhausted)
+5. `transactions/route.ts` - GET transaction history (from/to/limit/offset)
+
+**D1 Migration**
+6. `web/migrations/0010_credit.sql` - 3 tables:
+   - `credit_balances` (user_id + period PK, plan, granted, used, topped_up, carried_over)
+   - `credit_transactions` (id, user_id, action, amount, balance_after, metadata, created_at)
+   - `credit_orders` (id PK, user_id, amount_usd, credits, order_status, stripe_id, created_at)
+   - Indexes: `idx_credit_tx_user_time`, `idx_credit_orders_user`
+
+**ADR**
+7. `docs/architecture/adr-0017-credit-billing-system.md` - Full architecture decision record
+
+### Files Modified
+
+8. `web/src/app/api/ask/route.ts` - Credit charging integration:
+   - `intentToCreditAction()` mapping: simple_qa/clarify→ask_simple, deep_research→ask_deep, tool_call→ask_tool_call
+   - `chargeCredit()` called after intent classification
+   - Returns 402 with degradation info when credits exhausted
+   - Response includes `credits` object (charged, remaining, degraded, degradation_level)
+
+9. `web/src/components/widgets/CreditBalance.tsx` - Rewritten from static to API-calling:
+   - Uses `useEffect` + `AbortController` to fetch `/api/credits/balance`
+   - Shows plan badge, remaining/granted, usage bar, burn rate, top-up button
+
+10. `web/src/app/settings/page.tsx` - Live credit data:
+    - Fetches balance + recent transactions from API
+    - "Account & Credits" section with plan, balance, used, topped up, burn rate
+    - "Recent Transactions" sub-section (last 5)
+
+11. `web/src/lib/db/schema.ts` - Added 3 new TABLE_NAMES + SCHEMA entries (28 tables total)
+
+12. `web/tests/unit/d1-schema.test.ts` - Updated table count 25→28, added 3 credit table assertions
+
+### Tests
+
+13. `tests/unit/credit.test.ts` - 32 unit tests:
+    - Seed data (3), action costs (3), plan configs (2), charge (4), degradation chain (4),
+    - refund (3), top-up (3), plan change (3), transactions (3), burn rate (4)
+
+14. `tests/integration/credit-routes.test.ts` - 10 integration tests:
+    - GET balance, POST charge (mock/free/missing/invalid/invalid JSON), GET transactions, exhaustion
+
+15. `tests/e2e/credits.spec.ts` - 4 E2E tests:
+    - Settings page balance, transactions, dashboard widget, ask agent
+
+### Errors Encountered and Corrections
+1. **Transaction sort order indeterminism** - Two chargeCredit() calls within same ms produce
+   identical timestamps. Fix: test checks both actions present, not specific order.
+2. **d1-schema test: table count 25→28** - 3 new credit tables. Fix: updated count + assertions.
+3. **d1-schema test: bare 'status' column** - credit_orders had `status` column.
+   Fix: renamed to `order_status` in migration, schema.ts, types.ts, store.ts.
+4. **ESLint: unused `diff` variable in `changePlan()`** - `const diff = balance.granted - oldGranted`
+   computed but never used (remaining recalculated from formula). Fix: removed `diff` + `oldGranted`.
+5. **ESLint: unused `getBalance` import in balance route** - Only `getOrCreateBalance` used.
+   Fix: removed unused import.
+
+### Verification (all CI gates passed)
+- `tsc --noEmit` - 0 errors
+- `eslint src/ --max-warnings=0` - 0 warnings
+- `vitest run` - 527/527 passed (32 test files)
+- Commit: `0e12cc5` pushed to origin/main
+
+### Roadmap Sprint 9 Exit Criteria Status
+- ✅ 4-tier plan system (Free/Pro/Team/Enterprise) with monthly credits
+- ✅ Per-action billing (14 actions with defined costs)
+- ✅ Degradation chain (normal → degraded ~40% cost → mock_only blocked)
+- ✅ Free actions (strategy_validate=0, playbook_publish=0)
+- ✅ Mock mode exemption (all charges 0)
+- ✅ Credit balance widget (live API fetch)
+- ✅ Settings page with live balance + transactions
+- ✅ /api/ask credit integration with 402 on exhaustion
+- ✅ D1 Migration 0010 (3 tables, ADR-0011 Rule #6 compliant)
+- ✅ ADR-0017 Credit Billing System
+- ⚠️ D1 persistence - Phase 2 (in-memory for Phase 1)
+- ⚠️ Stripe integration - Phase 2 (auto-approve for Phase 1)
+- ⚠️ Degradation → model switching - Phase 1.5 (degradation_level returned but not connected to getLLM())
+
+### Open Items / Future Work
+- D1-backed credit store (replace in-memory Map)
+- Stripe checkout integration (replace auto-approve top-up)
+- Connect degradation_level to getLLM() model selection
+- Team/Enterprise features (credit pooling, admin dashboards)
+- Credit carry-over logic (Team+ only)
+
+---
