@@ -281,3 +281,38 @@ Created self-contained SVG files that render correctly in GitHub:
 - No external dependencies or API calls
 
 ---
+
+## 2026-07-20 13:20 (Asia/Shanghai) — Final E2E Test Fix
+
+### Problem
+CI still failing: ask-agent.spec.ts strict mode violation
+
+### Root Cause
+`text=Citations` matched 2 elements:
+- "Multi-step reasoning with citations" (description text)
+- "Citations" (section header)
+
+### Fix
+- `web/tests/e2e/ask-agent.spec.ts:72` - Added `.first()` to Citations selector
+
+### Commit
+- `d8d4468` - fix(e2e): add .first() to Citations selector in ask-agent.spec
+- Pushed to origin/main successfully
+
+### Expected Result
+All E2E tests should now pass (34 tests: 33 passed + 1 previously failing)
+
+### About the 8 Open Issues
+The 8 open GitHub issues (#1-#8) are Epic tracking issues:
+- Epic 01: Agent Harness
+- Epic 02: Data Layer
+- Epic 03: Ask Agent
+- Epic 04: Strategy DSL
+- Epic 05: Dashboard
+- Epic 06: Broker Integration
+- Epic 07: Share & Community
+- Epic 08: Playbook System
+
+These should remain open until their respective features are complete.
+
+---
