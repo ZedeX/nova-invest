@@ -15,12 +15,15 @@
  * See: docs/prd/epic/08_Playbook_System.md
  */
 
+import type { BacktestConfig } from "@/lib/backtest/types";
 import type {
   Composition,
   ExecutionContext,
   ExecutionResult,
   PlaybookYAML,
 } from "./types";
+import { parseAndCompile } from "@/lib/dsl/parser";
+import { BacktestEngine } from "@/lib/backtest/engine";
 
 /** Loader function: fetch a child PlaybookYAML by ID. */
 export type PlaybookLoader = (id: string) => Promise<PlaybookYAML | null>;
@@ -84,16 +87,55 @@ export class PlaybookExecutor {
     if (!playbook.strategy) {
       return { playbook_id: playbook.metadata.id, status: "failed", error: "no strategy field" };
     }
-    // Phase 1: log the execution. Real execution delegates to BacktestEngine/Broker.
-    const dslRef = playbook.strategy.dsl_ref ?? "inline";
-    console.log(
-      `[PlaybookExecutor] strategy ${playbook.metadata.id} executed (dsl=${dslRef}, capital=$${context.capital})`,
-    );
-    return {
-      playbook_id: playbook.metadata.id,
-      status: "success",
-      result: { dsl_ref: dslRef, capital: context.capital },
-    };
+
+    const dsl = playbook.strategy.dsl;
+    if (!dsl) {
+      return { playbook_id: playbook.metadata.id, status: "failed", error: "no DSL expression" };
+    }
+
+    try {
+      // Parse and compile DSL expression to Strategy
+      const { strategy } = parseAndCompile(dsl);
+
+      // Create backtest config from strategy + context
+      const config: BacktestConfig = {
+        strategy,
+        start_date: playbook.strategy.start_date ?? context.start_date ?? "2024-01-01",
+        end_date: playbook.strategy.end_date ?? context.end_date ?? "2024-12-31",
+        initial_capital: context.capital,
+        fee_bps: playbook.strategy.fee_bps ?? 5,
+        slippage_bps: playbook.strategy.slippage_bps ?? 5,
+      };
+
+      const engine = new BacktestEngine(config);
+
+      // Get klines from context or mock data
+      const klines = context.klines ?? [];
+      if (klines.length === 0) {
+        return { playbook_id: playbook.metadata.id, status: "failed", error: "no kline data available" };
+      }
+
+      const result = await engine.run(klines);
+
+      return {
+        playbook_id: playbook.metadata.id,
+        status: "success",
+        result: {
+          trades: result.trades.length,
+          total_return: result.metrics.total_return,
+          sharpe: result.metrics.sharpe,
+          max_drawdown: result.metrics.max_drawdown,
+          win_rate: result.metrics.win_rate,
+          metrics: result.metrics,
+        },
+      };
+    } catch (e) {
+      return {
+        playbook_id: playbook.metadata.id,
+        status: "failed",
+        error: e instanceof Error ? e.message : String(e),
+      };
+    }
   }
 
   // ============ Composite execution ============

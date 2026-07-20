@@ -34,6 +34,7 @@ import type {
   Narrative,
   PlaybookYAML,
 } from "@/lib/playbook/types";
+import type { Kline } from "@/lib/types";
 
 // ============ Validator: SemVer ============
 
@@ -293,7 +294,24 @@ describe("Validator: Full PlaybookYAML", () => {
 
 // ============ Executor ============
 
+/** Generate simple klines for testing (20 bars, 2024-01-02 to 2024-01-29). */
+function makeKlines(count = 20, startPrice = 100): Kline[] {
+  const klines: Kline[] = [];
+  let price = startPrice;
+  for (let i = 0; i < count; i++) {
+    const date = new Date(2024, 0, 2 + i); // 2024-01-02 onward
+    const t = date.toISOString().slice(0, 10);
+    // Simulate small random-ish price movement
+    const change = (i % 5 === 0 ? -2 : 1) + (i % 3 === 0 ? 1 : 0);
+    price += change;
+    klines.push({ t, o: price - 1, h: price + 1, l: price - 2, c: price, v: 1000 + i * 10 });
+  }
+  return klines;
+}
+
 describe("PlaybookExecutor", () => {
+  const testKlines = makeKlines();
+
   const loader = vi.fn(async (id: string): Promise<PlaybookYAML | null> => {
     // Return a minimal strategy playbook for any child
     return {
@@ -309,7 +327,7 @@ describe("PlaybookExecutor", () => {
       },
       versioning: { semantic_version: "1.0.0", changelog: [] },
       narrative: { why: "x", how: "y", risks: ["r"] },
-      strategy: { dsl_ref: "r2://test.yaml" },
+      strategy: { dsl_ref: "r2://test.yaml", dsl: "RSI(14) < 30", start_date: "2024-01-01", end_date: "2024-12-31" },
     };
   });
 
@@ -317,13 +335,16 @@ describe("PlaybookExecutor", () => {
     userId: "test_user",
     capital: 100_000,
     timestamp: "2025-01-01T00:00:00Z",
+    klines: testKlines,
+    start_date: "2024-01-01",
+    end_date: "2024-12-31",
   };
 
   beforeEach(() => {
     loader.mockClear();
   });
 
-  it("executes strategy kind", async () => {
+  it("executes strategy kind with DSL expression", async () => {
     const executor = new PlaybookExecutor(loader);
     const pb: PlaybookYAML = {
       api_version: "playbook.nova-invest.dev/v1",
@@ -331,11 +352,12 @@ describe("PlaybookExecutor", () => {
       metadata: { id: "pb_strat", title: "S", description: "d", author: { id: "u", name: "n" }, created_at: "", updated_at: "" },
       versioning: { semantic_version: "1.0.0", changelog: [] },
       narrative: { why: "x", how: "y", risks: ["r"] },
-      strategy: { dsl_ref: "r2://test.yaml" },
+      strategy: { dsl: "RSI(14) < 30", start_date: "2024-01-01", end_date: "2024-12-31" },
     };
     const result = await executor.execute(pb, ctx);
     expect(result.status).toBe("success");
     expect(result.playbook_id).toBe("pb_strat");
+    expect(result.result).toHaveProperty("metrics");
   });
 
   it("executes parallel composition with capital split", async () => {

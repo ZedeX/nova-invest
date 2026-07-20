@@ -10,6 +10,7 @@
  *      docs/architecture/adr-0013-playbook-system.md
  */
 
+import type { Kline } from "@/lib/types";
 import type { Strategy } from "@/lib/strategy/types";
 
 // ============ Phase 1 simplified shape (used by system.ts) ============
@@ -172,6 +173,11 @@ export interface PlaybookYAML {
   strategy?: {
     dsl_ref?: string; // "r2://strategies/str_xxx.yaml"
     dsl_inline?: Strategy;
+    dsl?: string;           // inline DSL expression (e.g. "RSI(14) < 30")
+    start_date?: string;    // backtest start date (ISO "YYYY-MM-DD")
+    end_date?: string;      // backtest end date (ISO "YYYY-MM-DD")
+    fee_bps?: number;       // commission in basis points
+    slippage_bps?: number;  // slippage in basis points
   };
 
   // composite kind: composition config
@@ -237,6 +243,11 @@ export interface ExecutionContext {
   timestamp: string;
   // Shared state between sequential steps
   state?: Record<string, unknown>;
+  // Backtest date range (used when strategy.start_date/end_date not set)
+  start_date?: string;
+  end_date?: string;
+  // Market data for backtest execution
+  klines?: Kline[];
 }
 
 export interface ExecutionResult {
