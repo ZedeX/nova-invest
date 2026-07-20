@@ -156,21 +156,114 @@ describe("ADR-0003: LLM routing and cost cap", () => {
     });
   });
 
-  // ---------- Anti-pattern regression tests (pending refactor) ----------
+  // ---------- Anti-pattern regression tests (post-refactor) ----------
   //
   // ADR-0003 §Critical Implementation Rule requires:
   //   - getLLM(intent, env) accepts env parameter (currently uses process.env)
   //   - No module-level `_llm` cache (currently cached)
   //   - getLLM(simple_qa) and getLLM(deep_research) return different instances
   //
-  // The current `router.ts` violates all three. Tests marked `it.todo` will
-  // be promoted to `it()` when the refactor lands — that promotion is itself
-  // the refactor acceptance signal.
+  // These tests are now active after the refactor that made the factory
+  // request-scoped and added the optional env parameter.
 
-  it.todo("route(intent, env) accepts env parameter (request-scoped)");
-  it.todo("getLLM(intent, env) accepts env parameter (request-scoped)");
-  it.todo("getLLM() does NOT cache at module level (returns fresh instance per call)");
-  it.todo("getLLM('simple_qa') and getLLM('deep_research') return different RealLLM instances");
-  it.todo("RealLLM.complete() calls estimateCost() before API call");
-  it.todo("RealLLM.complete() degrades model when estimateCost() > cost_cap");
+  it("route(intent, env) accepts env parameter (request-scoped)", async () => {
+    const { route } = await import("@/lib/llm/router");
+    const mockEnv = { USE_MOCK: "true", ENVIRONMENT: "development" as const };
+    const config = route("simple_qa", mockEnv);
+    expect(config.provider).toBe("mock");
+
+    const realEnv = { USE_MOCK: "false", ENVIRONMENT: "production" as const };
+    const realConfig = route("deep_research", realEnv);
+    expect(realConfig.provider).toBe("ark");
+  });
+
+  it("getLLM(intent, env) accepts env parameter (request-scoped)", async () => {
+    const { getLLM, MockLLM, RealLLM } = await import("@/lib/llm/router");
+
+    const mockEnv = { USE_MOCK: "true", ENVIRONMENT: "development" as const };
+    const mockLlm = getLLM("simple_qa", mockEnv);
+    expect(mockLlm).toBeInstanceOf(MockLLM);
+
+    const realEnv = { USE_MOCK: "false", ENVIRONMENT: "production" as const };
+    const realLlm = getLLM("deep_research", realEnv);
+    expect(realLlm).toBeInstanceOf(RealLLM);
+  });
+
+  it("getLLM() does NOT cache at module level (returns fresh instance per call)", async () => {
+    const { getLLM, MockLLM } = await import("@/lib/llm/router");
+    process.env.USE_MOCK = "true";
+
+    const llm1 = getLLM("simple_qa");
+    const llm2 = getLLM("simple_qa");
+    expect(llm1).toBeInstanceOf(MockLLM);
+    expect(llm2).toBeInstanceOf(MockLLM);
+    // Fresh instance each call — NOT cached.
+    expect(llm1).not.toBe(llm2);
+  });
+
+  it("getLLM('simple_qa') and getLLM('deep_research') return different RealLLM instances", async () => {
+    process.env.USE_MOCK = "false";
+    process.env.ENVIRONMENT = "production";
+    vi.unstubAllGlobals();
+    const { getLLM, RealLLM } = await import("@/lib/llm/router");
+    type RealLLMInstance = InstanceType<typeof RealLLM>;
+
+    const llm1 = getLLM("simple_qa") as RealLLMInstance;
+    const llm2 = getLLM("deep_research") as RealLLMInstance;
+    expect(llm1).toBeInstanceOf(RealLLM);
+    expect(llm2).toBeInstanceOf(RealLLM);
+    // Different instances because factory is request-scoped.
+    expect(llm1).not.toBe(llm2);
+    // Different configs (different max_tokens per intent).
+    expect(llm1.config.max_tokens).not.toBe(llm2.config.max_tokens);
+  });
+
+  it("RealLLM.estimateCost() returns positive cost estimate", async () => {
+    const { RealLLM } = await import("@/lib/llm/router");
+    const llm = new RealLLM({
+      provider: "ark",
+      model: "doubao-pro-32k",
+      max_tokens: 4000,
+      cost_cap: 0.05,
+    });
+    const cost = llm.estimateCost("Analyze NVDA earnings");
+    expect(cost).toBeGreaterThan(0);
+    // Pro model: $0.01/1k tokens. input ~5 tokens + output 4000 tokens = 4005 tokens ≈ $0.04.
+    expect(cost).toBeCloseTo(0.04005, 4);
+  });
+
+  it("RealLLM.complete() degrades model when estimateCost() > cost_cap", async () => {
+    const { RealLLM } = await import("@/lib/llm/router");
+    process.env.VOLCANO_ARK_API_KEY = "test_key";
+
+    // Tiny cost cap that forces degradation from pro → lite.
+    const llm = new RealLLM({
+      provider: "ark",
+      model: "doubao-pro-32k",
+      max_tokens: 4000,
+      cost_cap: 0.0001,  // $0.0001 — way below the ~$0.04 estimate
+    });
+
+    // Mock fetch to capture which model is actually sent.
+    let capturedModel = "";
+    globalThis.fetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(init?.body as string) as { model: string };
+      capturedModel = body.model;
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: '{"summary":"test"}' } }],
+          model: body.model,
+        }),
+      } as Response;
+    });
+
+    await llm.complete("Analyze NVDA", "deep_research");
+
+    // The model sent to the API should be the degraded lite variant.
+    expect(capturedModel).toContain("lite");
+    expect(capturedModel).not.toContain("pro");
+
+    delete process.env.VOLCANO_ARK_API_KEY;
+  });
 });

@@ -114,16 +114,49 @@ describe("ADR-0001: USE_MOCK dual-mode switch", () => {
     expect(capturedUrls).toContain("/mock/klines/AAPL_1d.json");
   });
 
-  // ---------- Anti-pattern regression tests (pending refactor) ----------
+  // ---------- Anti-pattern regression tests (post-refactor) ----------
   //
   // These tests cover the ADR-0001 "Critical Implementation Rule":
-  // the factory must accept `env` as an explicit parameter and must NOT
-  // cache the provider at module level. The current implementation violates
-  // both rules; the tests are marked `it.todo` until the refactor lands.
-  //
-  // Promoting them to `it()` is itself the refactor acceptance signal.
+  // the factory accepts `env` as an explicit parameter and does NOT
+  // cache the provider at module level. These tests are now active
+  // after the refactor that made the factory request-scoped.
 
-  it.todo("getProvider(env) accepts env parameter (request-scoped factory)");
-  it.todo("getProvider() does NOT cache at module level (returns fresh instance when env changes)");
-  it.todo("getProvider({USE_MOCK:'true'}) returns MockProvider regardless of process.env");
+  it("getProvider(env) accepts env parameter (request-scoped factory)", async () => {
+    const { getProvider, MockProvider, RealProvider } = await import("@/lib/data/provider");
+
+    const mockEnv = { USE_MOCK: "true", ENVIRONMENT: "development" as const };
+    const mockProvider = getProvider(mockEnv);
+    expect(mockProvider).toBeInstanceOf(MockProvider);
+
+    const realEnv = { USE_MOCK: "false", ENVIRONMENT: "production" as const };
+    const realProvider = getProvider(realEnv);
+    expect(realProvider).toBeInstanceOf(RealProvider);
+  });
+
+  it("getProvider() does NOT cache at module level (returns fresh instance when env changes)", async () => {
+    const { getProvider, MockProvider, RealProvider } = await import("@/lib/data/provider");
+
+    // First call: Mock mode.
+    process.env.USE_MOCK = "true";
+    const provider1 = getProvider();
+    expect(provider1).toBeInstanceOf(MockProvider);
+
+    // Second call: Real mode — must NOT return the cached MockProvider.
+    process.env.USE_MOCK = "false";
+    vi.unstubAllGlobals();
+    const provider2 = getProvider();
+    expect(provider2).toBeInstanceOf(RealProvider);
+    expect(provider1).not.toBe(provider2);
+  });
+
+  it("getProvider({USE_MOCK:'true'}) returns MockProvider regardless of process.env", async () => {
+    // process.env says Real mode, but explicit env param says Mock.
+    process.env.USE_MOCK = "false";
+    vi.unstubAllGlobals();
+    const { getProvider, MockProvider } = await import("@/lib/data/provider");
+
+    const explicitMockEnv = { USE_MOCK: "true", ENVIRONMENT: "development" as const };
+    const provider = getProvider(explicitMockEnv);
+    expect(provider).toBeInstanceOf(MockProvider);
+  });
 });

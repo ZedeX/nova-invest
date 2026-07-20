@@ -98,24 +98,161 @@ const MOCKUP_NAMES: Record<string, string> = {
   INTC: "Intel Corporation",
 };
 
-// ============ Real Provider (placeholder) ============
+// ============ Real Provider ============
 
+/**
+ * RealProvider fetches data from external APIs with a fallback chain:
+ *   1. R2 cache (if symbol is in whitelist per ADR-0002)
+ *   2. Yahoo Finance (no API key required)
+ *   3. Alpha Vantage (requires ALPHA_VANTAGE_KEY)
+ *   4. Mock fallback (only if all real sources fail)
+ *
+ * R2 cache write happens only for the 10 whitelisted symbols (ADR-0002).
+ */
 export class RealProvider implements MarketDataProvider {
   name = "real";
 
   constructor(private env: Env) {}
 
   async getKlines(symbol: string, timeframe: Timeframe, from: Date, to: Date): Promise<Kline[]> {
-    // Phase 1: Try Yahoo Finance (no key required)
-    // Phase 1.5: Add Alpha Vantage + Polygon fallback
-    try {
-      return await this.fetchYahoo(symbol, timeframe, from, to);
-    } catch (e) {
-      console.warn("Yahoo failed, trying Mock fallback:", e);
-      // Ultimate fallback to Mock if all real sources fail
-      const mock = new MockProvider();
-      return mock.getKlines(symbol, timeframe, from, to);
+    // Step 1: Check R2 cache for whitelisted symbols
+    if (shouldCacheR2(symbol) && this.env.R2) {
+      const cached = await this.tryR2Cache(symbol, timeframe);
+      if (cached && cached.length > 0) {
+        console.log(`[RealProvider] R2 cache hit: ${symbol} ${timeframe}`);
+        return this.filterByDateRange(cached, from, to);
+      }
     }
+
+    // Step 2: Try Yahoo Finance
+    try {
+      const klines = await this.fetchYahoo(symbol, timeframe, from, to);
+      if (klines.length > 0) {
+        // Write to R2 cache if whitelisted
+        if (shouldCacheR2(symbol) && this.env.R2) {
+          await this.writeR2Cache(symbol, timeframe, klines);
+        }
+        return klines;
+      }
+    } catch (e) {
+      console.warn(`[RealProvider] Yahoo failed for ${symbol}:`, e);
+    }
+
+    // Step 3: Try Alpha Vantage (if API key configured)
+    if (this.env.ALPHA_VANTAGE_KEY) {
+      try {
+        const klines = await this.fetchAlphaVantage(symbol, timeframe, from, to);
+        if (klines.length > 0) {
+          if (shouldCacheR2(symbol) && this.env.R2) {
+            await this.writeR2Cache(symbol, timeframe, klines);
+          }
+          return klines;
+        }
+      } catch (e) {
+        console.warn(`[RealProvider] Alpha Vantage failed for ${symbol}:`, e);
+      }
+    }
+
+    // Step 4: Ultimate fallback to Mock
+    console.warn(`[RealProvider] All real sources failed for ${symbol}, falling back to Mock`);
+    const mock = new MockProvider();
+    return mock.getKlines(symbol, timeframe, from, to);
+  }
+
+  /**
+   * Try to read cached K-lines from R2.
+   * Returns null on cache miss or error.
+   */
+  private async tryR2Cache(symbol: string, timeframe: Timeframe): Promise<Kline[] | null> {
+    if (!this.env.R2) return null;
+    const key = `klines/${symbol.toUpperCase()}_${timeframe}.json`;
+    try {
+      const obj = await this.env.R2.get(key);
+      if (!obj) return null;
+      const text = await obj.text();
+      const json = JSON.parse(text) as KlineResponse;
+      return json.data || [];
+    } catch (e) {
+      console.warn(`[RealProvider] R2 read error for ${key}:`, e);
+      return null;
+    }
+  }
+
+  /**
+   * Write K-lines to R2 cache.
+   * Only called for whitelisted symbols per ADR-0002.
+   */
+  private async writeR2Cache(symbol: string, timeframe: Timeframe, klines: Kline[]): Promise<void> {
+    if (!this.env.R2 || klines.length === 0) return;
+    const key = `klines/${symbol.toUpperCase()}_${timeframe}.json`;
+    try {
+      const payload: KlineResponse = {
+        ticker: symbol.toUpperCase(),
+        timeframe,
+        source: "r2_cache",
+        data: klines,
+      };
+      await this.env.R2.put(key, JSON.stringify(payload));
+      console.log(`[RealProvider] R2 cache write: ${key} (${klines.length} bars)`);
+    } catch (e) {
+      console.warn(`[RealProvider] R2 write error for ${key}:`, e);
+    }
+  }
+
+  private filterByDateRange(klines: Kline[], from: Date, to: Date): Kline[] {
+    return klines.filter(k => {
+      const d = new Date(k.t);
+      return d >= from && d <= to;
+    });
+  }
+
+  /**
+   * Fetch from Alpha Vantage TIME_SERIES_DAILY endpoint.
+   * Requires ALPHA_VANTAGE_KEY env var.
+   */
+  private async fetchAlphaVantage(symbol: string, timeframe: Timeframe, from: Date, to: Date): Promise<Kline[]> {
+    if (!this.env.ALPHA_VANTAGE_KEY) {
+      throw new Error("ALPHA_VANTAGE_KEY not configured");
+    }
+    // Phase 1: only daily is supported by Alpha Vantage free tier
+    if (timeframe !== "1d") {
+      throw new Error(`Alpha Vantage only supports timeframe=1d (got ${timeframe})`);
+    }
+    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${this.env.ALPHA_VANTAGE_KEY}&outputsize=full`;
+
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Alpha Vantage API error: ${res.status}`);
+    }
+    const json = await res.json() as {
+      "Time Series (Daily)"?: Record<string, { "1. open": string; "2. high": string; "3. low": string; "4. close": string; "5. volume": string }>;
+      Note?: string;  // rate limit message
+    };
+
+    if (json.Note) {
+      throw new Error(`Alpha Vantage rate limit: ${json.Note}`);
+    }
+    const ts = json["Time Series (Daily)"];
+    if (!ts) {
+      throw new Error("Alpha Vantage returned no time series");
+    }
+
+    const klines: Kline[] = Object.entries(ts)
+      .map(([date, values]) => ({
+        t: date,
+        o: parseFloat(values["1. open"]),
+        h: parseFloat(values["2. high"]),
+        l: parseFloat(values["3. low"]),
+        c: parseFloat(values["4. close"]),
+        v: parseInt(values["5. volume"], 10),
+      }))
+      .filter(k => {
+        const d = new Date(k.t);
+        return d >= from && d <= to && k.o > 0;
+      })
+      .sort((a, b) => a.t.localeCompare(b.t));
+
+    return klines;
   }
 
   private async fetchYahoo(symbol: string, timeframe: Timeframe, from: Date, to: Date): Promise<Kline[]> {
@@ -172,19 +309,19 @@ export class RealProvider implements MarketDataProvider {
 }
 
 // ============ Factory ============
+//
+// Per ADR-0001 §Critical Implementation Rule: factory is request-scoped —
+// each call returns a fresh instance. No module-level cache.
+// Callers can pass an explicit `env` for test isolation; if omitted, the
+// factory reads from the current process/globalThis environment.
 
-let _provider: MarketDataProvider | null = null;
-
-export function getProvider(): MarketDataProvider {
-  if (_provider) return _provider;
-
-  const env = getEnv();
-  if (isMockMode()) {
-    _provider = new MockProvider();
-  } else {
-    _provider = new RealProvider(env);
+export function getProvider(env?: Env): MarketDataProvider {
+  const resolvedEnv = env ?? getEnv();
+  const useMock = env ? env.USE_MOCK === "true" : isMockMode();
+  if (useMock) {
+    return new MockProvider();
   }
-  return _provider;
+  return new RealProvider(resolvedEnv);
 }
 
 // shouldCacheR2 is now canonicaly exported from env.ts per ADR-0002.
