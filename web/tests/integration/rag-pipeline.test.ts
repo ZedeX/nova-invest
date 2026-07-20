@@ -169,8 +169,8 @@ describe("ADR-0014 integration: top-k limit", () => {
     expect(result.sources[2].id).toBe("src_2");
   });
 
-  it("default top_k=5 is enforced when top_k is unset", async () => {
-    const sources = Array.from({ length: 10 }, (_, i) =>
+  it("default totalResults=10 is enforced when top_k is unset (ADR-0014 §DEFAULT_RAG_CONFIG)", async () => {
+    const sources = Array.from({ length: 15 }, (_, i) =>
       makeSource({
         id: `src_${i}`,
         url: `https://sec.gov/filing/${i}.htm`,
@@ -182,6 +182,7 @@ describe("ADR-0014 integration: top-k limit", () => {
     };
     const pipeline = new AskRAGPipeline(adapter);
     const result = await pipeline.run({ question: "earnings" });
-    expect(result.sources).toHaveLength(5);
+    // ADR-0014 §DEFAULT_RAG_CONFIG: totalResults=10 (post-merge cap).
+    expect(result.sources).toHaveLength(10);
   });
 });

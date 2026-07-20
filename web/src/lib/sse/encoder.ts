@@ -68,7 +68,13 @@ export class SSEncoder {
           `Allowed: token | done | citation | error (NOT "delta").`,
       );
     }
-    const payload = { type: event.type, data: event.data };
+    // Build payload — only `code` is included when present (and only
+    // meaningful for `type: "error"`). Other extra fields on SSEEvent are
+    // ignored to keep the wire format stable.
+    const payload: Record<string, unknown> = { type: event.type, data: event.data };
+    if (event.code !== undefined) {
+      payload.code = event.code;
+    }
     let out = "";
     if (event.id !== undefined) {
       out += `id: ${event.id}\n`;
@@ -104,18 +110,16 @@ export class SSEncoder {
 
   /**
    * Convenience: encode an "error" event with message + optional code.
-   * The `code` field is included in the JSON payload when provided.
-   * Returns: `data: {"type":"error","data":"<msg>","code":"<code>"}\n\n`
+   * Routes through `encode()` so the type is re-validated against
+   * `VALID_EVENT_TYPES` (defense-in-depth: a typo like "erorr" would
+   * throw here instead of silently producing malformed wire bytes).
+   *
+   * Returns: `data: {"type":"error","data":"<msg>"}\n\n`
+   * When `code` is provided:
+   *   `data: {"type":"error","data":"<msg>","code":"<code>"}\n\n`
    */
   encodeError(message: string, code?: string): string {
-    const payload: Record<string, string> = {
-      type: "error",
-      data: message,
-    };
-    if (code !== undefined) {
-      payload.code = code;
-    }
-    return `data: ${JSON.stringify(payload)}\n\n`;
+    return this.encode({ type: "error", data: message, code });
   }
 
   /**
@@ -189,10 +193,22 @@ export class SSEStream {
    * Encode `event` and enqueue the bytes on the underlying controller.
    * After enqueue, if desiredSize < 0 (backpressure signal), invoke the
    * registered backpressure handler (if any).
+   *
+   * If the underlying controller has been closed (e.g., client navigated
+   * away, network dropped, cancel() already invoked), `enqueue()` throws
+   * a TypeError. We swallow that specific error silently — the stream is
+   * already closed, there is nothing to recover. Any OTHER error is
+   * re-thrown so it surfaces in trace logs.
    */
   write(event: SSEEvent): void {
     const encoded = this.encoder.encode(event);
-    this.controller.enqueue(this.textEncoder.encode(encoded));
+    try {
+      this.controller.enqueue(this.textEncoder.encode(encoded));
+    } catch (err) {
+      // Only swallow the "controller closed" TypeError; rethrow others.
+      if (!(err instanceof TypeError)) throw err;
+      return;
+    }
     const desired = this.controller.desiredSize;
     if (desired !== null && desired < 0) {
       this.backpressureHandler?.();

@@ -108,13 +108,29 @@ export async function validateCitation(
 
   if (isProductionMode(resolvedEnv)) {
     try {
-      const response = await fetch(normalized, { method: "GET", redirect: "follow" });
+      // SSRF defence (CWE-918): use `redirect: "manual"` so we can detect
+      // 3xx responses and reject them WITHOUT following the Location
+      // header. The previous `redirect: "follow"` allowed an allowlisted
+      // host with an open redirect to pivot the fetch to internal
+      // addresses (e.g., cloud metadata service at 169.254.169.254).
+      //
+      // `manual` produces an `opaqueredirect` response type for any 3xx;
+      // we treat that as a validation failure. Only same-host 2xx
+      // responses pass.
+      const response = await fetch(normalized, { method: "GET", redirect: "manual" });
+      if (response.type === "opaqueredirect") {
+        return {
+          id: citation.id,
+          valid: false,
+          reason: "redirect_blocked",
+          final_url: normalized,
+        };
+      }
       if (!response.ok) {
         return { id: citation.id, valid: false, reason: "unreachable", final_url: normalized };
       }
-      // Followed-redirect URL (response.url) wins if present.
-      const finalUrl = response.url || normalized;
-      return { id: citation.id, valid: true, final_url: finalUrl };
+      // No redirect followed → response.url === normalized.
+      return { id: citation.id, valid: true, final_url: normalized };
     } catch {
       return { id: citation.id, valid: false, reason: "unreachable", final_url: normalized };
     }

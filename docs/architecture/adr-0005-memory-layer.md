@@ -4,6 +4,13 @@
 
 Accepted
 
+## Phase-1 Simplified Variants Accepted (2026-07-20)
+
+- **Phase-1 Accepted Variant**: MemoryStore interface with `save(ref) / retrieve(id) / query(filter) / delete(id)` API in `web/src/lib/memory/store.ts` (MockMemoryStore/D1MemoryStore). ADR-0005 §MemoryStore specifies `loadRef / loadShortTerm / loadUserProfile / saveShortTerm / appendConversation` - a different, domain-specific API.
+- **Rationale**: The code's document-store API is more general (works for any MemoryRef type). The ADR's domain-specific API requires separate methods per ref type (conversation, agent_trace, citation, etc.) which adds boilerplate without behavioral difference.
+- **Phase-1 Compliance**: ACCEPTED. The code's `query({type: "conversation"})` is functionally equivalent to ADR's `loadShortTerm()`. The code's `save({type:"conversation", content, metadata:{user_id,session_id,role}})` is functionally equivalent to ADR's `appendConversation()`.
+- **Migration Trigger**: When EP03 Ask Agent needs user_profile-specific queries (load risk_tolerance + sectors), add `loadUserProfile(user_id)` as a typed wrapper over `query({type:"user_profile", metadata:{user_id}})`. No underlying API change needed.
+
 ## Date
 
 2026-07-19

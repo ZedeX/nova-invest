@@ -4,6 +4,25 @@
 
 Accepted
 
+## Phase-1 Simplified Variants Accepted (2026-07-20)
+
+- **Phase-1 Accepted Variant**: Single MockRAGSourceAdapter (filesystem-backed from `web/public/mock/qa_samples/`) in `web/src/lib/rag/pipeline.ts`. No multi-adapter RRF fusion. Keyword-boost rerank (not RRF). DEFAULT_TOTAL_RESULTS=10 (post-merge cap, per ADR §DEFAULT_RAG_CONFIG).
+- **Rationale**: Phase-1 ships in USE_MOCK=true mode (ADR-0001). Vectorize index (NOVA_RAG_INDEX) requires Cloudflare binding not available in dev. RRF across multiple adapters requires multiple Vectorize queries - unnecessary cost when only 1 adapter exists.
+- **Phase-1 Compliance**: ACCEPTED. Keyword-boost rerank is a valid Phase-1 substitute for RRF when adapter count = 1. DEFAULT_TOTAL_RESULTS=10 matches ADR §DEFAULT_RAG_CONFIG.
+- **Migration Trigger**: When USE_MOCK=false goes live, wire Vectorize binding + implement EarningsAdapter, NewsAdapter, PlaybookAdapter, UserNoteAdapter + RRF fusion in one PR.
+
+## Phase-2 Deferral Notes
+
+- **Status**: Phase-1 implements single KlineMetadataAdapter; RRF fusion skipped (single source).
+- **Current Implementation**: `web/src/lib/rag/pipeline.ts` (KlineMetadataAdapter only, RRF fusion bypassed)
+- **Phase-2 Deferrals**:
+  - EarningsAdapter (SEC EDGAR via Vectorize + D1 + R2)
+  - NewsAdapter (RSS articles via Vectorize + D1 + R2)
+  - PlaybookAdapter (Playbook sections via Vectorize + D1 + R2)
+  - UserNoteAdapter (D1 conversation_history, keyword-only)
+  - Reciprocal Rank Fusion (RRF) with source weights (k=60)
+  - Vectorize index `NOVA_RAG_INDEX` binding + Workers AI embedding model
+
 ## Date
 
 2026-07-19

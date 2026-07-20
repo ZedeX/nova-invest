@@ -4,6 +4,24 @@
 
 Accepted
 
+## Phase-1 Simplified Variants Accepted (2026-07-20)
+
+- **Phase-1 Accepted Variant**: SharePackage with basic fields (package_id, playbook_id, author_id, title, description, tags, version, moderation_status, installed_count, rating_avg, rating_count, created_at) in `web/src/lib/community/ugc.ts` + `web/src/lib/community/types.ts`. Missing: risk_disclosure, performance_json, yaml_r2_key, screenshots, license.
+- **Rationale**: Phase-1 Community is read-only browse + install. Performance metrics require backtest execution on install (EP08 composition). Screenshots require R2 image hosting. Risk disclosure requires Playbook schema field (ADR-0013 Phase-2).
+- **Phase-1 Compliance**: ACCEPTED. ADR-0012 §SharePackage Interface is amended: required fields in Phase-1 are the 12 listed above; the remaining 5 are Phase-2 additions.
+- **Migration Trigger**: When EP08 composition executor ships (ADR-0013 Phase-2), add performance_json field. Screenshots + risk_disclosure ship together when R2 image pipeline is ready.
+
+## Phase-2 Deferral Notes
+
+- **Status**: Phase-1 implements SharePackage with reduced fields; full field set deferred.
+- **Current Implementation**: `web/src/lib/community/ugc.ts` (basic moderation flow, reduced SharePackage fields)
+- **Phase-2 Deferrals**:
+  - Full SharePackage fields: detailed tags array, performance metrics snapshot, screenshots array
+  - Vectorize semantic search for community feed (Phase 1.5 per ADR §Feed + Recommendation)
+  - Creator incentive system (0.5 Credit per install, TR-EP07-013)
+  - ML-based content classification for moderation (Phase 2)
+  - Weighted rating by user reputation score
+
 ## Date
 
 2026-07-19

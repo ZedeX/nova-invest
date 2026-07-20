@@ -172,13 +172,23 @@ export class BacktestEngine {
       // Step 5: simulate trade (BUY opens a long, SELL closes it).
       // Phase 1 simplification: single long position, all-in sizing
       // (qty = cash / entry_price). No short selling, no multi-position.
-      if (signal === "BUY" && !position) {
+      //
+      // Degenerate-price guard: if kline.c <= 0 (corrupted data, zero-price
+      // bar, etc.) the BUY signal is ignored entirely. Opening a position
+      // with qty=0 polluted the trades list and broke equity-curve
+      // invariants. Skipping the trade is the safe no-op.
+      if (signal === "BUY" && !position && kline.c > 0) {
         const entry_price = simulator.computeFillPrice("buy", kline.c);
-        const qty = entry_price > 0 ? cash / entry_price : 0;
-        const notional = entry_price * qty;
-        const fee = simulator.computeFee(notional);
-        cash -= notional + fee;
-        position = { qty, entry_price, entry_date: kline.t, entry_fee: fee };
+        // Defensive: slippage can drive fill price to <=0 if lastPrice is
+        // extremely small. Skip the trade rather than emit a degenerate
+        // position.
+        if (entry_price > 0) {
+          const qty = cash / entry_price;
+          const notional = entry_price * qty;
+          const fee = simulator.computeFee(notional);
+          cash -= notional + fee;
+          position = { qty, entry_price, entry_date: kline.t, entry_fee: fee };
+        }
       } else if (signal === "SELL" && position) {
         const exit_price = simulator.computeFillPrice("sell", kline.c);
         const notional = exit_price * position.qty;
@@ -283,13 +293,17 @@ export function computeMetrics(
   }
 
   const win_rate = trades.length > 0 ? wins / trades.length : 0;
-  // profit_factor: when no losses, return Infinity if there's profit, else 0.
-  // (Infinity is a valid number — not NaN — and represents "no downside".)
+  // profit_factor: when no losses, return MAX_SAFE_INTEGER (not Infinity).
+  // JSON.stringify(Infinity) produces `null`, which silently loses the signal
+  // downstream. MAX_SAFE_INTEGER preserves "essentially unbounded upside"
+  // while staying JSON-serializable. ADR-0009 §Backtest Metrics declares the
+  // range as [0, ∞); MAX_SAFE_INTEGER is the closest finite approximation
+  // representable in JSON.
   const profit_factor =
     grossLoss > 0
       ? grossProfit / grossLoss
       : grossProfit > 0
-        ? Infinity
+        ? Number.MAX_SAFE_INTEGER
         : 0;
   const total_trades = trades.length;
   const avg_hold_days = trades.length > 0 ? holdDaysSum / trades.length : 0;

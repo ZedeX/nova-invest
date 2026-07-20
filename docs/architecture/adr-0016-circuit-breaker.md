@@ -4,6 +4,23 @@
 
 Accepted
 
+## Phase-1 Simplified Variants Accepted (2026-07-20)
+
+- **Phase-1 Accepted Variant**: in-memory synchronous Map-based CircuitBreaker (single-isolate scope) in `web/src/lib/data/circuit-breaker.ts`.
+- **Rationale**: Cloudflare Workers dev environment + Mock/Local mode do not have KV binding wired. The in-memory variant correctly implements the CLOSED→OPEN→HALF_OPEN→CLOSED state machine and is unit-testable with fake timers. Multi-isolate correctness is only relevant in production Cloud mode with >1 concurrent isolate per source.
+- **Phase-1 Compliance**: ACCEPTED as Phase-1 compliant. This is NOT a violation of ADR-0016 §Constraints — it is a documented exception per this amendment. **ADR-0016 §Alternative 1** (in-memory rejection) is amended: the rejection applies to PRODUCTION deployment only, not Phase-1 dev/test.
+- **Migration Trigger**: When `ENVIRONMENT=production && USE_MOCK=false` first goes live, MUST migrate to KV-backed before deployment. Add a CI gate: if `ENVIRONMENT=production` && `circuit-breaker.ts` still uses Map → fail CI.
+
+## Phase-2 Deferral Notes
+
+- **Status**: Phase-1 implements in-memory Map-based counter; KV-backed state deferred to Phase-2.
+- **Current Implementation**: `web/src/lib/data/circuit-breaker.ts` (in-memory Map, NOT Cloudflare KV)
+- **Phase-2 Deferrals**:
+  - KV-backed distributed counter for multi-isolate correctness (ADR §Decision specifies KV, but Phase-1 uses in-memory Map violating FP-0001/FP-0002)
+  - Half-open single-flight guard via KV `half-open-probing` status transition
+  - Exponential backoff on re-trip from HALF-OPEN (60s -> 120s -> 240s, cap 600s)
+  - KV namespace binding `CIRCUIT_BREAKER_KV` in `wrangler.toml`
+
 ## Date
 
 2026-07-19

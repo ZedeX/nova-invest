@@ -17,7 +17,7 @@ Accepted
 | **Knowledge Risk** | LOW |
 | **References Consulted** | EP02 §2.4, EP03 §2.5, EP04 §ID-7, EP06 §2.6, EP07 §2.4, EP08 §2.8, ADR-0001 §API-0002, ADR-0002 §API-0003 |
 | **Post-Cutoff APIs Used** | None |
-| **Verification Required** | All 22 base tables + 1 `users` + 1 `url_check_queue` (ADR-0007) = 24 tables defined with FK constraints; migration order produces no FK violations; `pnpm run db:migrate` applies cleanly |
+| **Verification Required** | All 23 base tables + 1 `users` + 1 `url_check_queue` (ADR-0007) = 25 tables defined with FK constraints; migration order produces no FK violations; `pnpm run db:migrate` applies cleanly |
 
 ## ADR Dependencies
 
@@ -46,7 +46,7 @@ Accepted
 
 ### Constraints
 
-- **Cloudflare D1 free tier**: 5GB storage + 5M row reads/day. 24 tables (including ADR-0007 `url_check_queue`) with ~10K rows total is well within limits.
+- **Cloudflare D1 free tier**: 5GB storage + 5M row reads/day. 25 tables (including ADR-0007 `url_check_queue`) with ~10K rows total is well within limits.
 - **SQLite limitations**: No native JSON type (store as TEXT). No array type. No partial index (well, SQLite supports partial indexes but D1 may not expose). No deferred FK checks.
 - **Cloudflare Workers stateless**: D1 connection is via `env.DB` binding per request. No connection pooling. No transactions across multiple D1 calls (single-statement atomic only).
 - **EP02 ID-5**: K-line data NOT in D1 (in R2 or Mock JSON). D1 stores only metadata + pointers.
@@ -54,7 +54,8 @@ Accepted
 
 ### Requirements
 
-- Single canonical D1 schema covering all 24 tables (23 base + 1 `url_check_queue` from ADR-0007).
+- Single canonical D1 schema covering all 25 tables (23 base + 1 `users` + 1 `url_check_queue` from ADR-0007).
+  - **Note (ADR-0014 amendment)**: Migration 009 added `rag_chunks` + `news_articles`, making total 25 tables (was 24 before amendment).
 - All FKs declared explicitly.
 - Naming: `ticker` (not `symbol`), `lifecycle_status` / `moderation_status` / `order_status` (not overloaded `status`).
 - Migration order defined such that FKs resolve.
@@ -527,7 +528,7 @@ CREATE INDEX IF NOT EXISTS idx_news_source ON news_articles(source, published_at
 
 ## Performance Implications
 
-- **Storage**: 24 tables × ~1000 rows average = ~24K rows. Well within D1 5GB free tier.
+- **Storage**: 25 tables × ~1000 rows average = ~25K rows. Well within D1 5GB free tier.
 - **Row reads**: 5M/day free tier. Typical query: 1-10 row reads. Supports ~500K queries/day.
 - **Index strategy**: All FK columns indexed. `user_id` columns indexed where time-ordered queries are common (orders, conversation_history, backtest_results).
 - **JOIN cost**: `community_playbooks` -> `playbooks` -> `playbook_versions` is a 3-table JOIN to get YAML R2 key. Acceptable for community browse (low frequency).

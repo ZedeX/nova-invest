@@ -31,11 +31,16 @@ export type SSEEventType = "token" | "done" | "citation" | "error";
  * - `type`: one of the 4 canonical SSEEventType values
  * - `data`: string payload (for "token" = raw text; for "done"/"citation" = JSON-stringified object)
  * - `id`:   optional sequential event ID for client reconnection
+ * - `code`: optional machine-readable error code, only emitted for `type: "error"`.
+ *           When present, `encode()` includes it as a top-level field in the
+ *           JSON payload so downstream parsers can branch on `code` without
+ *           parsing the human-readable `data` message.
  */
 export interface SSEEvent {
   type: SSEEventType;
   data: string;
   id?: string;
+  code?: string;
 }
 
 /**

@@ -4,6 +4,13 @@
 
 Accepted
 
+## Phase-1 Simplified Variants Accepted (2026-07-20)
+
+- **Phase-1 Accepted Variant**: Identifier set = {OHLCV operators: open/high/low/close/volume, indicators: sma/ema/rsi (lowercase)} in `web/src/lib/strategy/dsl.ts`. ADR-0008 §Identifier Set specifies {SMA/EMA/RSI/MACD/Bollinger/ATR/OBV/VWAP (uppercase)}.
+- **Rationale**: Phase-1 implements 3 of 8 ADR indicators. Lowercase naming is a JS convention; ADR uppercase is Python pandas_ta convention. The 3 indicators cover EP04 §BDD scenarios (MA Cross, RSI Oversold, Bollinger Breakout).
+- **Phase-1 Compliance**: ACCEPTED. Missing 5 indicators (MACD/Bollinger/ATR/OBV/VWAP) are Phase-2. Bollinger Bands can be computed from existing SMA + std; ATR requires true range; OBV/VWAP require volume accumulation.
+- **Migration Trigger**: When EP04 §Advanced Strategies (mean reversion + volatility breakout) ship, add MACD/Bollinger/ATR in one PR. OBV/VWAP ship with EP06 broker integration (volume-aware order routing).
+
 ## Date
 
 2026-07-19

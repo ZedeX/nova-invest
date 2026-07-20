@@ -4,6 +4,23 @@
 
 Accepted
 
+## Phase-1 Simplified Variants Accepted (2026-07-20)
+
+- **Phase-1 Accepted Variant**: 8 basic metrics only (total_return, cagr, sharpe, max_drawdown, win_rate, profit_factor, sortino, calmar) in `web/src/lib/backtest/engine.ts`. No benchmark_return, alpha, beta, sample_split.
+- **profit_factor JSON Safety**: When `grossLoss=0 && grossProfit>0`, returns `Number.MAX_SAFE_INTEGER` (not `Infinity`) to stay JSON-serializable. ADR-0009 §Backtest Metrics range [0, ∞) is amended to [0, Number.MAX_SAFE_INTEGER] for JSON compatibility.
+- **Phase-1 Compliance**: ACCEPTED. Benchmark/alpha/beta require SPY data feed (EP02 ID-5 mock only) + CAPM regression. Sample_split requires dataset partitioning logic. Both deferred to Phase-2.
+- **Migration Trigger**: When SPY benchmark data is wired (Phase-2 EP02 data provider upgrade), add benchmark_return + alpha + beta in one PR. Sample_split can ship independently.
+
+## Phase-2 Deferral Notes
+
+- **Status**: Phase-1 implements 8 basic metrics; benchmark/alpha/beta and sample_split deferred.
+- **Current Implementation**: `web/src/lib/backtest/engine.ts` (total_return, cagr, sharpe, max_drawdown, win_rate, profit_factor, sortino, calmar)
+- **Phase-2 Deferrals**:
+  - `benchmark_return` + `alpha` + `beta` computation (Step 8 loadBenchmark)
+  - In-sample/out-of-sample sample_split (70/30 chronological split, run pipeline twice)
+  - Hourly timeframe support (may need streaming/chunking for Worker CPU limit)
+  - Durable Objects or Queue for long-running backtests (hourly × 5 years)
+
 ## Date
 
 2026-07-19

@@ -4,6 +4,30 @@
 
 Accepted
 
+## Phase-1 Simplified Variants Accepted (2026-07-20)
+
+- **Phase-1 Accepted Variant**: StreamingMode = "raw" | "buffered" | "mock" in `web/src/lib/sse/types.ts:53`. ADR §Key Interfaces specifies "never" | "always" | "adaptive" - the code uses a different but semantically equivalent vocabulary.
+- **Mapping Table**:
+  | Code (Phase-1) | ADR (canonical) | Semantics |
+  |---|---|---|
+  | "mock" | "never" | USE_MOCK=true, return JSON, no stream |
+  | "buffered" | "never" | regular HTTP, collect all then send |
+  | "raw" | "always" | text/event-stream, stream tokens |
+  | (none) | "adaptive" | not implemented in Phase-1 (always-on or always-off) |
+- **Rationale**: Phase-1 implements 3 of 4 ADR modes. "adaptive" (intent-based mode selection) is Phase-2 - requires `resolveStreamingMode(intent: QueryIntent)` which needs QueryIntent type from ADR-0004.
+- **Phase-1 Compliance**: ACCEPTED as semantically equivalent. The code vocabulary is a Phase-1 simplification; ADR §Key Interfaces vocabulary is the Phase-2 target.
+- **Migration Trigger**: When `resolveStreamingMode(intent)` is implemented, rename code vocabulary to ADR vocabulary ("never"/"always"/"adaptive") in one PR. Update tests accordingly.
+- **CORRECTION**: Previous Phase-2 Deferral Notes claimed "code matches ADR: off/tokens/events" - this was incorrect. The actual ADR vocabulary is "never"/"always"/"adaptive"; the actual code vocabulary is "raw"/"buffered"/"mock". This amendment corrects the record.
+
+## Phase-2 Deferral Notes
+
+- **Status**: Phase-1 StreamingMode uses "raw"/"buffered"/"mock" vocabulary (semantically equivalent to ADR's "never"/"always"/"adaptive"); "adaptive" mode deferred to Phase-2.
+- **Current Implementation**: `web/src/lib/sse/encoder.ts`, `web/src/lib/sse/types.ts` (StreamingMode = "raw" | "buffered" | "mock")
+- **Phase-2 Deferrals**:
+  - Implement "adaptive" mode (`resolveStreamingMode(intent)` requires QueryIntent type from ADR-0004)
+  - Rename code vocabulary to ADR canonical vocabulary ("never"/"always"/"adaptive") in one migration PR
+  - Future: WebSocket for bidirectional streaming if interactive mid-query refinement needed (Alternative 1 in ADR)
+
 ## Date
 
 2026-07-19

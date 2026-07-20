@@ -4,6 +4,22 @@
 
 Accepted
 
+## Phase-1 Simplified Variants Accepted (2026-07-20)
+
+- **Phase-1 Accepted Variant**: Widget type uses lowercase union ("kline" | "watchlist" | "order_entry" | "positions" | "orders" | "strategies" | "playbooks" | "community" | "ask_agent") in `web/src/lib/dashboard/config.ts`. No DashboardSWRConfig wrapper, no WidgetErrorBoundary component.
+- **Rationale**: Phase-1 Dashboard is server-component-only (Next.js 16 RSC). SWR is for client-side fetching; Phase-1 fetches happen in RSC server-side. Error Boundary requires "use client" directive - Phase-1 widgets fail loud (no graceful degradation).
+- **Phase-1 Compliance**: ACCEPTED. Widget type values match ADR-0010 §Widget Registry verbatim.
+- **Migration Trigger**: When first client-side widget ("use client") is introduced (likely the live ticker tape), add DashboardSWRConfig + WidgetErrorBoundary in the same PR.
+
+## Phase-2 Deferral Notes
+
+- **Status**: Phase-1 widget type uses lowercase union matching ADR; no deferral needed for type alignment.
+- **Current Implementation**: `web/src/lib/dashboard/config.ts` (WidgetType = "kline" | "watchlist" | "order_entry" | ...)
+- **Phase-2 Deferrals**:
+  - Review widget registry for new types (heatmap, scanner) - not in current 9-widget union
+  - Drag/drop widget layout (react-grid-layout, TR-EP05-013)
+  - OrderBook, Alerts, News widgets (Phase-2 per ADR §Widget Types table)
+
 ## Date
 
 2026-07-19

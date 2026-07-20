@@ -393,6 +393,15 @@ CREATE INDEX idx_url_check_status ON url_check_queue(status, created_at);
 - 007_community.sql
 - **008_citation_url_check.sql** (NEW, this ADR)
 
+## Implementation Status (2026-07-20)
+
+- **Status**: 3-stage validation pipeline partially implemented; Stage 3 URL check pending env.DB wiring.
+- **Stage 1 (structural)**: Implemented in `web/src/lib/citation/validator.ts`
+- **Stage 2 (quote substring)**: Implemented in `web/src/lib/ask/citation.ts` (`validateCitations` function)
+- **Stage 3 (URL reachability async)**: `enqueueUrlChecks()` stub; Cloud mode D1 INSERT pending `env.DB` wiring
+- **SSRF mitigation (CWE-918)**: Implemented - `redirect: "manual"` + `opaqueredirect` detection
+- **Dual Citation shape**: validator's Citation domain (`citation/types.ts`) vs LLM-output Citation (`types.ts`) - documented
+
 ## Alternatives Considered
 
 ### Alternative 1: Strict reject only (any violation = reject entire answer)

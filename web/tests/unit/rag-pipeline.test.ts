@@ -187,14 +187,15 @@ describe("ADR-0014: AskRAGPipeline.run", () => {
     expect(result.sources.map((s) => s.id)).toEqual(["src_1", "src_2"]);
   });
 
-  it("applies top_k limit (default 5)", async () => {
-    const sources = Array.from({ length: 10 }, (_, i) =>
+  it("applies top_k limit (default 10 per ADR-0014 §DEFAULT_RAG_CONFIG totalResults)", async () => {
+    const sources = Array.from({ length: 15 }, (_, i) =>
       makeSource({ id: `src_${i}`, score: 1 - i * 0.05 }),
     );
     const pipeline = new AskRAGPipeline(makeStubAdapter(sources), makePassValidator());
-    // No top_k specified → default 5.
+    // No top_k specified -> default 10 (post-merge totalResults cap).
+    // ADR-0014 §DEFAULT_RAG_CONFIG: totalResults=10 (vs per-adapter topK=5).
     const result = await pipeline.run({ question: "earnings" });
-    expect(result.sources).toHaveLength(5);
+    expect(result.sources).toHaveLength(10);
     expect(result.sources[0].id).toBe("src_0"); // highest score first
   });
 

@@ -4,6 +4,23 @@
 
 Accepted
 
+## Phase-1 Simplified Variants Accepted (2026-07-20)
+
+- **Phase-1 Accepted Variant**: Empty TOOL_REGISTRY (no tools registered) in `web/src/lib/tools/registry.ts`. Agent Loop operates without tool-calling capability.
+- **Rationale**: ADR-0004 Agent Loop's `StepHandler.onExecute` returns empty `execResult.actions` when no tools are registered - the loop still completes via `onSynthesize`. EP03 Ask Agent can answer using RAG context alone (no tool augmentation) for Phase-1 demo.
+- **Phase-1 Compliance**: ACCEPTED as Phase-1 compliant. ADR-0006 §Tool Registry Interface contract is satisfied (the Map exists, is typed, is exported - it just has zero entries).
+- **Migration Trigger**: EP03 §2.3 lists 9 native tools (price_lookup, kline_fetch, etc.). These MUST be registered before EP03 production launch.
+
+## Phase-2 Deferral Notes
+
+- **Status**: Phase-1 ships empty tool registry (Phase-1 stub only); no tools registered.
+- **Current Implementation**: `web/src/lib/tools/registry.ts` (TOOL_REGISTRY is empty object)
+- **Phase-2 Deferrals**:
+  - Register 9 Phase-1 native tools per EP03 §2.3 (price_lookup, kline_fetch, get_earnings, search_news, get_macro, plot_chart, build_strategy, run_backtest, save_dashboard)
+  - MCP protocol integration (get_sentiment, brokerage, playbook_hub MCP servers)
+  - Dynamic tool registration layer for plugin system
+  - Tool authentication for non-public APIs (brokerage MCP server)
+
 ## Date
 
 2026-07-19

@@ -44,7 +44,12 @@ export interface Citation {
 export interface ValidationResult {
   id: string;
   valid: boolean;
-  reason?: "malformed_url" | "non_https" | "source_not_allowlisted" | "unreachable";
+  reason?:
+    | "malformed_url"
+    | "non_https"
+    | "source_not_allowlisted"
+    | "unreachable"
+    | "redirect_blocked";
   final_url?: string;
 }
 

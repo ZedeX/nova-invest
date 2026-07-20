@@ -60,6 +60,12 @@ export class MockMemoryStore {
   private store = new Map<string, StoredEntry>();
 
   async save(ref: MemoryRef): Promise<MemoryRef> {
+    // Boundary validation (security: rejects malformed refs at the public
+    // API seam before they reach the in-memory store).
+    const check = validateMemoryRef(ref);
+    if (!check.valid) {
+      throw new Error(`Invalid MemoryRef: ${check.errors.join("; ")}`);
+    }
     const now = Date.now();
     const id = ref.id ?? generateId();
     const saved: MemoryRef = {
@@ -90,8 +96,14 @@ export class MockMemoryStore {
   }): Promise<MemoryRef[]> {
     const now = Date.now();
     const results: MemoryRef[] = [];
-    for (const entry of this.store.values()) {
-      if (entry.expiresAt !== null && now >= entry.expiresAt) continue;
+    // Lazy eviction: any entry past its expiry is deleted during the scan
+    // (mirrors retrieve()'s behaviour — avoids unbounded memory growth in
+    // long-running tests that never call retrieve() on expired entries).
+    for (const [id, entry] of this.store.entries()) {
+      if (entry.expiresAt !== null && now >= entry.expiresAt) {
+        this.store.delete(id);
+        continue;
+      }
       const ref = entry.ref;
       if (filter.type !== undefined && ref.type !== filter.type) continue;
       if (
@@ -122,6 +134,18 @@ export class MockMemoryStore {
 // ============ D1MemoryStore ============
 
 /**
+ * Canonical D1 table for conversation refs (per ADR-0011 Migration 003).
+ *
+ * Hardcoded as a literal — NEVER interpolated from caller input. Prior
+ * versions accepted a `table` parameter; that opened a SQL-injection
+ * vector (table identifiers cannot be parameterized via `?` binds).
+ * The fixed literal closes the vector; future schema additions should
+ * add separate, dedicated store classes rather than overriding the
+ * table name at runtime.
+ */
+const D1_MEMORY_TABLE = "conversation_history" as const;
+
+/**
  * D1-backed MemoryStore.
  *
  * The D1 binding is typed as `any` (not D1Database) to avoid pulling
@@ -137,12 +161,16 @@ export class MockMemoryStore {
  */
 export class D1MemoryStore {
   /**
-   * @param d1   Cloudflare D1 binding (`env.DB`).
-   * @param table Optional table override (defaults to `conversation_history`).
+   * @param d1 Cloudflare D1 binding (`env.DB`).
    */
-  constructor(private d1: D1Database, private table: string = "conversation_history") {}
+  constructor(private d1: D1Database) {}
 
   async save(ref: MemoryRef): Promise<MemoryRef> {
+    // Boundary validation — same contract as MockMemoryStore.save().
+    const check = validateMemoryRef(ref);
+    if (!check.valid) {
+      throw new Error(`Invalid MemoryRef: ${check.errors.join("; ")}`);
+    }
     const now = new Date().toISOString();
     const id = ref.id ?? generateId();
     const saved: MemoryRef = {
@@ -151,7 +179,8 @@ export class D1MemoryStore {
       created_at: ref.created_at ?? now,
     };
     // Insert into D1. metadata is JSON-serialized per ADR-0011 (metadata_json TEXT).
-    const sql = `INSERT INTO ${this.table} (id, user_id, session_id, role, content, metadata_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    // Table name is a hardcoded literal — see D1_MEMORY_TABLE comment above.
+    const sql = `INSERT INTO ${D1_MEMORY_TABLE} (id, user_id, session_id, role, content, metadata_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`;
     const userId = (ref.metadata?.user_id as string) ?? null;
     const sessionId = (ref.metadata?.session_id as string) ?? null;
     const role = (ref.metadata?.role as string) ?? "user";
@@ -198,9 +227,14 @@ export function getMemoryStore(env?: {
       ? (globalThis as unknown as { env?: WorkersEnv }).env!.DB
       : undefined);
   if (!d1) {
-    // No D1 binding available — fall back to Mock rather than crashing.
-    // Production wiring should always provide env.DB; this is a safety net.
-    return new MockMemoryStore();
+    // Production safety: throwing forces operators to wire `env.DB` correctly.
+    // Silent Mock fallback in production would cause silent data loss
+    // (in-memory store is wiped on every Worker isolate restart).
+    throw new Error(
+      "getMemoryStore: USE_MOCK='false' but env.DB is missing. " +
+        "Production Real mode requires a D1 binding. " +
+        "Set USE_MOCK='true' for dev, or wire env.DB in wrangler.toml / Workers config.",
+    );
   }
   return new D1MemoryStore(d1);
 }

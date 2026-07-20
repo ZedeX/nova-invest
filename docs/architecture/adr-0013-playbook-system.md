@@ -4,6 +4,24 @@
 
 Accepted
 
+## Phase-1 Simplified Variants Accepted (2026-07-20)
+
+- **Phase-1 Accepted Variant**: Playbook CRUD (create/read/update/delete) + SemVer validation in `web/src/lib/playbook/system.ts` + `web/src/lib/playbook/types.ts`. No composition executor (parallel/sequential/conditional). No PlaybookExecutor class.
+- **Rationale**: Composition execution requires ADR-0004 Agent Loop integration (parallel branches, sequential dependencies). Phase-1 Playbooks are single-strategy containers - composition is Phase-2.
+- **Phase-1 Compliance**: ACCEPTED. ADR-0013 §Composition Interface is amended: Phase-1 supports `kind: "strategy"` only; `kind: "composite"` is Phase-2.
+- **Migration Trigger**: When ADR-0004 Agent Loop adds parallel branch support, implement PlaybookExecutor + composition types together.
+
+## Phase-2 Deferral Notes
+
+- **Status**: Phase-1 ships stub playbooks; composition executor not implemented.
+- **Current Implementation**: `web/src/lib/playbook/system.ts` (stub playbooks, no real composition execution)
+- **Phase-2 Deferrals**:
+  - Parallel composition executor (Promise.all with weighted aggregation)
+  - Sequential composition executor (DAG topological order with on_failure policy)
+  - Conditional composition executor (if/then/else branch evaluation)
+  - Replace `Function()` with jsep-based safe expression parser (C17 resolution gate)
+  - Durable Objects for long-running compositions exceeding 30s Worker CPU limit
+
 ## Date
 
 2026-07-19

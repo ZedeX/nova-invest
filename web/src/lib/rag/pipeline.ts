@@ -44,8 +44,13 @@ export const defaultCitationValidator: CitationValidator = {
   apply: applyValidationResult,
 };
 
-/** Default top_k when query.top_k is unset. */
-const DEFAULT_TOP_K = 5;
+/**
+ * Post-merge total results: upper bound on the final citation list returned
+ * to the caller. Per ADR-0014 §DEFAULT_RAG_CONFIG, `totalResults: 10` is the
+ * merge cap (vs the per-adapter `topK: 5` which controls each adapter's
+ * Vectorize query - Phase-2 multi-adapter concern, not used in Phase-1).
+ */
+const DEFAULT_TOTAL_RESULTS = 10;
 
 /**
  * Query-keyword boost multiplier per token match. Tuned so that a
@@ -84,7 +89,11 @@ export class AskRAGPipeline {
    * where match_count = number of query tokens (case-insensitive) found
    * in source.content.
    *
-   * Sources below `query.threshold` (if set) are filtered out.
+   * Sources below `query.threshold` (if set) are filtered out — using the
+   * BOOSTED score, not the raw score. Filtering on the raw score created
+   * an asymmetry where a source with raw 0.05 + 3 keyword matches
+   * (adjusted 0.35) would be filtered out even though its boosted score
+   * exceeds a threshold of 0.3.
    *
    * Deduplication: sources sharing the same `url` are collapsed to the
    * one with the highest adjusted score (prevents the same document
@@ -100,7 +109,7 @@ export class AskRAGPipeline {
         const adjusted = s.score + KEYWORD_BOOST_PER_MATCH * matchCount;
         return { source: s, adjusted };
       })
-      .filter((entry) => entry.source.score >= threshold)
+      .filter((entry) => entry.adjusted >= threshold)
       .sort((a, b) => b.adjusted - a.adjusted);
 
     // Dedup by URL: keep the first (highest-adjusted) entry per URL.
@@ -153,7 +162,12 @@ export class AskRAGPipeline {
   async run(query: RAGQuery): Promise<RAGResult> {
     const all = await this.retrieve(query);
     const ranked = await this.rerank(all, query);
-    const topK = query.top_k ?? DEFAULT_TOP_K;
+    // query.top_k overrides the post-merge cap (caller wants fewer than the
+    // default 10). When unset, use DEFAULT_TOTAL_RESULTS (=10) per ADR-0014
+    // §DEFAULT_RAG_CONFIG. NOTE: this is the post-merge slice, NOT the
+    // per-adapter top_k (DEFAULT_PER_ADAPTER_TOP_K=5) which is consumed by
+    // the adapter's Vectorize query (Phase-2 multi-adapter concern).
+    const topK = query.top_k ?? DEFAULT_TOTAL_RESULTS;
     const top = ranked.slice(0, topK);
     const citations = await this.cite(top);
     return { sources: top, citations };
