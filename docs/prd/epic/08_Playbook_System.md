@@ -30,15 +30,15 @@ Prosumer Brenda 有 3 个策略想组合执行时：
 - **R2 存储**：Playbook YAML 大文件存 R2，D1 存元数据
 - **可发现性**：Playbook 必须可被 Ask Agent / Community / Dashboard 引用
 
-### 1.3 反向工程 Alva 现状 [A]
+### 1.3 竞品现状分析 [A]
 
-Alva 当前 Playbook 系统呈现 [INFERRED]：
+竞品当前 Playbook 系统呈现 [INFERRED]：
 - 单策略 DSL（Epic 04 范畴）
 - 不支持组合
 - 无显式版本管理
 - 无叙事内容化
 
-**本 Epic 要"做得比 Alva 更好"的关键点 [C]**：
+**本 Epic 核心差异化特性 [C]**：
 - 完整 Playbook 包（DSL + 元数据 + 叙事 + 依赖）
 - 显式组合语义
 - 版本化（语义化版本号）

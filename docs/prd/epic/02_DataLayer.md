@@ -3,7 +3,7 @@
 **Epic 编号**: 02
 **模块名称**: Data Layer
 **优先级顺序**: 2（B3 优先级 1→5→2→3→4→6→7→8 中的"5"位置，上移后为第 2 个）
-**文档性质标签**: [A] 反向工程 Alva 现状 + [B] 规划下一迭代 + [C] 求职作品型
+**文档性质标签**: [A] 分析竞品现状 + [B] 规划下一迭代 + [C] 个人项目型
 **Spec 模板**: to-spec
 **最后更新**: 2026-07-19
 
@@ -27,17 +27,17 @@ Prosumer Brenda 想分析 NVDA 时遇到的核心痛点：
 - **免费额度约束**：Cloudflare D1 5GB、R2 10GB、Workers 100K req/day；Yahoo Finance 非官方接口易限流；Alpha Vantage 25 req/day 免费层；Polygon free tier 5 req/min。
 - **回测引擎的数据需求**：用户明确"回测引擎需要用到 Mockup 的数据"，意味着 Mock 数据不能是简单的"10 天样本"，必须有足够长度（≥2 年）支撑真实回测。
 
-### 1.3 反向工程 Alva 现状 [A]
+### 1.3 竞品现状分析 [A]
 
-Alva 当前在数据层呈现的能力 [INFERRED]：
+竞品当前在数据层呈现的能力 [INFERRED]：
 - 内置 Yahoo Finance 数据源（从公开接口可推断）
 - 自有财报 RAG（基于 SEC EDGAR）
 - 实时行情延迟约 15 分钟（免费层特征）
 - 未公开 Mock 模式切换
 
-**本 Epic 要"做得比 Alva 更好"的关键点 [C]**：
-- 显式 Mock/Real 双模开关（Alva 未公开此能力）
-- R2 智能缓存热门 K 线（Alva 未提及缓存策略）
+**本 Epic 核心差异化特性 [C]**：
+- 显式 Mock/Real 双模开关（竞品未公开此能力）
+- R2 智能缓存热门 K 线（竞品未提及缓存策略）
 - 多源 fallback（Yahoo → Alpha Vantage → Polygon → Mock）— Phase 1 仅 Yahoo → Mock；Phase 1.5 起启用完整链
 
 ---

@@ -29,15 +29,15 @@ Prosumer Brenda 想问"NVDA 最近财报如何，分析师怎么看？"时：
 - **多轮记忆**：短期会话记忆（当前对话）+ 长期用户画像（持仓偏好/风险偏好）
 - **MCP + Function Call**：外部工具走 MCP（如未来接券商 API），内部工具走原生 function call
 
-### 1.3 反向工程 Alva 现状 [A]
+### 1.3 竞品现状分析 [A]
 
-Alva Ask Agent 当前呈现 [INFERRED]：
+竞品 Ask Agent 当前呈现 [INFERRED]：
 - 基于 RAG 的财报问答
 - 有限的多轮对话能力
 - 价格/财报为主要数据源
 - 引用标注存在但不严格
 
-**本 Epic 要"做得比 Alva 更好"的关键点 [C]**：
+**本 Epic 核心差异化特性 [C]**：
 - 显式多模型路由（成本可控）
 - 严格 citation（每个数字字段都标注源）
 - 用户画像持久化（跨会话记忆）

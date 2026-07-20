@@ -28,14 +28,14 @@ Prosumer Brenda 想从"分析 → 策略 → 实盘"闭环时：
 - **风险隔离**：执行层必须与策略层物理隔离，避免 Bug 导致真实下单
 - **MCP 集成**：用户决策"外部工具走 MCP"——券商未来作为 MCP server 接入
 
-### 1.3 反向工程 Alva 现状 [A]
+### 1.3 竞品现状分析 [A]
 
-Alva 当前在券商层呈现 [INFERRED]：
+竞品当前在券商层呈现 [INFERRED]：
 - 不接真实券商
 - 仅模拟持仓展示
 - 无 paper trading 模拟器
 
-**本 Epic 要"做得比 Alva 更好"的关键点 [C]**：
+**本 Epic 核心差异化特性 [C]**：
 - 完整 paper trading 模拟器
 - 券商抽象层（Phase 2 接 Alpaca/IBKR）
 - 持仓跨券商聚合

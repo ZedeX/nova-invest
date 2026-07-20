@@ -391,7 +391,7 @@ flowchart LR
 | 监管变化          | 中  | 高  | Phase 1 Publisher 定位降低风险 |
 | 真实券商 API 接入复杂 | 高  | 中  | 先 Alpaca paper，再 IBKR    |
 | 中国市场合规复杂      | 高  | 高  | Phase 2 后期才考虑进入中国        |
-| 竞品（如 Alva）领先  | 中  | 中  | 差异化：完整 Mock + UGC        |
+| 竞品领先  | 中  | 中  | 差异化：完整 Mock + UGC        |
 
 ### 7.3 Phase 3 风险
 

@@ -29,14 +29,14 @@ Prosumer Brenda 想表达"当 NVDA 50 日均线上穿 200 日均线时买入 10%
 - **Playbook 化**：DSL 必须能序列化为 Playbook（Epic 08），可分享可组合
 - **状态机**：策略生命周期：draft → validated → backtested → paper → live
 
-### 1.3 反向工程 Alva 现状 [A]
+### 1.3 竞品现状分析 [A]
 
-Alva 当前在策略层呈现 [INFERRED]：
+竞品当前在策略层呈现 [INFERRED]：
 - 自然语言 → 简单策略（限单标的、单条件）
 - 内置回测（但数据源不透明）
 - 不可导出/分享 DSL
 
-**本 Epic 要"做得比 Alva 更好"的关键点 [C]**：
+**本 Epic 核心差异化特性 [C]**：
 - 显式 YAML DSL（人类可读可编辑）
 - 完整生命周期状态机
 - 回测数据透明（标注源 + 时间范围）

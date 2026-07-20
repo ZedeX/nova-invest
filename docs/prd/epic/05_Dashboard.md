@@ -29,14 +29,14 @@ Prosumer Brenda 想监控自己的 5 个策略 + 10 个标的时：
 - **可观测性**：用户决策"OpenTelemetry + Grafana"，前端必须暴露性能埋点
 - **权限与个性化**：免费用户与付费用户 dashboard 不同
 
-### 1.3 反向工程 Alva 现状 [A]
+### 1.3 竞品现状分析 [A]
 
-Alva Dashboard 当前呈现 [INFERRED]：
+竞品 Dashboard 当前呈现 [INFERRED]：
 - 单图表主导（TradingView 嵌入）
 - 策略表现仅在回测后展示
 - 持仓视图与图表分离
 
-**本 Epic 要"做得比 Alva 更好"的关键点 [C]**：
+**本 Epic 核心差异化特性 [C]**：
 - 多图表同步布局（K 线 + 策略 + 持仓同屏）
 - 策略 overlay 直接在 K 线上显示买卖点
 - 回测报告分位图（与历史 benchmark 对比）

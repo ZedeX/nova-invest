@@ -9,8 +9,8 @@
 
 | 术语 | 定义 |
 |---|---|
-| **Nova Invest** | 本项目代号，AI-native 投研工作流系统，Alva-inspired 求职作品 |
-| **Alva** | 参考竞品（alva.xyz），由 Galxe spin-off 的 AI 投研产品 |
+| **Nova Invest** | 本项目代号，AI-native 投研工作流系统，个人学习项目 |
+| **竞品** | 市场上的AI投研产品，作为参考对象 |
 | **Prosumer** | Producer + Consumer，专业消费者；本文档指"专业散户" |
 | **Persona** | 用户画像，Nova Invest 定义 3 类：散户 / Prosumer / 半专业 |
 | **PM** | Product Manager 产品经理 |
