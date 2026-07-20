@@ -964,3 +964,149 @@ User instruction: "继续sprint 9".
 - Credit carry-over logic (Team+ only)
 
 ---
+
+## 2026-07-21 05:10 (Asia/Shanghai) - Phase 2 Implementation Sprint
+
+### Task
+1) Fix CI from GitHub Actions run 29737716200; 2) Handle Phase 2; 3) Continue processing Epic issues.
+Previous session had already fixed CI (commits 13552db, 83797e0, 5dcf0f7 all green).
+
+### Phase 2 Analysis — Task Categorization
+
+**FEASIBLE_LOCAL** (implemented this session):
+1. Supervisor Pattern (Epic 01 core gap)
+2. DSL Parser BNF (Epic 04 core gap)
+3. Markowitz Portfolio Optimization (Phase 2 Roadmap)
+4. Trade Log CSV Export (Epic 04 gap)
+5. CircuitBreaker KV Migration (Phase 2 infrastructure)
+6. SSE Adaptive Streaming (ADR-0015 deferred)
+
+**NEEDS_EXTERNAL** (cannot implement locally):
+- Alpaca/IBKR real broker integration
+- Stripe payment integration
+- China market (ICP filing, domestic data center, Alipay/WeChat Pay)
+- Vectorize RAG (Workers paid plan)
+- OTLP Exporter (Grafana Cloud account)
+- D1 schema deployment to Cloudflare
+
+### Files Created
+
+**Supervisor Pattern (Epic 01)**
+1. `web/src/lib/agent/supervisor.ts` — Supervisor dispatcher:
+   - `SupervisorContext` / `SupervisorResult` / `HandlerType` interfaces
+   - `Supervisor` class: request-scoped, classifies intent via `classifyIntent()`,
+     routes to correct handler (all → AskHandler for now), creates `AgentLoop`,
+     wraps in `startSpan("supervisor.dispatch")`
+   - `routeToHandler()`: maps all 4 intents → "ask" (future: build/dashboard)
+2. `web/src/lib/agent/ask-handler.ts` — AskHandler StepHandler:
+   - `mockAskResponse()` extracted from `/api/ask/route.ts` (now shared)
+   - Implements all 6 StepHandler methods (onInit/onPlan/onExecute/onToolCall/onSynthesize/onFinalize)
+   - Mock mode: skips LLM/tool calls, uses mockAskResponse
+   - Real mode: multi-step plan for deep_research, placeholder for Phase 2 LLM/provider
+
+**DSL Parser (Epic 04)**
+3. `web/src/lib/dsl/types.ts` — Token/AST/error types:
+   - `DSLToken` (number/identifier/op_compare/op_and/op_or/op_not/lparen/rparen/comma)
+   - `DSLNode` union (indicator/number/compare/and/or/not/cross)
+   - `DSLParseError` with position tracking
+   - `DSLCompileResult`, `IndicatorDescriptor`
+4. `web/src/lib/dsl/parser.ts` — Full expression parser:
+   - Tokenizer: numbers, identifiers, AND/OR/NOT, comparison operators, parens/commas
+   - Recursive descent: precedence OR → AND → NOT → comparison → primary
+   - `cross` as comparison-level operator
+   - Indicator registry: SMA/EMA/RSI/MACD/BOLL/ATR/OBV/VWAP with `compute(ctx, params)`
+   - `compile()`: AST → Strategy (evaluate() → SignalType)
+   - `compileWithExit()`: separate entry/exit expressions
+   - `parseAndCompile()`: one-step convenience function
+
+**Markowitz Portfolio Optimization (Phase 2 Roadmap)**
+5. `web/src/lib/portfolio/types.ts` — AssetReturn, PortfolioAllocation, FrontierPoint, PortfolioConfig, PortfolioResult
+6. `web/src/lib/portfolio/statistics.ts` — computeMean, computeVariance, computeCovariance, computeCorrelation, buildCovarianceMatrix
+7. `web/src/lib/portfolio/markowitz.ts` — MarkowitzOptimizer class:
+   - `optimize()`: tangency portfolio (max Sharpe) via analytical + active-set clamping
+   - `minVariance()`: minimum variance portfolio via Lagrange multiplier
+   - `efficientFrontier(points?)`: parametric sweep of target returns
+   - Gaussian elimination with partial pivoting
+   - Covariance matrix regularization (ε=1e-10)
+   - No external optimization libraries
+
+**Trade Log CSV Export (Epic 04)**
+8. `web/src/lib/backtest/csv-export.ts`:
+   - `csvHeader()`: 7-column header
+   - `tradeToCsvRow()`: single Trade → CSV row (4dp prices/qty, 6dp pnl_pct)
+   - `tradesToCsv()`: header + rows; empty → header only
+   - `metricsToCsv()`: key,value format
+   - RFC 4180 CSV escaping
+
+**CircuitBreaker KV Migration (Phase 2 infrastructure)**
+9. Modified `web/src/lib/data/circuit-breaker.ts`:
+   - Added `CircuitBreakerStore` interface (get/set/delete async)
+   - Added `MemoryCircuitBreakerStore` — Map-backed with TTL
+   - Added `KVCircuitBreakerStore` — wraps KVNamespace with expirationTtl
+   - Modified `CircuitBreaker` constructor: optional `store` parameter (backward compat)
+   - Added `persist()` private method (fire-and-forget to store)
+   - Added `hydrate(key)` async method (restore from store)
+
+**SSE Adaptive Streaming (ADR-0015)**
+10. Modified `web/src/lib/sse/encoder.ts` — Full rewrite:
+    - `encodeSSE(event)`: W3C SSE wire format
+    - `SSEncoder`: push/close/stream via TransformStream
+    - `resolveStreamingMode(intent, env?)`: deep_research→always, simple_qa→never, others→adaptive
+    - `createSSEResponse(encoder)`: correct headers
+11. Modified `web/src/lib/sse/types.ts` — ADR-canonical types:
+    - `SSEEventType` = "token" | "citation" | "metric" | "done" | "error"
+    - `StreamingMode` = "never" | "always" | "adaptive"
+
+### Files Modified
+12. `web/src/app/api/ask/route.ts` — Removed local mockAskResponse, imports from ask-handler
+
+### Tests Created
+13. `web/tests/unit/supervisor.test.ts` — 10 tests
+14. `web/tests/unit/ask-handler.test.ts` — 16 tests
+15. `web/tests/unit/dsl-parser.test.ts` — 38 tests
+16. `web/tests/unit/markowitz.test.ts` — 41 tests
+17. `web/tests/unit/csv-export.test.ts` — 11 tests
+18. `web/tests/unit/sse-encoder.test.ts` — 11 tests
+19. Modified `web/tests/unit/circuit-breaker.test.ts` — +17 tests
+20. Modified `web/tests/unit/sse-streaming.test.ts` — updated to new API
+
+### Verification (all CI gates passed)
+- tsc 0 errors, eslint 0 warnings
+- vitest: 708/708 passed (40 test files) — up from 562
+- CI run 29744942137: success
+
+### Commits Pushed
+1. `d87354a` — feat(EP01): Supervisor pattern - multi-agent dispatch + AskHandler StepHandler
+2. `0603e40` — feat(EP04): DSL parser - BNF tokenizer + recursive descent + indicator registry
+3. `fd3a7c8` — feat(EP04): Markowitz portfolio optimization - tangency/minVar/efficient frontier
+4. `5b2310a` — feat: trade log CSV export + CircuitBreaker KV store abstraction
+5. `5745125` — feat(ADR-0015): SSE adaptive streaming - resolveStreamingMode + SSEncoder rewrite
+
+### GitHub Epic Issues Updated
+- Epic 01 (#1): Marked Supervisor + OTel done, added phase-2 label
+- Epic 04 (#4): Marked DSL Parser + IS/OOS split + CSV export done, added phase-2 label
+- Created `phase-2` label (color 0E8A16)
+
+### Epic Status Summary
+| Epic | Status | Open Items |
+|------|--------|------------|
+| 01 Agent Harness | Phase 2 In Progress | Short-term KV (partial), RAG Vectorize (needs Workers) |
+| 02 Data Layer | Phase 1 Complete | D1 schema deployment (needs Cloudflare) |
+| 03 Ask Agent | **Complete** | — |
+| 04 Strategy DSL | Phase 2 In Progress | — (all local items done) |
+| 05 Dashboard | **Complete** | — |
+| 06 Broker Integration | Phase 1 Complete | MCP broker server (Phase 2, needs external) |
+| 07 Share & Community | **Complete** | — |
+| 08 Playbook System | **Complete** | — |
+
+### Remaining Phase 2 Items (NEEDS_EXTERNAL)
+- D1 schema deployment to Cloudflare Workers
+- Alpaca/IBKR real broker integration (MCP server)
+- Stripe payment integration
+- Vectorize RAG pipeline (Workers paid plan)
+- OTLP Exporter → Grafana Cloud
+- R2 persistence (Playbook/Community YAML storage)
+- China market: ICP filing, domestic data center, Alipay/WeChat Pay, content compliance
+- D1-backed credit store (replace in-memory Map)
+
+---
