@@ -1110,3 +1110,86 @@ Previous session had already fixed CI (commits 13552db, 83797e0, 5dcf0f7 all gre
 - D1-backed credit store (replace in-memory Map)
 
 ---
+
+## 2026-07-21 05:45 (Asia/Shanghai) - Phase 2 Continued: RAG + i18n + Playbook→DSL + Performance
+
+### Task
+User: "继续下一个phase". Continued Phase 2 implementation with locally-feasible tasks.
+
+### Files Created
+
+**RAG Pipeline Adapters (ADR-0014)**
+1. `web/src/lib/rag/types.ts` — RAGSourceAdapter, RAGRetrieveOptions, RAGDocument, RAGPipelineResult
+2. `web/src/lib/rag/pipeline.ts` — RAGPipeline class (multi-adapter, parallel query, RRF merge, graceful degradation)
+   + `reciprocalRankFusion()` function (weight/(k+rank), k=60, content-based dedup)
+3. `web/src/lib/rag/adapters/kline-adapter.ts` — KlineAdapter (weight=1.0, mock kline summaries)
+4. `web/src/lib/rag/adapters/fundamentals-adapter.ts` — FundamentalsAdapter (weight=0.8, PE/market cap/revenue)
+5. `web/src/lib/rag/adapters/news-adapter.ts` — NewsAdapter (weight=0.6, mock news articles)
+6. `web/src/lib/rag/adapters/playbook-adapter.ts` — PlaybookAdapter (weight=0.5, tag/name matching)
+7. `web/src/lib/rag/index.ts` — Barrel export + `createRAGPipeline(mockMode)` factory
+
+**i18n Internationalization**
+8. `web/src/lib/i18n/types.ts` — Locale, TranslationMessages, I18nConfig
+9. `web/src/lib/i18n/translations/en.ts` — 38 keys across 10 sections
+10. `web/src/lib/i18n/translations/zh.ts` — Chinese translations for all 38 keys
+11. `web/src/lib/i18n/context.tsx` — I18nProvider, useI18n hook, getNestedValue helper
+12. `web/src/lib/i18n/index.ts` — Barrel export
+
+**Playbook→DSL→Backtest Integration**
+13. `web/src/lib/playbook/types.ts` — Added dsl, start_date, end_date, fee_bps, slippage_bps to PlaybookStrategy
+    + Added klines, start_date, end_date to ExecutionContext
+14. `web/src/lib/playbook/executor.ts` — Replaced stub runStrategy with real execution:
+    parseAndCompile(dsl) → BacktestConfig → BacktestEngine → run(klines) → metrics
+
+### Files Modified
+
+15. `web/tests/unit/rag-pipeline.test.ts` — 33 tests (13 new + 20 existing)
+16. `web/tests/integration/rag-pipeline.test.ts` — Updated SimpleRAGSourceAdapter rename
+17. `web/tests/unit/playbook.test.ts` — Updated for DSL execution + klines context
+18. `web/tests/unit/i18n.test.tsx` — 15 tests (getNestedValue, t(), locale switch, completeness)
+19. `web/tests/unit/playbook-executor.test.ts` — 11 tests (DSL integration, error cases)
+20. `web/next.config.ts` — Added compiler.removeConsole + experimental.optimizePackageImports
+21. `web/src/components/layout/DashboardGrid.tsx` — Lazy-load KlineChart, PositionsTable, AskAgentPanel, StrategyList, CommunityFeed
+
+### Verification
+- tsc 0 errors, eslint 0 warnings
+- vitest: 756/756 passed (42 test files) — up from 708
+- CI pending
+
+### Commits Pushed
+1. `38bd5a4` — feat(ADR-0014): RAG pipeline adapters - Kline/Fundamentals/News/Playbook + RRF
+2. `2e25b4f` — feat: i18n internationalization framework - en/zh translations + I18nProvider
+3. `9fe1734` — feat(EP08): PlaybookExecutor connects DSL Parser to BacktestEngine
+4. `e91f9ef` — docs: update project_memory with Phase 2 implementation sprint
+5. `950a629` — perf: lazy-load heavy widgets + optimize package imports for LCP < 1s target
+
+### GitHub Issues Updated
+- Added phase-2 label to issues #1, #3, #4
+
+### Phase 2 Local Tasks - COMPLETE
+All locally-implementable Phase 2 features have been implemented:
+- [x] Supervisor Pattern (EP01)
+- [x] DSL Parser BNF (EP04)
+- [x] Markowitz Portfolio Optimization (Roadmap)
+- [x] Walk-Forward Analysis (EP04)
+- [x] Trade Log CSV Export (EP04)
+- [x] CircuitBreaker KV Migration (Phase 2 infra)
+- [x] SSE Adaptive Streaming (ADR-0015)
+- [x] OpenTelemetry Scaffold (EP01)
+- [x] Degradation→Model Switching (Phase 1.5)
+- [x] RAG Pipeline Adapters + RRF (ADR-0014)
+- [x] i18n en/zh (Roadmap)
+- [x] Playbook→DSL→Backtest integration (EP08)
+- [x] Performance: lazy-load widgets + optimize imports (Roadmap LCP < 1s)
+
+### Remaining Items (ALL require external services)
+- D1 schema deployment to Cloudflare Workers
+- Alpaca/IBKR real broker integration (MCP server)
+- Stripe payment integration
+- Vectorize RAG pipeline (Workers paid plan)
+- OTLP Exporter → Grafana Cloud
+- R2 persistence (Playbook/Community YAML storage)
+- China market: ICP, data localization, Alipay/WeChat Pay, compliance
+- D1-backed credit store (replace in-memory Map)
+
+---
