@@ -232,3 +232,52 @@ Re-captured all 6 screenshots with proper navigation:
 - Pushed to origin/main successfully
 
 ---
+
+## 2026-07-20 13:10 (Asia/Shanghai) — Fix CI + Replace Dynamic Images with SVG
+
+### Problem
+1. **CI E2E tests failing**: Playwright strict mode violation - selectors matched multiple elements
+2. **README images not rendering**: Dynamic API URLs (`trae-api-cn.mchost.guru`) don't work in GitHub Markdown
+
+### E2E Test Fixes (3 tests)
+- `web/tests/e2e/dashboard.spec.ts`:
+  - Line 31-36: Added `.first()` to all h3 selectors
+  - Line 65: Added `.first()` to 'MOCK MODE' text selector
+- `web/tests/e2e/data-layer.spec.ts`:
+  - Line 44: Added `.first()` to svg text price label selector
+
+### SVG Image Replacements (3 files)
+Created self-contained SVG files that render correctly in GitHub:
+
+1. `docs/assets/hero-banner.svg` - Hero banner with:
+   - Nova Invest title
+   - Tagline: "AI-Powered Investment Platform for Prosumers"
+   - 3 feature boxes: Agent Harness, Strategy DSL, Citation Validator
+
+2. `docs/assets/architecture-diagram.svg` - 9-layer architecture:
+   - Layer 1: UI (Next.js 16)
+   - Layer 2: Orchestration (Cloudflare Workers)
+   - Layer 3-9: Agent Loop, Planning, Tools, Memory, RAG, LLM, Observability
+   - Color-coded layers with tech stack details
+
+3. `docs/assets/citation-pipeline.svg` - 3-stage validation:
+   - Stage 1: Structural (URL, source, confidence checks)
+   - Stage 2: Quote Substring (RAG context match)
+   - Stage 3: URL Reachability (async HTTP)
+   - 3 output states: all_verified, partial_strip, strict_reject
+
+### README Updates
+- `README.md`: Replaced 3 dynamic URLs with SVG file paths
+- `README.zh-CN.md`: Replaced 3 dynamic URLs with SVG file paths
+
+### Commit
+- `ebdc919` - fix: replace dynamic image URLs with SVG files + fix E2E tests (7 files, +254/-13)
+- Pushed to origin/main successfully
+
+### Why SVG?
+- GitHub Markdown cannot render dynamic API image URLs
+- SVG files are self-contained, version-controllable
+- SVG renders correctly in GitHub and all markdown viewers
+- No external dependencies or API calls
+
+---
