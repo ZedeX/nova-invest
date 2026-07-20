@@ -5,7 +5,6 @@
  * Phase 2: AlpacaBroker + IBKRBroker via MCP.
  */
 
-import { isMockMode } from "../env";
 import type { Env } from "../env";
 import type { BrokerAdapter } from "./types";
 import { PaperBroker } from "./paper-broker";

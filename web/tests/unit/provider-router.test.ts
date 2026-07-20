@@ -137,7 +137,7 @@ describe("ADR-0016: ProviderRouter (circuit-breaker fallback)", () => {
     // Re-mock since we cleared
     initiallyFailing.getKlines.mockResolvedValueOnce(mockKlineResponse("AAPL"));
 
-    const result = await router.select("AAPL", "1d");
+    await router.select("AAPL", "1d");
     expect(initiallyFailing.getKlines).toHaveBeenCalledTimes(1);
     expect(healthy.getKlines).not.toHaveBeenCalled();
     expect(breaker.getState("yahoo")).toBe("CLOSED");

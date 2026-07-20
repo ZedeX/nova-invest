@@ -23,7 +23,7 @@ import {
   createSSEResponse,
   resolveStreamingMode,
 } from "@/lib/sse/encoder";
-import type { SSEEvent, SSEEventType, StreamingMode } from "@/lib/sse/types";
+import type { SSEEventType } from "@/lib/sse/types";
 
 describe("ADR-0015: SSE Streaming", () => {
   beforeEach(() => {
