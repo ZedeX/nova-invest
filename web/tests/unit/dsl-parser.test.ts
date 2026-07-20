@@ -17,7 +17,7 @@
 import { describe, expect, it } from "vitest";
 import type { Kline } from "@/lib/types";
 import type { StrategyContext } from "@/lib/backtest/types";
-import type { DSLIndicatorNode, DSLNode } from "@/lib/dsl/types";
+import type { DSLIndicatorNode } from "@/lib/dsl/types";
 import { DSLParseError } from "@/lib/dsl/types";
 import {
   compile,

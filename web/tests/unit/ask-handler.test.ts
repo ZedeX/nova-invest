@@ -9,8 +9,8 @@
  *   - Mock mode: full AskHandler loop completes without external calls
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { LoopContext, Plan, ExecResult, ToolCall, Synthesis } from "@/lib/agent/types";
+import { describe, expect, it } from "vitest";
+import type { LoopContext, ExecResult, ToolCall, Synthesis } from "@/lib/agent/types";
 import { AskHandler, mockAskResponse } from "@/lib/agent/ask-handler";
 import { AgentLoop } from "@/lib/agent/loop";
 

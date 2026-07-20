@@ -190,7 +190,7 @@ describe("KVCircuitBreakerStore", () => {
     const data = new Map<string, string>();
     return {
       get: vi.fn(async (key: string) => data.get(key) ?? null),
-      put: vi.fn(async (key: string, value: string, opts?: { expirationTtl?: number }) => {
+      put: vi.fn(async (key: string, value: string, _opts?: { expirationTtl?: number }) => {
         data.set(key, value);
       }),
       delete: vi.fn(async (key: string) => {

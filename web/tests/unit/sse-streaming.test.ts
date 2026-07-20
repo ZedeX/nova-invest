@@ -22,7 +22,6 @@ import {
   encodeSSE,
   resolveStreamingMode,
 } from "@/lib/sse/encoder";
-import type { SSEEvent } from "@/lib/sse/types";
 
 // ---------- encodeSSE ----------
 
@@ -90,7 +89,6 @@ describe("SSEncoder", () => {
 
     const reader = encoder.stream.getReader();
     const chunks: string[] = [];
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -113,7 +111,6 @@ describe("SSEncoder", () => {
 
     const reader = encoder.stream.getReader();
     const chunks: string[] = [];
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;

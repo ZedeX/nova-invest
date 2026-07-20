@@ -83,7 +83,7 @@ describe("t()", () => {
   });
 
   it("substitutes params into translations", () => {
-    const { result } = renderI18n("en");
+    renderI18n("en");
     // Test with a real key that could accept params
     // We use a custom approach: the t() function replaces {key} patterns
     // Since no en.ts keys use {param}, we verify the fallback key behavior

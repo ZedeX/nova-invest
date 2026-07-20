@@ -67,7 +67,6 @@ describe("SSEncoder", () => {
 
     const reader = enc.stream.getReader();
     const chunks: string[] = [];
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;

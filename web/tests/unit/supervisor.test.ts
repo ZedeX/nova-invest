@@ -10,8 +10,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { LoopContext, LoopResult, Plan, StepHandler, Synthesis, ExecResult, ToolCall, ToolResult } from "@/lib/agent/types";
-import type { SupervisorContext, SupervisorResult } from "@/lib/agent/supervisor";
+import type { LoopContext, StepHandler, Synthesis, ExecResult, ToolCall } from "@/lib/agent/types";
 import { Supervisor } from "@/lib/agent/supervisor";
 import { AskHandler } from "@/lib/agent/ask-handler";
 
