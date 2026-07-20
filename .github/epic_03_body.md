@@ -16,23 +16,24 @@ Multi-step reasoning Ask Agent with citation validation, anti-hallucination, and
 
 ## Sub-tasks
 
-- [ ] Implement `AskAgentPanel` widget
-- [ ] Mock QA sample routing (regex match → sample file)
-- [ ] Intent classifier (`classifyIntent`)
-- [ ] Real mode `/api/ask` endpoint (placeholder)
-- [ ] Citation validator (reject answers without sources for factual claims)
-- [ ] Numeric fact grounding (verify numbers against data sources)
-- [ ] Conversation history persistence
-- [ ] Suggested questions UI
+- [x] Implement `AskAgentPanel` widget
+- [x] Mock QA sample routing (regex match → sample file)
+- [x] Intent classifier (`classifyIntent`)
+- [x] Real mode `/api/ask` endpoint — full Mock + Real mode, Sprint 5
+- [x] Citation validator (reject answers without sources for factual claims) — ADR-0007
+- [x] Numeric fact grounding (verify numbers against data sources) — NumericFact type
+- [x] Conversation history persistence — conversation_history table in Migration 003
+- [x] Suggested questions UI
+- [x] Credit charging integration — Sprint 9, ADR-0017
 
 ## Acceptance Criteria
 
-- [ ] 5 Mock QA samples load correctly based on query pattern
-- [ ] Intent is correctly classified for 80%+ of test queries
-- [ ] Citations display with clickable links
-- [ ] Confidence score visible to user
-- [ ] Cost (credits_used) shown per answer
-- [ ] Mock mode = 0 credit consumption
+- [x] 5 Mock QA samples load correctly based on query pattern
+- [x] Intent is correctly classified for 80%+ of test queries
+- [x] Citations display with clickable links
+- [x] Confidence score visible to user
+- [x] Cost (credits_used) shown per answer
+- [x] Mock mode = 0 credit consumption
 
 ## References
 

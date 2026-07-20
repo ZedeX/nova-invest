@@ -266,4 +266,83 @@ describe("ADR-0003: LLM routing and cost cap", () => {
 
     delete process.env.VOLCANO_ARK_API_KEY;
   });
+
+  // ---------- Phase 1.5: degradation_level → route/getLLM model switching ----------
+  //
+  // Per ADR-0017 §Negative Consequence:
+  //   "Degradation model mapping not implemented — chargeCredit() returns
+  //    degraded: true but /api/ask doesn't switch to cheaper model"
+  //
+  // This bridge feature connects the credit billing degradation chain
+  // (normal → degraded → mock_only) to the LLM router's model selection.
+
+  describe("Phase 1.5: degradation_level → model switching", () => {
+    it("route() with degradationLevel='mock_only' forces mock provider", async () => {
+      process.env.USE_MOCK = "false";
+      process.env.ENVIRONMENT = "production";
+      const { route } = await import("@/lib/llm/router");
+      const config = route("deep_research", undefined, "mock_only");
+      expect(config.provider).toBe("mock");
+      expect(config.model).toBe("mock-qa-sample");
+      expect(config.cost_cap).toBe(0);
+    });
+
+    it("route() with degradationLevel='degraded' swaps pro → lite", async () => {
+      process.env.USE_MOCK = "false";
+      process.env.ENVIRONMENT = "production";
+      const { route } = await import("@/lib/llm/router");
+
+      // deep_research cloud uses doubao-pro-32k → should become doubao-lite-32k
+      const config = route("deep_research", undefined, "degraded");
+      expect(config.provider).toBe("ark");
+      expect(config.model).toContain("lite");
+      expect(config.model).not.toContain("pro");
+    });
+
+    it("route() with degradationLevel='degraded' keeps lite models unchanged", async () => {
+      process.env.USE_MOCK = "false";
+      process.env.ENVIRONMENT = "production";
+      const { route } = await import("@/lib/llm/router");
+
+      // simple_qa cloud uses doubao-lite-4k → stays the same
+      const config = route("simple_qa", undefined, "degraded");
+      expect(config.model).toBe("doubao-lite-4k");
+    });
+
+    it("route() with degradationLevel='normal' returns standard config", async () => {
+      process.env.USE_MOCK = "false";
+      process.env.ENVIRONMENT = "production";
+      const { route } = await import("@/lib/llm/router");
+
+      const config = route("deep_research", undefined, "normal");
+      expect(config.model).toBe("doubao-pro-32k");
+    });
+
+    it("getLLM() with degradationLevel='mock_only' returns MockLLM", async () => {
+      process.env.USE_MOCK = "false";
+      process.env.ENVIRONMENT = "production";
+      const { getLLM, MockLLM } = await import("@/lib/llm/router");
+      const llm = getLLM("deep_research", undefined, "mock_only");
+      expect(llm).toBeInstanceOf(MockLLM);
+    });
+
+    it("getLLM() with degradationLevel='degraded' returns RealLLM with lite model", async () => {
+      process.env.USE_MOCK = "false";
+      process.env.ENVIRONMENT = "production";
+      vi.unstubAllGlobals();
+      const { getLLM, RealLLM } = await import("@/lib/llm/router");
+      const llm = getLLM("deep_research", undefined, "degraded") as InstanceType<typeof RealLLM>;
+      expect(llm).toBeInstanceOf(RealLLM);
+      expect(llm.config.model).toContain("lite");
+      expect(llm.config.model).not.toContain("pro");
+    });
+
+    it("mock_only overrides even when USE_MOCK=false", async () => {
+      process.env.USE_MOCK = "false";
+      process.env.ENVIRONMENT = "production";
+      const { route } = await import("@/lib/llm/router");
+      const config = route("deep_research", undefined, "mock_only");
+      expect(config.provider).toBe("mock");
+    });
+  });
 });

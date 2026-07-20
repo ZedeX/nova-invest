@@ -317,7 +317,7 @@ CREATE TABLE IF NOT EXISTS credit_orders (
 - **In-memory store**: State lost on Worker restart; not shared across instances; violates FP-0001/FP-0002. Acceptable for Phase 1 (demo_user only).
 - **No Stripe integration**: Top-ups are auto-approved with no payment verification. Acceptable for Phase 1 where credits are virtual.
 - **No multi-user**: All operations use `demo_user`. Real user authentication needed for Phase 2.
-- **Degradation model mapping not implemented**: The ADR specifies degraded mode uses a cheaper model, but the actual model-switching logic in `getLLM()` is not yet connected to the degradation level.
+- **Degradation model mapping**: ~~Not yet implemented~~ **Implemented in Phase 1.5** (2026-07-20). `route()` and `getLLM()` now accept an optional `degradationLevel` parameter: `mock_only` forces MockLLM; `degraded` swaps pro→lite models; `normal` uses standard routing. `/api/ask` passes `chargeResult.degradation_level` to `getLLM()`.
 
 ### Risks
 
@@ -325,8 +325,8 @@ CREATE TABLE IF NOT EXISTS credit_orders (
   - **Mitigation**: Phase 1 runs single-isolate dev server; production Phase 2 uses D1 (ACID transactions).
 - **Risk**: Action costs become stale as LLM provider pricing changes.
   - **Mitigation**: ACTION_COSTS is a single record in types.ts — easy to update. Phase 2 can load from D1 config table.
-- **Risk**: Degradation model mapping incomplete — `chargeCredit()` returns `degraded: true` but `/api/ask` doesn't switch to cheaper model.
-  - **Mitigation**: Phase 1.5 task: connect `degradation_level` to `getLLM()` model selection (already scaffolded in ADR-0003).
+- **Risk**: ~~Degradation model mapping incomplete~~ **Resolved in Phase 1.5**: `chargeCredit()` returns `degraded: true` and `/api/ask` now switches to cheaper model via `getLLM(intent, undefined, degradationLevel)`.
+  - **Mitigation**: Phase 1.5 implemented (2026-07-20). 7 unit tests verify route()/getLLM() degradation behavior.
 
 ## GDD Requirements Addressed
 

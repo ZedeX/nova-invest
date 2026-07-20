@@ -25,10 +25,9 @@ import {
   checkDegradationLevel,
 } from "@/lib/credit/store";
 import { ACTION_COSTS, PLAN_CONFIGS } from "@/lib/credit/types";
-import type { CreditAction, CreditPlan } from "@/lib/credit/types";
+// CreditAction, CreditPlan — used via ACTION_COSTS/PLAN_CONFIGS lookups, not as type params
 
 const USER_A = "user_a@test.com";
-const USER_B = "user_b@test.com";
 
 beforeEach(() => {
   _resetStoreForTest();
@@ -86,7 +85,7 @@ describe("Credit: Action Cost Table", () => {
   });
 
   it("all costs are non-negative integers", () => {
-    for (const [action, cost] of Object.entries(ACTION_COSTS)) {
+    for (const [_action, cost] of Object.entries(ACTION_COSTS)) {
       expect(Number.isInteger(cost)).toBe(true);
       expect(cost).toBeGreaterThanOrEqual(0);
     }
@@ -211,8 +210,8 @@ describe("Credit Store: Degradation Chain", () => {
 
 describe("Credit Store: Refund", () => {
   it("refunds a previous charge", () => {
-    const chargeResult = chargeCredit(USER_A, "ask_deep", false);
-    const balBefore = getOrCreateBalance(USER_A);
+    const _chargeResult = chargeCredit(USER_A, "ask_deep", false);
+    const _balBefore = getOrCreateBalance(USER_A);
 
     // Find the transaction
     const txs = listTransactions(USER_A);

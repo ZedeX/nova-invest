@@ -19,23 +19,23 @@ Build the 9-layer Agent Harness that powers all AI capabilities:
 
 ## Sub-tasks
 
-- [ ] Define `AgentHarness` interface
-- [ ] Implement LLM router (`src/lib/llm/router.ts`)
+- [x] Define `AgentHarness` interface
+- [x] Implement LLM router (`src/lib/llm/router.ts`) — ADR-0003
 - [ ] Implement Supervisor pattern (multi-agent + fallback chain)
 - [ ] Implement short-term memory (KV)
-- [ ] Implement long-term memory (D1)
-- [ ] RAG retrieval via Vectorize
+- [x] Implement long-term memory (D1) — conversation_history table in Migration 003
+- [ ] RAG retrieval via Vectorize — ADR-0014 (schema ready, pipeline Phase 2)
 - [ ] OpenTelemetry instrumentation
-- [ ] Cost cap enforcement (Sonnet → Haiku → Mock degradation)
-- [ ] Mock/Real mode toggle
+- [x] Cost cap enforcement (Sonnet → Haiku → Mock degradation) — ADR-0003
+- [x] Mock/Real mode toggle — ADR-0001, isMockMode() factory
 
 ## Acceptance Criteria
 
-- [ ] All 4 intent types route correctly (simple_qa, deep_research, tool_call, clarify)
-- [ ] Cost cap degrades from Sonnet → Haiku → Mock under budget pressure
+- [x] All 4 intent types route correctly (simple_qa, deep_research, tool_call, clarify)
+- [x] Cost cap degrades from Sonnet → Haiku → Mock under budget pressure
 - [ ] Agent loop terminates within 5 iterations
 - [ ] OpenTelemetry traces export to console in dev, Grafana in prod
-- [ ] Mock mode returns pre-generated samples without LLM calls
+- [x] Mock mode returns pre-generated samples without LLM calls
 
 ## References
 

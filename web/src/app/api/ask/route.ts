@@ -160,9 +160,10 @@ export async function POST(request: NextRequest) {
       answer = mockAskResponse(body.query, intent);
     } else {
       // Real mode: route through LLM (ADR-0003)
-      // Phase 2 will add RAG pipeline (ADR-0014) + Citation Validator (ADR-0007)
+      // Phase 1.5: pass degradation_level from credit billing to LLM router
+      // When degraded → pro→lite model swap; when mock_only → force MockLLM
       try {
-        const llm = getLLM(intent);
+        const llm = getLLM(intent, undefined, chargeResult.degradation_level);
         answer = await llm.complete(body.query, intent);
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);

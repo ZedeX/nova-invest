@@ -13,33 +13,33 @@ Composable, versioned (SemVer) packages of strategies + data fetchers + risk man
 - SemVer versioning with changelog
 - Narrative fields required (why / how / risks)
 - Circular dependency detection
-- D1 schema: `playbooks`, `playbook_versions`, `playbook_dependencies`, `user_playbooks`
+- D1 schema: `playbooks`, `playbook_versions`, `playbook_dependencies`
 
 ## Sub-tasks
 
-- [x] Playbook library page (`/playbook`) with 3 personal Playbooks
-- [x] 6 kind cards display
-- [x] 3 composition type cards
-- [ ] Playbook detail page (`/playbook/[id]`)
-- [ ] YAML schema validator for Playbook
-- [ ] Composition engine (parallel / sequential / conditional)
-- [ ] Circular dependency detection algorithm
-- [ ] SemVer version bumping UI
-- [ ] Changelog auto-generation
-- [ ] D1 migrations for 4 Playbook tables
-- [ ] Narrative fields required validation
+- [x] Playbook library page (`/playbook`) — Sprint 7
+- [x] 6 kind cards display — Sprint 7
+- [x] 3 composition type cards — Sprint 7
+- [x] Playbook detail page — /api/playbooks/[id]
+- [x] YAML schema validator for Playbook — validatePlaybookYAML() 5-stage pipeline, Sprint 7
+- [x] Composition engine (parallel / sequential / conditional) — PlaybookExecutor, Sprint 7
+- [x] Circular dependency detection algorithm — DFS white/gray/black, Sprint 7
+- [x] SemVer version bumping — parseSemver + isSemverGreater, Sprint 7
+- [x] Changelog auto-generation — changelog field in publishVersion(), Sprint 7
+- [x] D1 migrations for 3 Playbook tables — Migration 006, Sprint 5
+- [x] Narrative fields required validation — validateNarrative(), Sprint 7
 
 ## Acceptance Criteria
 
-- [ ] All 6 kinds can be instantiated
-- [ ] Parallel composition requires weight sum = 1.0
-- [ ] Sequential composition rejects circular dependencies
-- [ ] Conditional composition supports if/then/else
-- [ ] SemVer versions strictly increasing
-- [ ] Narrative fields (why/how/risks) required for publish
-- [ ] Version history displays changelog
+- [x] All 6 kinds can be instantiated
+- [x] Parallel composition requires weight sum = 1.0 (±0.001 tolerance)
+- [x] Sequential composition rejects circular dependencies
+- [x] Conditional composition supports if/then/else
+- [x] SemVer versions strictly increasing
+- [x] Narrative fields (why/how/risks) required for publish
+- [x] Version history displays changelog
 
 ## References
 
 - Spec: `docs/spec/data_model.md` (Playbook tables)
-- Mock data: 3 personal Playbooks in UI
+- 5 mock playbooks via seedMockPlaybooks()

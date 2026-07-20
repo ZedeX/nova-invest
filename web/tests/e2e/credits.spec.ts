@@ -20,7 +20,7 @@ test.describe("Credits & Billing (Sprint 9)", () => {
     // Account & Credits section
     await expect(page.locator("text=Account & Credits")).toBeVisible();
     await expect(page.locator("text=Credit Balance")).toBeVisible();
-    await expect(page.locator("text=Pro")).toBeVisible();
+    await expect(page.locator("dd", { hasText: /\$29\/mo/ })).toBeVisible();
   });
 
   test("User sees recent transactions on settings page", async ({ page }) => {

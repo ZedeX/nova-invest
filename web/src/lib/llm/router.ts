@@ -17,6 +17,7 @@
 import { getEnv, isMockMode } from "../env";
 import type { Env } from "../env";
 import type { AskResponse, QueryIntent } from "../types";
+import type { DegradationLevel } from "../credit/types";
 
 export interface LLMConfig {
   provider: "mock" | "lmstudio" | "ark";
@@ -45,19 +46,29 @@ export const ROUTING_RULES: Record<QueryIntent, { local: LLMConfig; cloud: LLMCo
   },
 };
 
-export function route(intent: QueryIntent, env?: Env): LLMConfig {
+export function route(intent: QueryIntent, env?: Env, degradationLevel?: DegradationLevel): LLMConfig {
   const resolvedEnv = env ?? getEnv();
 
   // Mock mode: return mock config (no actual LLM call)
   const useMock = env ? env.USE_MOCK === "true" : isMockMode();
-  if (useMock) {
+
+  // Credit degradation: mock_only forces mock mode regardless of env
+  if (useMock || degradationLevel === "mock_only") {
     return { provider: "mock", model: "mock-qa-sample",
              max_tokens: 0, cost_cap: 0 };
   }
 
   // Determine environment: local (LM Studio) vs cloud (Ark)
   const envMode = resolvedEnv.ENVIRONMENT === "production" ? "cloud" : "local";
-  return ROUTING_RULES[intent][envMode];
+  const config = ROUTING_RULES[intent][envMode];
+
+  // Credit degradation: degraded forces pro → lite model swap
+  if (degradationLevel === "degraded" && config.model.includes("pro")) {
+    const liteModel = config.model.replace(/pro/i, "lite");
+    return { ...config, model: liteModel };
+  }
+
+  return config;
 }
 
 // ============ Mock LLM (returns pre-generated samples) ============
@@ -417,8 +428,8 @@ Please provide a structured JSON response following the system instructions.`;
 // Callers can pass an explicit `env` for test isolation; if omitted, the
 // factory reads from the current process/globalThis environment.
 
-export function getLLM(intent: QueryIntent, env?: Env): MockLLM | RealLLM {
-  const config = route(intent, env);
+export function getLLM(intent: QueryIntent, env?: Env, degradationLevel?: DegradationLevel): MockLLM | RealLLM {
+  const config = route(intent, env, degradationLevel);
   if (config.provider === "mock") {
     return new MockLLM();
   }

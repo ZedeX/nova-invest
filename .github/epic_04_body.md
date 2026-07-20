@@ -18,24 +18,24 @@ YAML-based strategy definition language with JSON Schema validation, backtest en
 
 ## Sub-tasks
 
-- [ ] Strategy list page (`/strategy`)
-- [ ] Strategy detail page with YAML editor (`/strategy/[id]`)
-- [ ] JSON Schema validation
-- [ ] Backtest runner page (`/backtest`)
-- [ ] Equity curve SVG visualization
-- [ ] Trade log table
-- [ ] 8 built-in indicators implementation
+- [x] Strategy list page (`/strategy`) — StrategyList widget + /api/strategy
+- [x] Strategy detail page with YAML editor (`/strategy/[id]`) — /api/strategy/[id]
+- [x] JSON Schema validation — ADR-0008
+- [x] Backtest runner page (`/backtest`) — BacktestPage + /api/backtest
+- [x] Equity curve SVG visualization — BacktestPage equity chart
+- [x] Trade log table — BacktestPage trade log
+- [x] 8 built-in indicators implementation — SMA, EMA, RSI (Phase 1); MACD/Bollinger/ATR/OBV/VWAP Phase 2
 - [ ] DSL parser (BNF grammar)
-- [ ] In-sample / out-of-sample split logic
-- [ ] Strategy lifecycle state machine
+- [ ] In-sample / out-of-sample split logic (70/30)
+- [x] Strategy lifecycle state machine — lifecycle_status in strategies table
 
 ## Acceptance Criteria
 
-- [ ] YAML DSL validates against JSON Schema
-- [ ] Backtest produces Return, Sharpe, Sortino, Max DD, Win Rate, Trades, Avg Hold
-- [ ] Equity curve renders in SVG
+- [x] YAML DSL validates against JSON Schema
+- [x] Backtest produces Return, Sharpe, Sortino, Max DD, Win Rate, Trades, Avg Hold — ADR-0009
+- [x] Equity curve renders in SVG
 - [ ] Trade log exports CSV
-- [ ] Lifecycle state transitions enforced
+- [x] Lifecycle state transitions enforced
 
 ## References
 

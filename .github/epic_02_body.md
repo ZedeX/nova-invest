@@ -16,21 +16,22 @@ Build the data layer with Mock/Real Provider abstraction, D1 schema, and R2 cach
 
 ## Sub-tasks
 
-- [ ] Implement `MarketDataProvider` interface
-- [ ] `MockProvider` reads from `/mock/klines/{SYMBOL}_1d.json`
-- [ ] `RealProvider` calls Yahoo Finance API
-- [ ] `getProvider()` factory based on `isMockMode()`
-- [ ] D1 migrations for 5 core tables
-- [ ] R2 cache decision function `shouldCacheR2()`
-- [ ] Mock data generator script (`scripts/generate_mock_data.py`)
-- [ ] Fundamentals Mock dataset
+- [x] Implement `MarketDataProvider` interface
+- [x] `MockProvider` reads from `/mock/klines/{SYMBOL}_1d.json`
+- [x] `RealProvider` calls Yahoo Finance API — 4-tier fallback: R2 → Yahoo → Alpha Vantage → Mock
+- [x] `getProvider()` factory based on `isMockMode()` — request-scoped, no module cache
+- [x] D1 migrations for 5 core tables — Migrations 001-002
+- [x] R2 cache decision function `shouldCacheR2()` — ADR-0002
+- [x] Mock data generator script (`scripts/generate_mock_data.py`)
+- [x] Fundamentals Mock dataset
+- [x] CircuitBreaker for external sources — ADR-0016 (in-memory Phase 1, KV Phase 2)
 
 ## Acceptance Criteria
 
-- [ ] All 10 Mock symbols return valid K-line data in dev
-- [ ] Real mode fetches live Yahoo data with graceful fallback to Mock on error
+- [x] All 10 Mock symbols return valid K-line data in dev
+- [x] Real mode fetches live Yahoo data with graceful fallback to Mock on error
 - [ ] D1 schema deployed to Cloudflare (migrations applied)
-- [ ] R2 cache stores only whitelisted symbols
+- [x] R2 cache stores only whitelisted symbols
 
 ## References
 
