@@ -92,15 +92,15 @@
 
 ### New Documentation Conflicts (4 items)
 
-#### 🟠 CONFLICT C10: EP01 §ID-4/§ID-7/§反模式 don't back-reference ADR-0004 [MEDIUM]
+#### 🟠 CONFLICT C10: EP01 §ID-4/§ID-7/§anti-pattern don't back-reference ADR-0004 [MEDIUM]
 
 - **Type**: Documentation drift (GDD sync gap)
 - **EP01 §ID-4** defines the state machine inline (Init->Plan->Execute->ToolCall->Synthesize->FinalAnswer + Fallback + CostExceeded)
 - **EP01 §ID-7** defines `TraceStep` schema inline (step_id, parent_id, type, input, output, duration_ms, cost_usd)
-- **EP01 §反模式** lists `max_steps > 20` and `single query cost > $5` as inline rules
+- **EP01 §anti-pattern** lists `max_steps > 20` and `single query cost > $5` as inline rules
 - **ADR-0004** formalizes all three: `LoopState` type, `TraceStep` interface (adds `state` + `timestamp` fields), `MAX_STEPS=20` / `AGGREGATE_COST_CEILING_USD=5` constants
 - **Impact**: Future implementer reading EP01 won't know an ADR exists; may diverge from ADR-0004's exact interface shapes (especially the added `state` and `timestamp` fields on TraceStep).
-- **Resolution**: Add ADR-0004 back-references to EP01 §ID-4, §ID-7, §反模式.
+- **Resolution**: Add ADR-0004 back-references to EP01 §ID-4, §ID-7, §anti-pattern.
 
 #### 🟡 CONFLICT C11: EP03 §2.7 doesn't back-reference ADR-0004 [LOW]
 
@@ -129,7 +129,7 @@
 C1-C8 from the previous review (`architecture-review-2026-07-19.md`):
 - C1 (USE_MOCK semantics): **Resolved** - EP01 §ID-5 and EP03 §2.2 updated to use ENVIRONMENT for local/cloud split
 - C2 (simple_qa cost_cap $0.01 vs $0.001): **Resolved** - EP01 §ID-5 + §BDD updated to $0.001
-- C3 (Intent taxonomy mismatch): **Partially resolved** - EP01 §ID-5 has note "待 ADR-0004 扩展或新建 ADR" (still accurate - ADR-0004 explicitly defers Build Agent intents)
+- C3 (Intent taxonomy mismatch): **Partially resolved** - EP01 §ID-5 has note "Pending ADR-0004 extension or new ADR" (still accurate - ADR-0004 explicitly defers Build Agent intents)
 - C4 (R2 TTL): **Resolved** - EP02 §2.3 updated to price=3600
 - C5 (Mock data path): **Resolved** - EP07 §ID-7 updated to web/public/mock/community/
 - C6 (Tool naming get_quote vs get_current_price): **Unresolved** - low priority, awaiting human decision
@@ -180,7 +180,7 @@ These GDD assumptions conflict with verified ADR decisions. The GDDs should be r
 |-----|---------------|--------------------|--------|
 | EP01 §ID-4 | State machine inline, no ADR ref | ADR-0004 §State Machine formalizes as `LoopState` type | Add ADR-0004 reference |
 | EP01 §ID-7 | TraceStep inline (7 fields), no ADR ref | ADR-0004 §Key Interfaces defines `TraceStep` with 9 fields (adds `state` + `timestamp`) | Add ADR-0004 reference |
-| EP01 §反模式 | max_steps=20, $5 ceiling inline | ADR-0004 §Constants `MAX_STEPS=20`, `AGGREGATE_COST_CEILING_USD=5` | Add ADR-0004 reference |
+| EP01 §anti-pattern | max_steps=20, $5 ceiling inline | ADR-0004 §Constants `MAX_STEPS=20`, `AGGREGATE_COST_CEILING_USD=5` | Add ADR-0004 reference |
 | EP03 §2.7 | Ask Agent Loop inline, no ADR ref | ADR-0004 generic loop; Ask behavior via `StepHandler` interface | Add ADR-0004 reference |
 
 All 4 GDD revision flags will be applied by this review (per user approval).
@@ -229,7 +229,7 @@ All 4 GDD revision flags will be applied by this review (per user approval).
 **Not PASS because:**
 1. **52% of requirements still have no ADR** (45/86 gaps)
 2. **2 new ADRs are `Proposed`, not `Accepted`** - ADR-0004 and ADR-0011 block their dependents (ADR-0005/0006/0008/0010/0013/0014)
-3. **4 GDD sync gaps** - EP01 §ID-4/§ID-7/§反模式 and EP03 §2.7 don't back-reference ADR-0004 (this review applies fixes)
+3. **4 GDD sync gaps** - EP01 §ID-4/§ID-7/§anti-pattern and EP03 §2.7 don't back-reference ADR-0004 (this review applies fixes)
 4. **2 HIGH engine risk ADRs still missing** - Citation Validator (ADR-0007), Backtest Engine (ADR-0009)
 5. **Pre-gate items still missing** - `tests/integration/`, `design/accessibility-requirements.md`, `design/ux/interaction-patterns.md`
 6. **architecture.md has minimal ADR references** - decisions inline, not linked (except §9.4)
@@ -246,7 +246,7 @@ All 4 GDD revision flags will be applied by this review (per user approval).
 ## Blocking Issues (must resolve before PASS)
 
 1. **Promote ADR-0004 and ADR-0011 from Proposed to Accepted** - requires implementation + Validation Criteria sign-off
-2. **Apply 4 GDD sync fixes** (this review applies) - back-reference ADR-0004 in EP01 §ID-4/§ID-7/§反模式 and EP03 §2.7
+2. **Apply 4 GDD sync fixes** (this review applies) - back-reference ADR-0004 in EP01 §ID-4/§ID-7/§anti-pattern and EP03 §2.7
 3. **Write ADR-0007 Citation Validator** - HIGH engine risk, blocks EP03 anti-hallucination BDD
 4. **Write ADR-0009 Backtest Engine** - HIGH engine risk, determinism + in/out-of-sample contract
 5. **Run `/ux-design`** - create `design/accessibility-requirements.md` + `design/ux/interaction-patterns.md` (pre-gate)

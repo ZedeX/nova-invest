@@ -35,14 +35,14 @@ Accepted
 EP01 §ID-4 specifies an Agent Loop state machine: `Init -> Plan -> Execute -> ToolCall -> Synthesize -> FinalAnswer`, with `Execute -> Fallback` (tool fail × 3) and `Execute -> CostExceeded -> Degrade -> Plan` branches. EP03 §2.7 specifies an Ask-specific loop with `Classify -> SimpleQA/DeepResearch/ToolCall/Clarify -> RAGRetrieve -> CheckCost -> LLMCall -> ValidateCitations -> SaveMemory`. Without a shared loop abstraction:
 
 1. Each Sub-Agent (Ask/Build/Dashboard) would implement its own loop, risking divergence in cost tracking, trace emission, max_steps enforcement, and fallback behavior.
-2. Aggregate per-query cost ceiling (EP01 §反模式: "single query cost > $5 forbidden") would be enforced inconsistently or not at all - ADR-0003's per-call `cost_cap` does NOT bound aggregate cost across multi-step research.
+2. Aggregate per-query cost ceiling (EP01 §anti-pattern: "single query cost > $5 forbidden") would be enforced inconsistently or not at all - ADR-0003's per-call `cost_cap` does NOT bound aggregate cost across multi-step research.
 3. EP01 ID-7 TraceStep schema requires every state transition to emit a trace event; without a shared loop, each Agent must reimplement trace instrumentation.
-4. EP01 ID-1 mandates "自研 ≤100 行编排器" - the loop must be small and generic, not a heavy framework.
+4. EP01 ID-1 mandates "self-built ≤100-line orchestrator" - the loop must be small and generic, not a heavy framework.
 
 ### Constraints
 
 - **Cloudflare Workers stateless**: No module-level loop state, no module-level LLM/provider cache (per FP-0001/FP-0002). All state must live in a request-scoped `LoopContext`.
-- **EP01 §反模式**: `max_steps > 20` forbidden; aggregate `single query cost > $5` forbidden; "Sub-Agent 之间直接调用（必须通过 Supervisor）" forbidden.
+- **EP01 §anti-pattern**: `max_steps > 20` forbidden; aggregate `single query cost > $5` forbidden; "direct Sub-Agent calls (must go through Supervisor)" forbidden.
 - **EP01 ID-1**: Self-built, ≤100 lines. No LangGraph, no CrewAI, no Mastra SDK.
 - **ADR-0003 cost_cap is per-LLM-call, not aggregate**: ADR-0003 enforces `estimateCost > config.cost_cap` per call. ADR-0004 must enforce aggregate ceiling across all steps of a single user query.
 - **ADR-0003 Mock mode**: When `USE_MOCK=true`, loop must not make any external HTTP calls (FP-0005). MockLLM returns canned responses; loop must short-circuit Plan/Execute for Mock simple_qa.
@@ -221,7 +221,7 @@ export interface StepHandler {
   onFinalize(ctx: LoopContext, synthesis: Synthesis): Promise<LoopResult>;
 }
 
-// Constants - EP01 §反模式 hard limits
+// Constants - EP01 §anti-pattern hard limits
 export const MAX_STEPS = 20;
 export const AGGREGATE_COST_CEILING_USD = 5;
 export const TOOL_RETRY_LIMIT = 3;
@@ -380,7 +380,7 @@ export class AgentLoop {
 2. **Handlers are stateless**: `StepHandler` implementations must not hold state between calls. All state flows through `LoopContext`.
 3. **Per-call cost enforcement is ADR-0003's job**: `RealLLM.complete()` calls `estimateCost()` and degrades within a single LLM call. The loop only enforces aggregate.
 4. **Tool source-switching is tool-internal**: Per EP02 §ID-4, `RealProvider.getKlines()` handles Yahoo -> Alpha Vantage -> Polygon -> Mock internally. The loop's `executeWithFallback` only retries the tool call; it does not switch sources itself.
-5. **Sub-Agent dispatch goes through Supervisor** (EP01 §反模式): `AgentLoop` is instantiated by the Supervisor (EP01 ID-1), not by Sub-Agents directly. Sub-Agents only provide `StepHandler` implementations.
+5. **Sub-Agent dispatch goes through Supervisor** (EP01 §anti-pattern): `AgentLoop` is instantiated by the Supervisor (EP01 ID-1), not by Sub-Agents directly. Sub-Agents only provide `StepHandler` implementations.
 
 ## Alternatives Considered
 
@@ -389,13 +389,13 @@ export class AgentLoop {
 - **Description**: Each Sub-Agent (Ask/Build/Dashboard) writes its own loop. No shared abstraction.
 - **Pros**: Maximum flexibility - each Agent can optimize its own control flow. No abstraction tax.
 - **Cons**: Divergence risk - max_steps, cost ceiling, trace emission, fallback all implemented 3×. Bug fixes must be applied 3×. EP01 ID-7 TraceStep schema compliance becomes per-Agent.
-- **Rejection Reason**: EP01 §ID-1 mandates "自研 ≤100 行编排器" - a single shared loop is the only way to stay under 100 lines. Three separate loops would each be 50-100 lines.
+- **Rejection Reason**: EP01 §ID-1 mandates "self-built ≤100-line orchestrator" - a single shared loop is the only way to stay under 100 lines. Three separate loops would each be 50-100 lines.
 
 ### Alternative 2: LangGraph-style declarative graph executor
 
 - **Description**: Define Agents as declarative graphs (nodes + edges), execute via a graph runtime.
 - **Pros**: Industry-standard pattern (LangGraph, Mastra). Tooling for visualization + debugging.
-- **Cons**: Heavy dependency, violates EP01 §ID-1 "不用 LangGraph / CrewAI 等重框架". Graph runtime is 500+ lines, not ≤100. Adds learning curve for contributors.
+- **Cons**: Heavy dependency, violates EP01 §ID-1 "do not use heavy frameworks like LangGraph / CrewAI". Graph runtime is 500+ lines, not ≤100. Adds learning curve for contributors.
 - **Rejection Reason**: EP01 explicitly rejects this. Project decision is self-built lightweight.
 
 ### Alternative 3: Abstract base class + per-Agent subclass
@@ -430,7 +430,7 @@ export class AgentLoop {
 - **Risk**: `accumulated_cost_usd` drift from actual LLM API cost (estimate is approximate).
   - **Mitigation**: ADR-0003 uses 2.5× safety margin in per-call cost_cap. Aggregate $5 ceiling has additional 10-50× headroom over per-call caps. Log actual cost after each LLM call (per ADR-0003 `RealLLM.complete()` post-call logging).
 - **Risk**: `max_steps=20` is too low for deep research queries that need 10+ tool calls.
-  - **Mitigation**: EP01 §反模式 explicitly sets 20 as the limit. If a query needs more, it should be split into multiple queries (Supervisor re-dispatches). Document this in handler docs.
+  - **Mitigation**: EP01 §anti-pattern explicitly sets 20 as the limit. If a query needs more, it should be split into multiple queries (Supervisor re-dispatches). Document this in handler docs.
 - **Risk**: Module-level caching of `AgentLoop` instance (FP-0001/FP-0002 pattern) leaks state across requests in Workers.
   - **Mitigation**: ADR-0004 §Critical Implementation Rules #1 forbids this. Add unit test asserting `new AgentLoop()` is called per request (TD-10, see Validation Criteria).
 - **Risk**: Tool source-switching logic drifts between loop and tool implementation.
@@ -441,15 +441,15 @@ export class AgentLoop {
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|---------------------------|
 | EP01 §ID-4 | Agent Loop state machine: Init->Plan->Execute->ToolCall->Synthesize->FinalAnswer + Fallback + CostExceeded->Degrade | Codifies the exact state machine as `LoopState` type + `run()` control flow |
-| EP01 §ID-1 | "自研轻量编排器，100 行内" | `AgentLoop.run()` is ~80 lines (excluding interfaces) |
-| EP01 §反模式 | "不要让 max_steps > 20" | `MAX_STEPS = 20` hard cap with `max_steps_exceeded` abort |
-| EP01 §反模式 | "不要让单次 query 成本 > $5" | `AGGREGATE_COST_CEILING_USD = 5` hard cap with `cost_exceeded` abort |
-| EP01 §反模式 | "不要让 Sub-Agent 之间直接调用（必须通过 Supervisor）" | `AgentLoop` is instantiated by Supervisor; Sub-Agents only provide `StepHandler` |
+| EP01 §ID-1 | "Self-built lightweight orchestrator, within 100 lines" | `AgentLoop.run()` is ~80 lines (excluding interfaces) |
+| EP01 §anti-pattern | "Don't let max_steps > 20" | `MAX_STEPS = 20` hard cap with `max_steps_exceeded` abort |
+| EP01 §anti-pattern | "Don't let single query cost > $5" | `AGGREGATE_COST_CEILING_USD = 5` hard cap with `cost_exceeded` abort |
+| EP01 §anti-pattern | "Don't allow direct Sub-Agent calls (must go through Supervisor)" | `AgentLoop` is instantiated by Supervisor; Sub-Agents only provide `StepHandler` |
 | EP01 §ID-7 | Trace + TraceStep schema | `emitTrace()` emits one TraceStep per state transition; shape matches EP01 ID-7 |
-| EP01 §验收 | "USE_MOCK=true 时无任何外部 API 调用" | Mock mode: `getLLM()` returns MockLLM (ADR-0003); loop's `onToolCall` delegates to provider which is MockProvider (ADR-0001); no external HTTP possible |
+| EP01 §acceptance | "No external API calls when USE_MOCK=true" | Mock mode: `getLLM()` returns MockLLM (ADR-0003); loop's `onToolCall` delegates to provider which is MockProvider (ADR-0001); no external HTTP possible |
 | EP03 §2.7 | Ask Agent Loop: Classify->SimpleQA/DeepResearch/ToolCall/Clarify->RAGRetrieve->CheckCost->LLMCall->ValidateCitations->SaveMemory | Ask's `StepHandler.onExecute()` implements Classify+RAG, `onSynthesize()` implements LLMCall+ValidateCitations, `onFinalize()` implements SaveMemory |
-| EP03 §反模式 | "超过 cost_cap 仍调用 LLM" forbidden | Per-call enforcement in ADR-0003; aggregate enforcement in loop's `CostExceeded` state |
-| EP03 §反模式 | "同步等待 LLM 完成才返回" (>5s must stream) | Loop is async; `onExecute`/`onSynthesize` handlers can stream via SSE if needed. Streaming ADR deferred. |
+| EP03 §anti-pattern | "Still calling LLM after exceeding cost_cap" forbidden | Per-call enforcement in ADR-0003; aggregate enforcement in loop's `CostExceeded` state |
+| EP03 §anti-pattern | "Synchronously waiting for LLM to complete before returning" (>5s must stream) | Loop is async; `onExecute`/`onSynthesize` handlers can stream via SSE if needed. Streaming ADR deferred. |
 | EP01 §ID-2 | Tool protocol: MCP (external) + native (internal) | Loop's `onToolCall` is tool-agnostic; tool dispatch is the handler's job (per future ADR-0006) |
 
 ## Performance Implications
@@ -466,7 +466,7 @@ No existing `AgentLoop` code. Migration is greenfield:
 
 1. Create `web/src/lib/agent/loop.ts` with `LoopState`, `LoopContext`, `LoopResult`, `TraceStep`, `StepHandler`, `AgentLoop` (per §Key Interfaces above).
 2. Create `web/src/lib/agent/supervisor.ts` - instantiates `AgentLoop` with the correct `StepHandler` based on `classifyIntent()` (ADR-0003) result.
-   - **Implemented in Phase 2 (2026-07-21)**: Supervisor Pattern implemented in `web/src/lib/agent/supervisor.ts`. Dispatches `AgentLoop` with correct `StepHandler` based on `classifyIntent()` result, enforcing EP01 §反模式 "Sub-Agent 之间直接调用（必须通过 Supervisor）".
+   - **Implemented in Phase 2 (2026-07-21)**: Supervisor Pattern implemented in `web/src/lib/agent/supervisor.ts`. Dispatches `AgentLoop` with correct `StepHandler` based on `classifyIntent()` result, enforcing EP01 §anti-pattern "direct Sub-Agent calls (must go through Supervisor)".
 3. Implement `AskHandler` in `web/src/lib/agent/ask.ts` (per EP03 §2.7).
 4. Implement `BuildHandler` in `web/src/lib/agent/build.ts` (per EP04, future).
 5. Implement `DashboardHandler` in `web/src/lib/agent/dashboard.ts` (per EP05, future).

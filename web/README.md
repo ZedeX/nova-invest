@@ -5,7 +5,7 @@
 > 📖 **For the full project README with architecture diagrams, feature overview,
 > and quick start guide, see the [root README.md](../README.md).**
 >
-> 🌐 中文版请见 [README.zh-CN.md](../README.zh-CN.md)
+> 🌐 Chinese version: see [README.zh-CN.md](../README.zh-CN.md)
 >
 > This `web/README.md` focuses on **developer setup, deployment, and
 > web/-specific commands**. For product vision, ADR index, and
@@ -208,7 +208,7 @@ See [docs/prd/appendix/deployment_cloudflare.md](./docs/prd/appendix/deployment_
 |-------|--------|------|
 | 1 — PMF Validation | 0–6  | Mock-mode MVP on Cloudflare free tier |
 | 2 — PMF Scaling    | 7–12 | Real broker + paid tier + community growth |
-| 3 — Platform化     | 13–18 | Open ecosystem + mobile + international |
+| 3 — Platform-ization | 13–18 | Open ecosystem + mobile + international |
 
 See [Roadmap.md](./docs/roadmap/Roadmap.md) for full sprint breakdown.
 

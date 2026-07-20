@@ -1,51 +1,51 @@
-# Nova Invest 系统架构文档
+# Nova Invest System Architecture Document
 
-> **版本**: v1.0 · **日期**: 2026-07-19 · **状态**: \[B] 规范性 + \[C] 个人项目型
+> **Version**: v1.0 · **Date**: 2026-07-19 · **Status**: \[B] Normative + \[C] Personal Project Type
 >
-> **说明**: 本文档定义 Nova Invest（AI 投研工作流系统）的整体技术架构。所有 Epic 文档应引用本文档作为架构基线。
+> **Note**: This document defines the overall technical architecture of Nova Invest (AI investment research workflow system). All Epic documents should reference this document as the architecture baseline.
 
 ***
 
-## 1. 设计原则
+## 1. Design Principles
 
-| # | 原则                 | 说明                                    |
+| # | Principle | Description |
 | - | ------------------ | ------------------------------------- |
-| 1 | **AI-Native 优先**   | 不是把 AI 贴在传统工具上，而是从 Agent 重构工作流        |
-| 2 | **Mock/真实双模**      | 一切外部依赖（LLM、行情、券商、向量库）通过开关切换 Mock / 真实 |
-| 3 | **Cloudflare 技术栈** | 全栈部署在 Cloudflare 上，可演示可上线             |
-| 4 | **模块解耦**           | 8 大模块独立可测，通过明确接口协作                    |
-| 5 | **可观测优先**          | 每次 LLM 调用、工具调用、回测结果都全链路 trace         |
+| 1 | **AI-Native First** | Not bolting AI onto traditional tools, but reconstructing workflow from the Agent up |
+| 2 | **Mock/Real Dual Mode** | All external dependencies (LLM, market data, brokers, vector DB) switch between Mock / Real via toggle |
+| 3 | **Cloudflare Stack** | Full stack deployed on Cloudflare, demonstrable and production-ready |
+| 4 | **Module Decoupling** | 8 major modules independently testable, collaborating through clear interfaces |
+| 5 | **Observability First** | Every LLM call, tool call, backtest result has full-link trace |
 
 ***
 
-## 2. 系统全景图
+## 2. System Panorama
 
 ```mermaid
 flowchart TB
-    subgraph Client["前端层 (Next.js)"]
+    subgraph Client["Frontend Layer (Next.js)"]
         UI[Web App<br/>lightweight-charts]
-        MockFE[前端 Mock<br/>本地 K线/问答样本]
+        MockFE[Frontend Mock<br/>Local K-line/QA samples]
     end
 
-    subgraph Edge["Cloudflare 边缘层"]
-        Worker[Workers<br/>API 路由 + Mock 开关]
+    subgraph Edge["Cloudflare Edge Layer"]
+        Worker[Workers<br/>API routes + Mock switch]
         D1[(D1<br/>SQLite)]
-        R2[(R2<br/>K线缓存)]
-        VZ[(Vectorize<br/>RAG 向量)]
+        R2[(R2<br/>K-line cache)]
+        VZ[(Vectorize<br/>RAG vectors)]
     end
 
-    subgraph AgentLayer["Agent Harness 层"]
-        Sup[Supervisor<br/>路由+编排]
-        Ask[Ask Agent<br/>研究]
-        Build[Build Agent<br/>策略]
-        DBot[Dashboard Agent<br/>监控]
-        Memory[(Memory<br/>短/长/向量)]
-        Tools[Tool Registry<br/>MCP+原生]
+    subgraph AgentLayer["Agent Harness Layer"]
+        Sup[Supervisor<br/>Routing+Orchestration]
+        Ask[Ask Agent<br/>Research]
+        Build[Build Agent<br/>Strategy]
+        DBot[Dashboard Agent<br/>Monitoring]
+        Memory[(Memory<br/>Short/Long/Vector)]
+        Tools[Tool Registry<br/>MCP+Native]
     end
 
-    subgraph External["外部服务（可切换）"]
-        LLM[LLM Provider<br/>本地 LM Studio<br/>火山引擎]
-        Mkt[行情 API<br/>Tiingo/IEX/AlphaVantage]
+    subgraph External["External Services (switchable)"]
+        LLM[LLM Provider<br/>Local LM Studio<br/>Volcengine]
+        Mkt[Market Data API<br/>Tiingo/IEX/AlphaVantage]
         Brk[Broker API<br/>Alpaca/IBKR]
         News[News/Sentiment<br/>X/Reddit/Polymarket]
     end
@@ -73,7 +73,7 @@ flowchart TB
 
 ***
 
-## 3. 9 层 Agent Harness 架构
+## 3. 9-Layer Agent Harness Architecture
 
 ```mermaid
 flowchart TB
@@ -82,29 +82,29 @@ flowchart TB
     L7[Layer 7: Agent Loop<br/>ReAct + max steps + cost ceiling] --> L6
     L6[Layer 6: Planning<br/>CoT + Plan-and-Execute] --> L5
     L5[Layer 5: Tool Calling<br/>MCP external + native internal] --> L4
-    L4[Layer 4: Memory<br/>对话+向量+结构化] --> L3
+    L4[Layer 4: Memory<br/>Conversation+Vector+Structured] --> L3
     L3[Layer 3: RAG<br/>Vectorize + hybrid search] --> L2
-    L2[Layer 2: LLM Provider<br/>本地 / 火山引擎 路由] --> L1
+    L2[Layer 2: LLM Provider<br/>Local / Volcengine routing] --> L1
     L1[Layer 1: Observability<br/>OpenTelemetry + Grafana]
 ```
 
-### 各层职责
+### Layer Responsibilities
 
-| 层               | 职责                                 | 技术选型                                      |
+| Layer | Responsibility | Technology Choice |
 | --------------- | ---------------------------------- | ----------------------------------------- |
-| 9 UI            | Web 入口，lightweight-charts 图表        | Next.js 16 + lightweight-charts (Apache 2.0) |
-| 8 Orchestration | Supervisor 路由 Ask/Build/Dashboard  | 自研轻量编排器                                   |
-| 7 Agent Loop    | ReAct + max\_steps + 成本/延迟 ceiling + SSE 流式 | TypeScript（详见 [ADR-0004](./adr-0004-agent-loop-design.md)；流式传输 [ADR-0015](./adr-0015-sse-streaming.md)）                            |
-| 6 Planning      | CoT + Plan-and-Execute             | LLM 原生                                    |
-| 5 Tool Calling  | MCP（外部数据源）+ 原生 function call（内部）+ Circuit Breaker | MCP SDK + native（详见 [ADR-0006](./adr-0006-tool-protocol.md)；熔断器 [ADR-0016](./adr-0016-circuit-breaker.md)）                          |
-| 4 Memory        | 对话 buffer + 向量（Vectorize）+ 结构化（D1） | Cloudflare 三件套（详见 [ADR-0005](./adr-0005-memory-layer.md)）                            |
-| 3 RAG           | 金融语料库 + 检索 + rerank                | Cloudflare Vectorize + 自研 rerank（详见 [ADR-0014](./adr-0014-ask-rag-pipeline.md)）          |
-| 2 LLM Provider  | 本地 LM Studio + Cloudflare 部署后接火山引擎 + 流式 | LiteLLM 风格路由（详见 [ADR-0003](./adr-0003-llm-routing-cost-cap.md)）                              |
-| 1 Observability | trace + replay + 成本监控              | OpenTelemetry + Grafana Cloud free        |
+| 9 UI | Web entry, lightweight-charts charts | Next.js 16 + lightweight-charts (Apache 2.0) |
+| 8 Orchestration | Supervisor routes Ask/Build/Dashboard | Self-developed lightweight orchestrator |
+| 7 Agent Loop | ReAct + max\_steps + cost/latency ceiling + SSE streaming | TypeScript (see [ADR-0004](./adr-0004-agent-loop-design.md); streaming [ADR-0015](./adr-0015-sse-streaming.md))                            |
+| 6 Planning | CoT + Plan-and-Execute | LLM native |
+| 5 Tool Calling | MCP (external data sources) + native function call (internal) + Circuit Breaker | MCP SDK + native (see [ADR-0006](./adr-0006-tool-protocol.md); circuit breaker [ADR-0016](./adr-0016-circuit-breaker.md))                          |
+| 4 Memory | Conversation buffer + vector (Vectorize) + structured (D1) | Cloudflare trio (see [ADR-0005](./adr-0005-memory-layer.md))                            |
+| 3 RAG | Financial corpus + retrieval + rerank | Cloudflare Vectorize + self-developed rerank (see [ADR-0014](./adr-0014-ask-rag-pipeline.md))          |
+| 2 LLM Provider | Local LM Studio + Cloudflare deployment then Volcengine + streaming | LiteLLM-style routing (see [ADR-0003](./adr-0003-llm-routing-cost-cap.md))                              |
+| 1 Observability | trace + replay + cost monitoring | OpenTelemetry + Grafana Cloud free        |
 
 ***
 
-## 4. 数据流：用户提问 → 完整工作流
+## 4. Data Flow: User Question → Complete Workflow
 
 ```mermaid
 sequenceDiagram
@@ -116,11 +116,11 @@ sequenceDiagram
     participant D as D1/Vectorize
     participant L as LLM
 
-    U->>W: "AI 概念股最近 6 个月相对 SPY 表现？"
+    U->>W: "AI concept stocks' performance vs SPY over last 6 months?"
     W->>S: route(query)
     S->>A: dispatch Ask Agent
     A->>L: plan + tool call
-    L-->>A: get_universe("AI 概念股")
+    L-->>A: get_universe("AI concept stocks")
     A->>T: call MCP tool
     T->>D: query holdings
     D-->>T: NVDA, MSFT, GOOG...
@@ -129,90 +129,90 @@ sequenceDiagram
     A->>T: call API (Mock or Real)
     T-->>A: OHLCV series
     A->>L: synthesize
-    L-->>A: 答案 + 引用
+    L-->>A: Answer + citations
     A-->>S: result
     S-->>W: response
-    W-->>U: 图表 + 文字 + "Build this strategy?" 按钮
-    U->>W: 点击 "Build This Strategy"
+    W-->>U: Chart + text + "Build this strategy?" button
+    U->>W: Click "Build This Strategy"
     W->>S: route(build)
     S->>Build: dispatch Build Agent
 ```
 
 ***
 
-## 5. Mock / 真实模式切换
+## 5. Mock / Real Mode Switching
 
-> **架构决策**: 详见 [ADR-0001: Use-Mock 双模切换](./adr-0001-use-mock-dual-mode-switch.md)
+> **Architecture Decision**: see [ADR-0001: Use-Mock Dual-Mode Switch](./adr-0001-use-mock-dual-mode-switch.md)
 
-### 5.1 切换架构
+### 5.1 Switching Architecture
 
 ```mermaid
 flowchart LR
-    Code[业务代码] --> Switch{USE_MOCK<br/>环境变量}
-    Switch -->|true| Mock[Mock Provider<br/>读取本地 JSON]
-    Switch -->|false| Real[Real Provider<br/>调用真实 API]
-    Mock --> Response[统一响应格式]
+    Code[Business Code] --> Switch{USE_MOCK<br/>env variable}
+    Switch -->|true| Mock[Mock Provider<br/>Reads local JSON]
+    Switch -->|false| Real[Real Provider<br/>Calls real API]
+    Mock --> Response[Unified response format]
     Real --> Response
 ```
 
-### 5.2 环境变量配置
+### 5.2 Environment Variable Configuration
 
 ```bash
-# .env.local (本地开发)
-USE_MOCK=true                    # 启用 Mock
+# .env.local (local development)
+USE_MOCK=true                    # Enable Mock
 LLM_BASE_URL=http://localhost:1234 # LM Studio
 LLM_API_KEY=mock
 
-# .env.production (Cloudflare 部署)
+# .env.production (Cloudflare deployment)
 USE_MOCK=false
-LLM_BASE_URL=https://ark.cn-beijing.volces.com  # 火山引擎
+LLM_BASE_URL=https://ark.cn-beijing.volces.com  # Volcengine
 LLM_API_KEY=${{ARK_API_KEY}}
 ```
 
-### 5.3 Mock 数据集清单
+### 5.3 Mock Dataset Inventory
 
-| 类型    | 位置                                    | 内容                    |
+| Type | Location | Content |
 | ----- | ------------------------------------- | --------------------- |
-| K 线   | `web/public/mock/klines/*.json`       | NVDA/MSFT/SPY 等日线+分钟线 (运行时 URL: `/mock/klines/*.json`) |
-| 财报    | `web/public/mock/earnings/*.json`     | NVDA/MSFT 财报文本+结构化 (运行时 URL: `/mock/earnings/*.json`) |
-| 问答样本  | `web/public/mock/qa_samples/*.json`   | 50+ 预写问答对 (运行时 URL: `/mock/qa_samples/*.json`) |
-| 社区    | `web/public/mock/community/*.json`    | 预置 Playbook 样本 + 创作者档案 (运行时 URL: `/mock/community/*.json`) |
-| 用户/策略 | D1 seed                       | 测试账号、Credit、策略草稿      |
-| 回测结果  | D1 seed                       | 预生成回测报告               |
+| K-line | `web/public/mock/klines/*.json` | NVDA/MSFT/SPY daily+minute lines (runtime URL: `/mock/klines/*.json`) |
+| Earnings | `web/public/mock/earnings/*.json` | NVDA/MSFT earnings text+structured (runtime URL: `/mock/earnings/*.json`) |
+| QA samples | `web/public/mock/qa_samples/*.json` | 50+ pre-written Q&A pairs (runtime URL: `/mock/qa_samples/*.json`) |
+| Community | `web/public/mock/community/*.json` | Preset Playbook samples + creator profiles (runtime URL: `/mock/community/*.json`) |
+| User/Strategy | D1 seed | Test accounts, Credit, strategy drafts |
+| Backtest results | D1 seed | Pre-generated backtest reports |
 
 ***
 
-## 6. 部署架构（Cloudflare 免费栈）
+## 6. Deployment Architecture (Cloudflare Free Stack)
 
-> **R2 缓存白名单**: 详见 [ADR-0002: R2 Cache Whitelist](./adr-0002-r2-cache-whitelist.md)
+> **R2 Cache Whitelist**: see [ADR-0002: R2 Cache Whitelist](./adr-0002-r2-cache-whitelist.md)
 >
-> **D1 Schema Master**: 详见 [ADR-0011: D1 Schema Master](./adr-0011-d1-schema-master.md)
+> **D1 Schema Master**: see [ADR-0011: D1 Schema Master](./adr-0011-d1-schema-master.md)
 
 ```mermaid
 flowchart TB
-    User[用户浏览器] --> CF[Cloudflare Edge<br/>全球 300+ POP]
-    CF --> Pages[Cloudflare Pages<br/>Next.js 静态+SSR]
-    CF --> Workers[Workers<br/>API 路由]
-    Workers --> D1[(D1<br/>5GB 免费)]
-    Workers --> R2[(R2<br/>10GB 免费)]
-    Workers --> VZ[(Vectorize<br/>查询配额)]
+    User[User Browser] --> CF[Cloudflare Edge<br/>300+ POPs worldwide]
+    CF --> Pages[Cloudflare Pages<br/>Next.js static+SSR]
+    CF --> Workers[Workers<br/>API routes]
+    Workers --> D1[(D1<br/>5GB free)]
+    Workers --> R2[(R2<br/>10GB free)]
+    Workers --> VZ[(Vectorize<br/>query quota)]
     Workers --> OTel[OpenTelemetry → Grafana Cloud]
-    Workers --> Ext[外部 API<br/>火山引擎/Tiingo/Alpaca]
+    Workers --> Ext[External APIs<br/>Volcengine/Tiingo/Alpaca]
 ```
 
-### 免费额度约束
+### Free Tier Constraints
 
-| 服务        | 免费额度                    | 我们的使用           | 余量    |
+| Service | Free Quota | Our Usage | Headroom |
 | --------- | ----------------------- | --------------- | ----- |
-| Workers   | 100K 请求/天               | \~10K 估算        | 90K   |
-| D1        | 5GB 存储 + 5M 行读/天        | \~100MB + 50K 读 | 充足    |
-| R2        | 10GB + 1M Class A ops/月 | \~500MB K线缓存    | 9.5GB |
-| Vectorize | 30M 查询/月（beta）          | \~100K 估算       | 充足    |
-| Pages     | 500 builds/月 + 无限请求     | \~30 builds     | 充足    |
+| Workers | 100K requests/day | ~10K estimated | 90K |
+| D1 | 5GB storage + 5M row reads/day | ~100MB + 50K reads | Sufficient |
+| R2 | 10GB + 1M Class A ops/month | ~500MB K-line cache | 9.5GB |
+| Vectorize | 30M queries/month (beta) | ~100K estimated | Sufficient |
+| Pages | 500 builds/month + unlimited requests | ~30 builds | Sufficient |
 
 ***
 
-## 7. 模块依赖关系
+## 7. Module Dependencies
 
 ```mermaid
 flowchart BT
@@ -233,89 +233,89 @@ flowchart BT
 
 ***
 
-## 8. 技术栈一览
+## 8. Technology Stack Overview
 
-| 层             | 技术                            | 版本     |
+| Layer | Technology | Version |
 | ------------- | ----------------------------- | ------ |
-| 前端框架          | Next.js                       | 16.2   |
-| UI 库          | React                         | 19.2   |
-| 样式            | Tailwind CSS                  | 4.3    |
-| 图表            | lightweight-charts (Apache 2.0) | latest — Phase 1: SVG 占位；Phase 1.5: 接入 lightweight-charts |
-| UI 组件         | shadcn/ui                     | latest |
-| 后端            | Cloudflare Workers            | latest |
-| 数据库           | Cloudflare D1 (SQLite)        | -      |
-| 对象存储          | Cloudflare R2                 | -      |
-| 向量库           | Cloudflare Vectorize          | -      |
-| LLM 路由        | 自研 adapter                    | -      |
-| LLM Provider  | 本地 LM Studio / 火山引擎 Ark       | -      |
-| Observability | OpenTelemetry + Grafana Cloud | -      |
-| 包管理           | pnpm                          | 11.9   |
-| 部署            | Cloudflare Pages + Workers    | -      |
-| 版本控制          | git + GitHub                  | -      |
+| Frontend Framework | Next.js | 16.2 |
+| UI Library | React | 19.2 |
+| Styling | Tailwind CSS | 4.3 |
+| Charts | lightweight-charts (Apache 2.0) | latest — Phase 1: SVG placeholder; Phase 1.5: integrate lightweight-charts |
+| UI Components | shadcn/ui | latest |
+| Backend | Cloudflare Workers | latest |
+| Database | Cloudflare D1 (SQLite) | - |
+| Object Storage | Cloudflare R2 | - |
+| Vector DB | Cloudflare Vectorize | - |
+| LLM Routing | Self-developed adapter | - |
+| LLM Provider | Local LM Studio / Volcengine Ark | - |
+| Observability | OpenTelemetry + Grafana Cloud | - |
+| Package Manager | pnpm | 11.9 |
+| Deployment | Cloudflare Pages + Workers | - |
+| Version Control | git + GitHub | - |
 
 ***
 
-## 9. 关键技术决策
+## 9. Key Technical Decisions
 
-### 9.1 为什么不用 Postgres？
+### 9.1 Why Not Postgres?
 
-- Cloudflare D1 免费层够用（5GB）
-- 边缘部署延迟低
-- 后续可平滑迁移到 Neon/Supabase Postgres
+- Cloudflare D1 free tier is sufficient (5GB)
+- Edge deployment has low latency
+- Can smoothly migrate to Neon/Supabase Postgres later
 
-### 9.2 为什么用 Supervisor-Worker 多 Agent？
+### 9.2 Why Supervisor-Worker Multi-Agent?
 
-- Ask / Build / Dashboard 三大能力差异大，单 Agent 上下文臃肿
-- 多 Agent 允许独立 prompt 调优
-- Hand-off 协议清晰
+- Ask / Build / Dashboard have very different capabilities; single Agent would have bloated context
+- Multi-Agent allows independent prompt tuning
+- Clear hand-off protocol
 
-### 9.3 为什么用自定义 DSL 而非 Python？
+### 9.3 Why Custom DSL Instead of Python?
 
-- 可验证 + 可审计 + 可分享
-- LLM 易生成
-- 比 Python 安全（无代码注入）
+- Verifiable + auditable + shareable
+- Easy for LLM to generate
+- Safer than Python (no code injection)
 
-### 9.4 为什么 LLM 路由支持 Mock + 本地 + 云？
+### 9.4 Why Does LLM Routing Support Mock + Local + Cloud?
 
-> **3-tier 模型（per [ADR-0003](./adr-0003-llm-routing-cost-cap.md)）**：
-> - **Mock**：`USE_MOCK=true` -> MockLLM，零 API 调用，返回预生成 JSON 样本。用于演示与测试。
-> - **本地**：`USE_MOCK=false` + `ENVIRONMENT!="production"` -> RealLLM with LM Studio。开发调试免费。
-> - **云**：`USE_MOCK=false` + `ENVIRONMENT="production"` -> RealLLM with Volcengine Ark。生产部署可控。
+> **3-tier model (per [ADR-0003](./adr-0003-llm-routing-cost-cap.md))**:
+> - **Mock**: `USE_MOCK=true` -> MockLLM, zero API calls, returns pre-generated JSON samples. Used for demos and testing.
+> - **Local**: `USE_MOCK=false` + `ENVIRONMENT!="production"` -> RealLLM with LM Studio. Free for development debugging.
+> - **Cloud**: `USE_MOCK=false` + `ENVIRONMENT="production"` -> RealLLM with Volcengine Ark. Controllable production deployment.
 
-- Mock：演示零依赖、测试可复现
-- 本地：开发调试免费
-- 云：生产部署可控
-- 配置化切换，不绑死供应商
+- Mock: zero-dependency demos, reproducible tests
+- Local: free development debugging
+- Cloud: controllable production deployment
+- Configuration-driven switching, no vendor lock-in
 
 ***
 
-## 10. 安全与合规边界
+## 10. Security and Compliance Boundaries
 
-| 维度      | 边界                               |
+| Dimension | Boundary |
 | ------- | -------------------------------- |
-| 用户数据    | D1 加密 + 用户隔离                     |
-| API key | wrangler secret 注入，不入库           |
-| LLM 调用  | rate limit + cost ceiling        |
-| 交易      | Phase 2 才接 broker，Phase 1 仅 Mock |
-| 合规      | Publisher 定位 + 免责声明 + 不持用户资金     |
+| User Data | D1 encryption + user isolation |
+| API key | wrangler secret injection, not persisted in DB |
+| LLM Calls | rate limit + cost ceiling |
+| Trading | Phase 2 only connects to broker, Phase 1 only Mock |
+| Compliance | Publisher positioning + disclaimer + does not hold user funds |
 
 ***
 
 ## 11. Architecture Decision Records (ADR)
 
-| ADR | 标题 | 状态 | 覆盖层 |
+| ADR | Title | Status | Coverage Layer |
 |-----|------|------|--------|
-| [ADR-0001](./adr-0001-use-mock-dual-mode-switch.md) | Use-Mock 双模切换 | Accepted | §5 Mock/Real |
-| [ADR-0002](./adr-0002-r2-cache-whitelist.md) | R2 缓存白名单 | Accepted | §6 部署/R2 |
-| [ADR-0003](./adr-0003-llm-routing-cost-cap.md) | LLM 路由 + Cost Cap | Accepted | §9.4 LLM 路由 |
-| [ADR-0004](./adr-0004-agent-loop-design.md) | Agent Loop 设计 | Accepted | §3 Layer 7 |
+| [ADR-0001](./adr-0001-use-mock-dual-mode-switch.md) | Use-Mock Dual-Mode Switch | Accepted | §5 Mock/Real |
+| [ADR-0002](./adr-0002-r2-cache-whitelist.md) | R2 Cache Whitelist | Accepted | §6 Deployment/R2 |
+| [ADR-0003](./adr-0003-llm-routing-cost-cap.md) | LLM Routing + Cost Cap | Accepted | §9.4 LLM Routing |
+| [ADR-0004](./adr-0004-agent-loop-design.md) | Agent Loop Design | Accepted | §3 Layer 7 |
 | [ADR-0005](./adr-0005-memory-layer.md) | Memory Layer (2/3 Phase 1) | Accepted | §3 Layer 4 |
 | [ADR-0006](./adr-0006-tool-protocol.md) | Tool Protocol (Native+MCP) | Accepted | §3 Layer 5 |
 | [ADR-0007](./adr-0007-citation-validator.md) | Citation Validator | Accepted | Ask Agent §2 |
 | [ADR-0008](./adr-0008-strategy-dsl-schema.md) | Strategy DSL Schema | Accepted | §3 EP04 Strategy |
 | [ADR-0009](./adr-0009-backtest-engine.md) | Backtest Engine + PaperBroker | Accepted | §3 EP04/EP06 |
 | [ADR-0010](./adr-0010-dashboard-layout.md) | Dashboard Layout + Widgets | Accepted | §3 EP05 Dashboard |
-| [ADR-0011](./adr-0011-d1-schema-master.md) | D1 Schema Master | Accepted | §6 部署/D1 |
+| [ADR-0011](./adr-0011-d1-schema-master.md) | D1 Schema Master | Accepted | §6 Deployment/D1 |
 | [ADR-0012](./adr-0012-community-ugc.md) | Community UGC + Moderation | Accepted | §3 EP07 Community |
 | [ADR-0013](./adr-0013-playbook-system.md) | Playbook System | Accepted | §3 EP08 Playbook |
 | [ADR-0014](./adr-0014-ask-rag-pipeline.md) | Ask RAG Pipeline (Embed→Retrieve→Assemble) | Accepted | §3 Layer 3 RAG |
@@ -324,12 +324,11 @@ flowchart BT
 
 ***
 
-## 附录：架构演进路径
+## Appendix: Architecture Evolution Path
 
 ```
-v1.0 (当前)  →  v1.1            →  v2.0
-Mock 单机     真实 API + Cloudflare   多区域 + 付费层
+v1.0 (current)  →  v1.1            →  v2.0
+Mock standalone     Real API + Cloudflare   Multi-region + paid tier
 ```
 
-> 末次更新：2026-07-19
-
+> Last updated: 2026-07-19

@@ -321,7 +321,7 @@ Nova Invest takes security seriously. Key measures:
 | 📊 **Data Model** | [docs/spec/data_model.md](./docs/spec/data_model.md) | D1 schema + R2 layout |
 | ⚖️ **Strategy DSL** | [docs/spec/strategy_dsl_spec.md](./docs/spec/strategy_dsl_spec.md) | YAML DSL grammar |
 | 🔒 **Security Review** | [docs/reviews/security-review-2026-07-20.md](./docs/reviews/security-review-2026-07-20.md) | 2026-07-20 audit |
-| 🌐 **中文 README** | [README.zh-CN.md](./README.zh-CN.md) | 中文项目说明 |
+| 🌐 **Chinese README** | [README.zh-CN.md](./README.zh-CN.md) | Chinese project description |
 
 ---
 

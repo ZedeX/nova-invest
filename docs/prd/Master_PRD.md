@@ -1,146 +1,146 @@
 # Nova Invest · Master PRD
 
-> **版本**: v1.0
+> **Version**: v1.0
 >
-> **日期**: 2026-07-19
+> **Date**: 2026-07-19
 >
-> **作者**: ZedeX
+> **Author**: ZedeX
 
 ***
 
-## 0. 文档说明
+## 0. Document Notes
 
-### 0.1 性质标签体系
+### 0.1 Nature Tag System
 
-每个章节标注来源：
+Each section is tagged with its source:
 
-- **\[A]** 描述性：分析竞品现有产品（基于公开资料）
-- **\[B]** 规范性：规划产品下一迭代
-- **\[C]** 个人项目型："作为个人学习项目，我会这样定义系统"
+- **\[A]** Descriptive: analyzing competitors' existing products (based on public materials)
+- **\[B]** Normative: planning the next product iteration
+- **\[C]** Personal project type: "As a personal learning project, I would define the system this way"
 
-### 0.2 文档结构
+### 0.2 Document Structure
 
-本 Master PRD 是**总分结构**的总纲。8 个 Epic 模块各自有独立的 to-spec 文档位于 `docs/prd/epic/` 下。
+This Master PRD is the master outline of a **top-down structure**. The 8 Epic modules each have independent to-spec documents located under `docs/prd/epic/`.
 
-### 0.3 关联文档
+### 0.3 Related Documents
 
-- 架构基线：[architecture/architecture.md](../architecture/architecture.md)
-- 详细 Roadmap：[roadmap/Roadmap.md](../roadmap/Roadmap.md)
-- 技术规格：[spec/](../spec/)
-- 附录：[prd/appendix/](./appendix/)
+- Architecture baseline: [architecture/architecture.md](../architecture/architecture.md)
+- Detailed Roadmap: [roadmap/Roadmap.md](../roadmap/Roadmap.md)
+- Technical specs: [spec/](../spec/)
+- Appendix: [prd/appendix/](./appendix/)
 
 ***
 
-## 1. 执行摘要 (Executive Summary) \[C]
+## 1. Executive Summary \[C]
 
-### 1.1 产品定义
+### 1.1 Product Definition
 
-**Nova Invest** 是 AI-native 的"信息 → 判断 → 策略 → 监控"完整投研工作流系统。
+**Nova Invest** is an AI-native complete investment research workflow system: "information → judgment → strategy → monitoring".
 
-### 1.2 一句话定位
+### 1.2 One-sentence Positioning
 
-> "用 Agent Harness 重构投研工作流，让自然语言变成可验证的交易策略。"
+> "Reconstruct the investment research workflow with an Agent Harness, turning natural language into verifiable trading strategies."
 
-### 1.3 三大核心能力
+### 1.3 Three Core Capabilities
 
-| # | 能力                          | 入口              | 频次   |
+| # | Capability                          | Entry              | Frequency   |
 | - | --------------------------- | --------------- | ---- |
-| 1 | **Ask** 深度研究                | 自然语言提问          | 一次性  |
-| 2 | **Build Strategy** NL→策略→回测 | 自然语言描述 + DSL 编辑 | 周期迭代 |
-| 3 | **Build Dashboard** 监控看板    | 选定策略 + 信号配置     | 长期监控 |
+| 1 | **Ask** deep research                | Natural language question          | One-time  |
+| 2 | **Build Strategy** NL→strategy→backtest | Natural language description + DSL editing | Periodic iteration |
+| 3 | **Build Dashboard** monitoring dashboard    | Selected strategy + signal configuration     | Long-term monitoring |
 
-### 1.4 三阶段战略主题
+### 1.4 Three-phase Strategic Themes
 
-| 阶段      | 时间      | 主题             | 退出标准                 |
+| Phase      | Time      | Theme             | Exit Criteria                 |
 | ------- | ------- | -------------- | -------------------- |
-| Phase 1 | 0-6 月   | PMF Validation | D30 ≥ 20%，200 WAU-CW |
-| Phase 2 | 7-12 月  | PMF Scaling    | 5K MAU，5% 付费         |
-| Phase 3 | 13-18 月 | Platform 化     | 500+ 创作者，ARR $1M+    |
+| Phase 1 | 0-6 months   | PMF Validation | D30 ≥ 20%, 200 WAU-CW |
+| Phase 2 | 7-12 months  | PMF Scaling    | 5K MAU, 5% paid         |
+| Phase 3 | 13-18 months | Platform-ization     | 500+ creators, ARR $1M+    |
 
 ***
 
-## 2. 问题陈述 (Problem Statement) \[A+B]
+## 2. Problem Statement \[A+B]
 
-### 2.1 用户痛点
+### 2.1 User Pain Points
 
-1. **信息过载**：新闻、财报、研报、X/Reddit 太多，难以判断哪些重要
-2. **决策无系统**：靠"感觉"，无回测验证，无假设拆解
-3. **回测门槛高**：需要编程 + 数据 + 引擎，散户无法独立完成
-4. **监控缺失**：策略上线后无人盯，漂移无告警
-5. **学习曲线陡**：从主观到量化跨度大
-6. **信任缺失**：怕"假回测"、怕 Agent 幻觉、怕策略过拟合
+1. **Information overload**: Too much news, earnings reports, research reports, X/Reddit — hard to judge what matters
+2. **No systematic decision-making**: Relying on "gut feeling", no backtest verification, no hypothesis decomposition
+3. **High backtest barrier**: Requires programming + data + engine — retail investors can't do it independently
+4. **Lack of monitoring**: No one watches strategies after they go live, no alerts on drift
+5. **Steep learning curve**: Large gap from subjective to quantitative
+6. **Lack of trust**: Fear of "fake backtests", Agent hallucinations, strategy overfitting
 
-### 2.2 现有方案的不足
+### 2.2 Shortcomings of Existing Solutions
 
-| 方案                     | 不足                      |
+| Solution                     | Shortcoming                      |
 | ---------------------- | ----------------------- |
-| Bloomberg Terminal AI  | $24K+/年，零售不可达           |
-| Composer.trade         | 无 NL 入口，可视化拖拽门槛仍高       |
-| QuantConnect           | 需编程，纯量化，缺基本面            |
-| TradingView PineScript | DSL 学习成本，无 Agent，无自然语言  |
-| 竞品参考对象             | 仍缺：回测严谨度披露、失效检测、Mock 模式 |
+| Bloomberg Terminal AI  | $24K+/year, unaffordable for retail           |
+| Composer.trade         | No NL entry, visual drag-and-drop barrier still high       |
+| QuantConnect           | Requires programming, pure quantitative, lacks fundamentals            |
+| TradingView PineScript | DSL learning cost, no Agent, no natural language  |
+| Competitor reference             | Still missing: backtest rigor disclosure, failure detection, Mock mode |
 
 ***
 
-## 3. 解决方案 (Solution) \[C]
+## 3. Solution \[C]
 
-### 3.1 核心理念
+### 3.1 Core Philosophy
 
-**"AI Native ≠ AI 贴在传统工具上，而是从 Agent 重构工作流"**
+**"AI Native ≠ AI slapped onto traditional tools, but reconstructing the workflow from the Agent level"**
 
-### 3.2 Vibe Trading 重新定义
+### 3.2 Redefining Vibe Trading
 
-> "Vibe Trading 不是简单的 'NL → 策略'，而是 'NL → 可验证策略 + 主动风险揭示'。让用户感受策略，但策略本身必须经过 rigorous 验证。"
+> "Vibe Trading is not simply 'NL → strategy', but 'NL → verifiable strategy + proactive risk disclosure'. Let users feel the strategy, but the strategy itself must go through rigorous validation."
 
-### 3.3 三大支柱
+### 3.3 Three Pillars
 
-| 支柱                        | 口号                            | 含义            |
+| Pillar                        | Slogan                            | Meaning            |
 | ------------------------- | ----------------------------- | ------------- |
-| **Vibe Trading**          | "Talk Is Cheap — Backtest It" | NL→策略→回测，几分钟内 |
-| **Conviction Quantified** | "Conviction Quantified"       | 模糊判断拆解成可验证假设  |
-| **Beyond the Candles**    | "Beyond the Candles"          | 价格之外的多维数据     |
+| **Vibe Trading**          | "Talk Is Cheap — Backtest It" | NL→strategy→backtest, within minutes |
+| **Conviction Quantified** | "Conviction Quantified"       | Vague judgments decomposed into verifiable hypotheses  |
+| **Beyond the Candles**    | "Beyond the Candles"          | Multi-dimensional data beyond price     |
 
-### 3.4 核心差异化特性 \[C]
+### 3.4 Core Differentiating Features \[C]
 
-1. **回测诚实度**：默认显示 Deflated Sharpe + 多重检验 + 过拟合警告
-2. **Mock/真实双模**：开发/演示用 Mock，生产可一键切换真实 API
-3. **失效检测告警**：策略上线后 rolling Sharpe 下降自动通知
-4. **Cloudflare 免费栈**：可全球部署 + 演示，零基础设施成本
-5. **Open Source**：核心代码 + PRD 全公开，作为学习项目
+1. **Backtest honesty**: Default display of Deflated Sharpe + multiple testing + overfitting warnings
+2. **Mock/Real dual mode**: Mock for dev/demo, one-click switch to real API in production
+3. **Failure detection alerts**: Auto notification when rolling Sharpe drops after strategy goes live
+4. **Cloudflare free stack**: Globally deployable + demo, zero infrastructure cost
+5. **Open Source**: Core code + PRD fully public, as a learning project
 
 ***
 
-## 4. 目标用户 (Target Users) \[B+C]
+## 4. Target Users \[B+C]
 
-### 4.1 三类 Persona
+### 4.1 Three Personas
 
-#### Persona 1: 散户 Alex
+#### Persona 1: Retail investor Alex
 
-- 35 岁，软件工程师，业余炒股 3 年
-- 持仓 $50K-$200K
-- 痛点：信息过载，决策无系统
-- 需求：简单问答 + 信号提醒
-- 付费意愿：$10-30/月
+- 35 years old, software engineer, 3 years of part-time stock trading
+- Position $50K-$200K
+- Pain points: Information overload, no systematic decision-making
+- Needs: Simple Q&A + signal alerts
+- Willingness to pay: $10-30/month
 
-#### Persona 2: Prosumer Brenda ✅ 主力
+#### Persona 2: Prosumer Brenda ✅ Primary
 
-- 32 岁，金融行业从业者，业余量化 5 年
-- 持仓 $200K-$1M
-- 痛点：回测门槛高，策略难复现
-- 需求：NL→策略 + 严格回测 + Dashboard
-- 付费意愿：$50-200/月
+- 32 years old, financial industry professional, 5 years of part-time quantitative trading
+- Position $200K-$1M
+- Pain points: High backtest barrier, strategies hard to reproduce
+- Needs: NL→strategy + rigorous backtest + Dashboard
+- Willingness to pay: $50-200/month
 
-#### Persona 3: 半专业 Charles
+#### Persona 3: Semi-professional Charles
 
-- 40 岁，家族办公室研究员
-- 管理家族资产 $1M-$10M
-- 痛点：需要可审计的决策过程
-- 需求：完整工作流 + 报告 + 合规
-- 付费意愿：$500-2000/月（B2B）
+- 40 years old, family office researcher
+- Manages family assets $1M-$10M
+- Pain points: Needs auditable decision-making process
+- Needs: Complete workflow + reports + compliance
+- Willingness to pay: $500-2000/month (B2B)
 
-### 4.2 优先级
+### 4.2 Priority
 
-| Phase   | 主力 Persona                    |
+| Phase   | Primary Persona                    |
 | ------- | ----------------------------- |
 | Phase 1 | Brenda (Prosumer)             |
 | Phase 2 | Brenda + Alex                 |
@@ -148,94 +148,94 @@
 
 ***
 
-## 5. 产品定位 (Product Positioning) \[B]
+## 5. Product Positioning \[B]
 
-### 5.1 地理策略：美国 → 中国
+### 5.1 Geographic Strategy: US → China
 
-- **Phase 1-2**：美国市场（合规清晰、TAM 大、英文文档）
-- **Phase 3**：中国市场（团队本部上海，但需处理外汇/合规）
+- **Phase 1-2**: US market (clear compliance, large TAM, English documentation)
+- **Phase 3**: China market (team HQ in Shanghai, but needs to handle FX/compliance)
 
-### 5.2 资产策略：仅美股
+### 5.2 Asset Strategy: US equities only
 
-- **Phase 1-2**：仅美股（个股、ETF、期权 Phase 2 加）
-- **Phase 3**：扩展港股/A 股（合规敏感）
+- **Phase 1-2**: US equities only (individual stocks, ETFs; options added in Phase 2)
+- **Phase 3**: Expand to HK/China A-shares (compliance sensitive)
 
-### 5.3 商业化策略：先 Free → 后付费 → Freemium
+### 5.3 Commercialization Strategy: Free first → Paid later → Freemium
 
-| Phase     | 模式              |
+| Phase     | Model              |
 | --------- | --------------- |
-| Phase 1   | 全 Free（验证 PMF）  |
-| Phase 2 末 | 引入 Pro/Pro+ 付费层 |
-| Phase 3   | Freemium 严格限额   |
+| Phase 1   | All Free (validate PMF)  |
+| Phase 2 end | Introduce Pro/Pro+ paid tiers |
+| Phase 3   | Freemium with strict limits   |
 
 ***
 
-## 6. 商业化模型 (Business Model) \[B]
+## 6. Business Model \[B]
 
-### 6.1 Credit 计费系统
+### 6.1 Credit Billing System
 
-详见 [appendix/billing\_credit\_system.md](./appendix/billing_credit_system.md)。
+See [appendix/billing\_credit\_system.md](./appendix/billing_credit_system.md).
 
-| 操作           | Credit 消耗 |
+| Operation           | Credit consumption |
 | ------------ | --------- |
-| 简单 Ask（一句话）  | 1-5       |
-| 深度研究（多步 RAG） | 20-50     |
-| 策略构建（NL→DSL） | 30-80     |
-| 回测（按 bar 数量） | 50-200    |
-| Dashboard 创建 | 20-50     |
-| 监控告警触发       | 5/次       |
+| Simple Ask (one sentence)  | 1-5       |
+| Deep research (multi-step RAG) | 20-50     |
+| Strategy construction (NL→DSL) | 30-80     |
+| Backtest (by bar count) | 50-200    |
+| Dashboard creation | 20-50     |
+| Monitoring alert triggered       | 5/time       |
 
-### 6.2 套餐层级
+### 6.2 Plan Tiers
 
-| 套餐         | 价格    | Credit/月 | 功能                           |
+| Plan         | Price    | Credit/month | Features                           |
 | ---------- | ----- | -------- | ---------------------------- |
-| Free       | $0    | 500      | Ask + 基础数据 + 1 策略            |
-| Pro        | $29/月 | 2,000    | + Build + 标准回测 + 5 Dashboard |
-| Pro+       | $99/月 | 10,000   | + 高级数据 + 多策略 + 告警            |
-| Enterprise | 定制    | 定制       | + API + 私有部署 + 报告            |
+| Free       | $0    | 500      | Ask + basic data + 1 strategy            |
+| Pro        | $29/month | 2,000    | + Build + standard backtest + 5 Dashboards |
+| Pro+       | $99/month | 10,000   | + premium data + multi-strategy + alerts            |
+| Enterprise | Custom    | Custom       | + API + private deployment + reports            |
 
 ***
 
-## 7. 监管定位 (Regulatory Positioning) \[B]
+## 7. Regulatory Positioning \[B]
 
-### 7.1 定位：Tech Platform (SaaS) + Publisher
+### 7.1 Positioning: Tech Platform (SaaS) + Publisher
 
-- **不做** RIA（注册投资顾问）
-- **不做** Broker-Dealer
-- **不持** 用户资金或证券
-- **不做** 个性化投资建议
-- **后期可扩展** RIA（Phase 3+，若需 B2B 机构客户）
+- **Not doing** RIA (Registered Investment Adviser)
+- **Not doing** Broker-Dealer
+- **Not holding** user funds or securities
+- **Not doing** personalized investment advice
+- **May expand later** to RIA (Phase 3+, if B2B institutional clients require it)
 
-### 7.2 关键合规要求
+### 7.2 Key Compliance Requirements
 
-详见 [appendix/compliance\_legal.md](./appendix/compliance_legal.md)。
+See [appendix/compliance\_legal.md](./appendix/compliance_legal.md).
 
-| 法规                      | 适用                 | 关键约束           |
+| Regulation                      | Applicable                 | Key constraint           |
 | ----------------------- | ------------------ | -------------- |
-| Reg BI                  | Broker-Dealer      | 不适用（Nova 不持资金） |
-| Investment Advisers Act | RIA                | 不适用（非个性化建议）    |
-| Reg T                   | Margin             | 不适用（不做保证金）     |
-| PDT Rule                | Pattern Day Trader | 提示用户，不强制       |
-| Rule 10b-5              | 内幕信息               | 严格免责 + 数据源审查   |
-| Reg FD                  | 公平披露               | 仅用公开数据         |
+| Reg BI                  | Broker-Dealer      | Not applicable (Nova does not hold funds) |
+| Investment Advisers Act | RIA                | Not applicable (non-personalized advice)    |
+| Reg T                   | Margin             | Not applicable (no margin)     |
+| PDT Rule                | Pattern Day Trader | Inform users, not enforced       |
+| Rule 10b-5              | Insider information               | Strict disclaimer + data source review   |
+| Reg FD                  | Fair disclosure               | Use only public data         |
 
-### 7.3 免责声明
+### 7.3 Disclaimer
 
-所有 AI 输出必须包含：
+All AI outputs must include:
 
-> "本内容仅为信息发布，不构成投资建议。AI 输出可能存在错误，用户应自行核实并承担投资风险。"
+> "This content is for informational purposes only and does not constitute investment advice. AI outputs may contain errors; users should verify independently and bear investment risk."
 
 ***
 
-## 8. 北极星与指标体系 (North Star & KPI) \[C]
+## 8. North Star & KPI System \[C]
 
-### 8.1 北极星指标
+### 8.1 North Star Metric
 
 > **WAU-CW (Weekly Active Users - Complete Workflow)**
 >
-> 定义：一周内完成 "Ask → Build → Dashboard" 三步至少一次的活跃用户数。
+> Definition: Number of active users who completed the three steps "Ask → Build → Dashboard" at least once in a week.
 
-### 8.2 完整 KPI 树（3 层）
+### 8.2 Complete KPI Tree (3 layers)
 
 ```
                   North Star: WAU-CW
@@ -252,31 +252,31 @@ Activation  Build Feature  Cohort Trial    Upsell
   rate    success  usage   retention  conv.   rate
 ```
 
-### 8.3 指标分类
+### 8.3 Metric Categories
 
-| 类别               | 一级指标                 | 二级埋点                      |
+| Category               | Primary metric                 | Secondary tracking                      |
 | ---------------- | -------------------- | ------------------------- |
-| **Activation**   | Signup→First Ask 转化率 | 注册漏斗各步                    |
-| **Engagement**   | 人均 Ask/Build 次数      | 工具调用次数、Query 长度           |
-| **Retention**    | D1/D7/D30 留存         | 周回访、月回访                   |
-| **Monetization** | 付费转化率、ARPU           | Trial→Pro 转化、Pro→Pro+ 升级  |
-| **Quality**      | 幻觉率、延迟、单 query 成本    | Tool 失败率、Hallucination 检测 |
-| **Community**    | 创作者数、Playbook 分享量    | Fork 数、复现率                |
+| **Activation**   | Signup→First Ask conversion rate | Steps of registration funnel                    |
+| **Engagement**   | Avg Ask/Build count per capita      | Tool call count, query length           |
+| **Retention**    | D1/D7/D30 retention         | Weekly return, monthly return                   |
+| **Monetization** | Paid conversion rate, ARPU           | Trial→Pro conversion, Pro→Pro+ upgrade  |
+| **Quality**      | Hallucination rate, latency, cost per query    | Tool failure rate, Hallucination detection |
+| **Community**    | Creator count, Playbook shares    | Fork count, reproduction rate                |
 
-详见 [appendix/billing\_credit\_system.md](./appendix/billing_credit_system.md) §3。
+See [appendix/billing\_credit\_system.md](./appendix/billing_credit_system.md) §3.
 
 ***
 
-## 9. 8 大模块概览 (Module Overview) \[B+C]
+## 9. 8 Module Overview \[B+C]
 
-> 每个模块有独立 Epic 文档，详见 `docs/prd/epic/`
+> Each module has an independent Epic document, see `docs/prd/epic/`
 
-### 9.1 模块依赖图
+### 9.1 Module Dependency Graph
 
 ```
-1. Agent Harness (地基)
+1. Agent Harness (foundation)
        ↑
-2. Data Layer (贯穿)
+2. Data Layer (cross-cutting)
        ↑
 3. Ask Agent ─── 4. Strategy DSL ─── 5. Dashboard
                                        ↑
@@ -285,226 +285,225 @@ Activation  Build Feature  Cohort Trial    Upsell
 7. Share & Community ─── 8. Playbook System
 ```
 
-### 9.2 模块速览
+### 9.2 Module Quick Reference
 
-| # | 模块                 | 核心职责                              | Phase | 详细文档                                                          |
+| # | Module                 | Core responsibility                              | Phase | Detailed doc                                                          |
 | - | ------------------ | --------------------------------- | ----- | ------------------------------------------------------------- |
-| 1 | Agent Harness      | LLM 脚手架：loop+tools+memory+context | 1     | [01\_AgentHarness.md](./epic/01_AgentHarness.md)              |
-| 2 | Data Layer         | 数据源+Mock+缓存                       | 1     | [02\_DataLayer.md](./epic/02_DataLayer.md)                    |
-| 3 | Ask Agent          | 深度研究问答                            | 1     | [03\_Ask\_Agent.md](./epic/03_Ask_Agent.md)                   |
-| 4 | Strategy DSL       | NL→DSL→回测                         | 1     | [04\_Strategy\_DSL.md](./epic/04_Strategy_DSL.md)             |
-| 5 | Dashboard          | 监控看板                              | 1     | [05\_Dashboard.md](./epic/05_Dashboard.md)                    |
-| 6 | Broker Integration | 实盘接入                              | 2     | [06\_Broker\_Integration.md](./epic/06_Broker_Integration.md) |
-| 7 | Share & Community  | UGC + 复现                          | 2     | [07\_Share\_Community.md](./epic/07_Share_Community.md)       |
-| 8 | Playbook System    | 可组合分发                             | 3     | [08\_Playbook\_System.md](./epic/08_Playbook_System.md)       |
+| 1 | Agent Harness      | LLM scaffolding: loop+tools+memory+context | 1     | [01\_AgentHarness.md](./epic/01_AgentHarness.md)              |
+| 2 | Data Layer         | Data source+Mock+cache                       | 1     | [02\_DataLayer.md](./epic/02_DataLayer.md)                    |
+| 3 | Ask Agent          | Deep research Q&A                            | 1     | [03\_Ask\_Agent.md](./epic/03_Ask_Agent.md)                   |
+| 4 | Strategy DSL       | NL→DSL→backtest                         | 1     | [04\_Strategy\_DSL.md](./epic/04_Strategy_DSL.md)             |
+| 5 | Dashboard          | Monitoring dashboard                              | 1     | [05\_Dashboard.md](./epic/05_Dashboard.md)                    |
+| 6 | Broker Integration | Live trading integration                              | 2     | [06\_Broker\_Integration.md](./epic/06_Broker_Integration.md) |
+| 7 | Share & Community  | UGC + reproduction                          | 2     | [07\_Share\_Community.md](./epic/07_Share_Community.md)       |
+| 8 | Playbook System    | Composable distribution                             | 3     | [08\_Playbook\_System.md](./epic/08_Playbook_System.md)       |
 
 ***
 
-## 10. Roadmap 摘要 (Roadmap Summary) \[B+C]
+## 10. Roadmap Summary \[B+C]
 
-> 详细版本见 [roadmap/Roadmap.md](../roadmap/Roadmap.md)
+> Detailed version at [roadmap/Roadmap.md](../roadmap/Roadmap.md)
 
-### 10.1 三阶段全景
+### 10.1 Three-phase Panorama
 
 ```
 2026 Q3 ─────────── 2027 Q2 ─────────── 2027 Q4
     Phase 1            Phase 2            Phase 3
-    PMF Validation     PMF Scaling        Platform化
+    PMF Validation     PMF Scaling        Platform-ization
 
-  · Mock 闭环           · 真实 API           · Playbook SDK
-  · Agent Harness       · Broker 实盘        · B2B SaaS
-  · NL→DSL             · Pro/Pro+ 套餐     · API 公开
-  · 200 WAU-CW        · 5K MAU             · 500 创作者
-                       · 3% 付费            · ARR $1M+
+  · Mock closed loop           · Real API           · Playbook SDK
+  · Agent Harness       · Broker live trading        · B2B SaaS
+  · NL→DSL             · Pro/Pro+ plans     · API public
+  · 200 WAU-CW        · 5K MAU             · 500 creators
+                       · 3% paid            · ARR $1M+
 ```
 
-### 10.2 关键里程碑
+### 10.2 Key Milestones
 
-| 时间  | 里程碑                              |
+| Time  | Milestone                              |
 | --- | -------------------------------- |
-| M2  | Agent Harness v1 + Mock 全套       |
-| M3  | Ask Agent 上线 + 10 模板             |
-| M4  | NL→DSL 公测 + Dashboard 闭环         |
-| M6  | Phase 1 退出 review（目标 200 WAU-CW） |
-| M7  | 真实 LLM API 接入 + Paper Trading    |
-| M9  | 实盘灰度 + Pro 套餐                    |
-| M12 | Phase 2 退出（目标 5K MAU）            |
+| M2  | Agent Harness v1 + full Mock suite       |
+| M3  | Ask Agent launch + 10 templates             |
+| M4  | NL→DSL public beta + Dashboard closed loop         |
+| M6  | Phase 1 exit review (target 200 WAU-CW) |
+| M7  | Real LLM API integration + Paper Trading    |
+| M9  | Live trading gradual rollout + Pro plan                    |
+| M12 | Phase 2 exit (target 5K MAU)            |
 | M15 | Playbook SDK + Marketplace       |
-| M18 | Phase 3 退出（目标 ARR $1M+）          |
+| M18 | Phase 3 exit (target ARR $1M+)          |
 
 ***
 
-## 11. 非目标 (Non-Goals) — Phase 1 显式排除 \[B]
+## 11. Non-Goals — Phase 1 Explicit Exclusions \[B]
 
-以下功能在 Phase 1 明确**不做**，避免分散精力：
+The following features are explicitly **not done** in Phase 1 to avoid dispersing effort:
 
-| # | 非目标              | 原因                   |
+| # | Non-goal              | Reason                   |
 | - | ---------------- | -------------------- |
-| 1 | 实盘交易（仅 Paper）    | 合规风险高，需 Phase 2 灰度   |
-| 2 | 移动原生 App         | 资源有限，先 PWA           |
-| 3 | 港股/A 股市场         | 仅美股聚焦                |
-| 4 | 机构 / B2B         | 先验证 B2C PMF          |
-| 5 | 自研 LLM 训练        | 用现成模型 + RAG          |
-| 6 | 自建 broker-dealer | 通过 partner broker 接入 |
-| 7 | 期权 / 衍生品         | 复杂度高                 |
-| 8 | 国际化（英文版）         | Phase 2 末再做          |
-| 9 | API 公开           | Phase 3 平台化          |
+| 1 | Live trading (Paper only)    | High compliance risk, needs Phase 2 gradual rollout   |
+| 2 | Native mobile App         | Limited resources, PWA first           |
+| 3 | HK/China A-share market         | US equities focus only                |
+| 4 | Institutional / B2B         | Validate B2C PMF first          |
+| 5 | Self-trained LLM        | Use off-the-shelf models + RAG          |
+| 6 | Self-built broker-dealer | Connect via partner broker |
+| 7 | Options / derivatives         | High complexity                 |
+| 8 | Internationalization (English version)         | Defer to Phase 2 end          |
+| 9 | Public API           | Phase 3 platformization          |
 
 ***
 
-## 12. 反模式清单 (Anti-Patterns) \[C]
+## 12. Anti-Patterns Checklist \[C]
 
-> "不要做 X" 的明确清单，对工程团队和未来 PM 都有用
+> Explicit checklist of "don't do X", useful for the engineering team and future PMs
 
-### 12.1 产品反模式
+### 12.1 Product Anti-Patterns
 
-1. ❌ **不要**让 LLM 直接生成 Python 代码并执行（安全 + 不可审计）
-2. ❌ **不要**只展示 Sharpe 而不揭示过拟合风险
-3. ❌ **不要**让回测默认忽略交易成本
-4. ❌ **不要**做个性化投资建议（合规红线）
-5. ❌ **不要**持有用户资金或证券
+1. ❌ **Do not** let the LLM directly generate and execute Python code (security + non-auditable)
+2. ❌ **Do not** show only Sharpe without revealing overfitting risk
+3. ❌ **Do not** let backtests ignore trading costs by default
+4. ❌ **Do not** provide personalized investment advice (compliance red line)
+5. ❌ **Do not** hold user funds or securities
 
-### 12.2 技术反模式
+### 12.2 Technical Anti-Patterns
 
-1. ❌ **不要**在 Agent loop 中不设 max\_steps（失控风险）
-2. ❌ **不要**在 LLM 输出上不设 cost ceiling（亏损风险）
-3. ❌ **不要**在没有 eval golden set 的情况下上线 Agent
-4. ❌ **不要**把 API key 写进代码（必须用 wrangler secret）
-5. ❌ **不要**在 D1 中存大对象（用 R2）
+1. ❌ **Do not** run an Agent loop without max\_steps (loss-of-control risk)
+2. ❌ **Do not** run LLM outputs without a cost ceiling (loss risk)
+3. ❌ **Do not** launch an Agent without an eval golden set
+4. ❌ **Do not** hard-code API keys (must use wrangler secret)
+5. ❌ **Do not** store large objects in D1 (use R2)
 
-### 12.3 流程反模式
+### 12.3 Process Anti-Patterns
 
-1. ❌ **不要**在没有用户访谈的情况下排优先级
-2. ❌ **不要**在没有 A/B test 的情况下大改 UI
-3. ❌ **不要**让 PRD 与代码脱节（PRD 改了代码不改）
+1. ❌ **Do not** prioritize without user interviews
+2. ❌ **Do not** make major UI changes without A/B testing
+3. ❌ **Do not** let the PRD diverge from the code (PRD changed but code not)
 
 ***
 
-## 13. 部署架构摘要 (Deployment) \[C]
+## 13. Deployment Architecture Summary \[C]
 
-### 13.1 Cloudflare 免费栈
+### 13.1 Cloudflare Free Stack
 
-| 服务                   | 用途             | 免费额度          |
+| Service                   | Use             | Free quota          |
 | -------------------- | -------------- | ------------- |
-| Cloudflare Pages     | Next.js 托管     | 500 builds/月  |
-| Cloudflare Workers   | API 路由 + Agent | 100K req/天    |
-| Cloudflare D1        | SQLite 数据库     | 5GB + 5M 行读/天 |
-| Cloudflare R2        | K 线缓存          | 10GB          |
-| Cloudflare Vectorize | 向量检索（RAG）      | 30M 查询/月      |
-| Grafana Cloud        | 监控             | 10K series 免费 |
+| Cloudflare Pages     | Next.js hosting     | 500 builds/month  |
+| Cloudflare Workers   | API routing + Agent | 100K req/day    |
+| Cloudflare D1        | SQLite database     | 5GB + 5M row reads/day |
+| Cloudflare R2        | K-line cache          | 10GB          |
+| Cloudflare Vectorize | Vector retrieval (RAG)      | 30M queries/month      |
+| Grafana Cloud        | Monitoring             | 10K series free |
 
-详见 [appendix/deployment\_cloudflare.md](./appendix/deployment_cloudflare.md)。
+See [appendix/deployment\_cloudflare.md](./appendix/deployment_cloudflare.md).
 
-### 13.2 Mock / 真实模式
+### 13.2 Mock / Real Mode
 
 ```bash
-# 本地开发
-USE_MOCK=true  # 读取 mock_data/
+# Local development
+USE_MOCK=true  # read mock_data/
 
-# Cloudflare 部署（演示版）
-USE_MOCK=true  # 仍用 Mock，但部署到 Cloudflare
+# Cloudflare deployment (demo version)
+USE_MOCK=true  # still use Mock, but deployed to Cloudflare
 
-# 生产模式（Phase 2+）
-USE_MOCK=false  # 真实 API
+# Production mode (Phase 2+)
+USE_MOCK=false  # real API
 LLM_BASE_URL=https://ark.cn-beijing.volces.com
 LLM_API_KEY=${{ARK_API_KEY}}
 ```
 
 ***
 
-## 14. 风险登记 (Risk Register)
+## 14. Risk Register
 
-| #  | 风险                | 概率 | 影响 | 缓解                             |
+| #  | Risk                | Probability | Impact | Mitigation                             |
 | -- | ----------------- | -- | -- | ------------------------------ |
-| 1  | Agent 幻觉致用户损失     | 高  | 极高 | Eval + 工具 schema + 法务免责        |
-| 2  | 回测引擎 bug          | 中  | 极高 | 单元测试 + 量化专家 audit              |
-| 3  | 实盘交易故障            | 中  | 极高 | 灰度 + 限额 + 7×24 oncall          |
-| 4  | 合规被定性为投顾          | 中  | 高  | 法务 + Publisher 定位              |
-| 5  | LLM 成本失控          | 高  | 中  | 路由 + cache + 降级                |
-| 6  | 数据供应商中断           | 中  | 中  | 多源 + consensus                 |
-| 7  | Cloudflare 免费额度超限 | 低  | 中  | 监控 + 自动降级到 Mock                |
-| 8  | 创始人 roadmap 冲突    | 中  | 中  | 1:1 + 数据驱动决策                   |
-| 9  | 竞品先发              | 高  | 中  | 速度 + 差异化（Mock 模式 + Cloudflare） |
-| 10 | 关键人才流失            | 中  | 高  | 期权 + 文化                        |
+| 1  | Agent hallucination causes user loss     | High  | Very high | Eval + tool schema + legal disclaimer        |
+| 2  | Backtest engine bug          | Medium  | Very high | Unit tests + quantitative expert audit              |
+| 3  | Live trading failure            | Medium  | Very high | Gradual rollout + limits + 7×24 oncall          |
+| 4  | Compliance classified as investment advisory          | Medium  | High  | Legal + Publisher positioning              |
+| 5  | LLM cost out of control          | High  | Medium  | Routing + cache + degradation                |
+| 6  | Data vendor outage           | Medium  | Medium  | Multi-source + consensus                 |
+| 7  | Cloudflare free quota exceeded | Low  | Medium  | Monitoring + auto fallback to Mock                |
+| 8  | Founder roadmap conflict    | Medium  | Medium  | 1:1 + data-driven decision                   |
+| 9  | Competitor first-mover              | High  | Medium  | Speed + differentiation (Mock mode + Cloudflare) |
+| 10 | Loss of key talent            | Medium  | High  | Equity + culture                        |
 
 ***
 
-## 15. 团队与协作 (Team & Collaboration)
+## 15. Team & Collaboration
 
-### 15.1 角色与协作矩阵
+### 15.1 Roles and Collaboration Matrix
 
-| 角色    | 协作频率     | 协作内容                     |
+| Role    | Collaboration frequency     | Collaboration content                     |
 | ----- | -------- | ------------------------ |
-| CEO   | 每周 1:1   | 战略对齐 + 融资叙事              |
-| CTO   | 每周 ≥ 2 次 | 技术可行性 + Agent Harness 设计 |
-| 工程主管  | 每日       | sprint + 详细需求            |
-| 算法/ML | 每周 2 次   | 模型评测 + RAG 策略 + eval     |
-| 设计/UX | 每周 2-3 次 | 原型 + 用户测试                |
-| 运营/社区 | 每周 1 次   | 社区反馈 + 内容创作              |
-| 法务/合规 | 每月 1 次   | 监管 + 用户协议                |
-| 投资人   | 季度 1 次   | 进展汇报 + 融资叙事              |
+| CEO   | Weekly 1:1   | Strategic alignment + fundraising narrative              |
+| CTO   | Weekly ≥ 2 | Technical feasibility + Agent Harness design |
+| Engineering lead  | Daily       | sprint + detailed requirements            |
+| Algorithms/ML | Weekly 2   | Model evaluation + RAG strategy + eval     |
+| Design/UX | Weekly 2-3 | Prototypes + user testing                |
+| Operations/Community | Weekly 1   | Community feedback + content creation              |
+| Legal/Compliance | Monthly 1   | Regulatory + user agreements                |
+| Investors   | Quarterly 1   | Progress reports + fundraising narrative              |
 
-### 15.2 周节奏
+### 15.2 Weekly Rhythm
 
-| 时间   | 活动                          |
+| Time   | Activity                          |
 | ---- | --------------------------- |
-| 周一上午 | 工程站会 + 本周优先级                |
-| 周一下午 | 用户访谈 ≥ 2 个                  |
-| 周二   | 深度使用产品 + 数据分析               |
-| 周三   | 设计/原型 + 跨团队对齐               |
-| 周四   | 工程详细需求 + 工具调用日志 review      |
-| 周五上午 | Sprint demo + retrospective |
-| 周五下午 | 学习 + Roadmap 思考             |
+| Monday morning | Engineering standup + this week's priorities                |
+| Monday afternoon | User interviews ≥ 2                  |
+| Tuesday   | Deep product usage + data analysis               |
+| Wednesday   | Design/prototype + cross-team alignment               |
+| Thursday   | Engineering detailed requirements + tool call log review      |
+| Friday morning | Sprint demo + retrospective |
+| Friday afternoon | Learning + Roadmap thinking             |
 
 ***
 
-## 16. 90 天入职计划 (90-Day Plan) \[C]
+## 16. 90-Day Onboarding Plan \[C]
 
-### Day 0-30：学
+### Day 0-30: Learn
 
-- 全员 1:1（10-15 人）+ 通读所有 docs/slides/code
-- 深度使用产品 ≥ 30h + 记录所有摩擦
-- 用户访谈 ≥ 10 人
-- 竞品深度对比矩阵
+- 1:1 with everyone (10-15 people) + read all docs/slides/code
+- Use the product deeply for ≥ 30h + record all friction
+- User interviews ≥ 10 people
+- Competitor deep comparison matrix
 
-### Day 31-60：诊断
+### Day 31-60: Diagnose
 
-- 数据分析：funnel、留存、工具调用日志
-- Agent 评测：跑 50+ query，统计准确率/延迟/成本
-- 提出 90 天改进 Roadmap
-- 选 1-2 个 P0 摩擦，设计解决方案
+- Data analysis: funnel, retention, tool call logs
+- Agent evaluation: run 50+ queries, tally accuracy/latency/cost
+- Propose 90-day improvement Roadmap
+- Pick 1-2 P0 friction points, design solutions
 
-### Day 61-90：做
+### Day 61-90: Do
 
-- 与工程合作上线 v1 改进
-- 数据验证改进效果
-- 季度产品 review + Q+1 Roadmap
-- 给社区做第一次产品分享
+- Work with engineering to launch v1 improvements
+- Validate improvement effects with data
+- Quarterly product review + Q+1 Roadmap
+- First product share to the community
 
 ***
 
-## 17. 附录引用
+## 17. Appendix References
 
-| 附录            | 文件                                                                |
+| Appendix            | File                                                                |
 | ------------- | ----------------------------------------------------------------- |
-| 计费规则          | [billing\_credit\_system.md](./appendix/billing_credit_system.md) |
-| 合规法律          | [compliance\_legal.md](./appendix/compliance_legal.md)            |
-| Cloudflare 部署 | [deployment\_cloudflare.md](./appendix/deployment_cloudflare.md)  |
-| 术语表           | [glossary.md](./appendix/glossary.md)                             |
-| 数据模型          | [spec/data\_model.md](../spec/data_model.md)                      |
-| DSL 规格        | [spec/strategy\_dsl\_spec.md](../spec/strategy_dsl_spec.md)       |
-| 架构            | [architecture/architecture.md](../architecture/architecture.md)   |
+| Billing rules          | [billing\_credit\_system.md](./appendix/billing_credit_system.md) |
+| Compliance/legal          | [compliance\_legal.md](./appendix/compliance_legal.md)            |
+| Cloudflare deployment | [deployment\_cloudflare.md](./appendix/deployment_cloudflare.md)  |
+| Glossary           | [glossary.md](./appendix/glossary.md)                             |
+| Data model          | [spec/data\_model.md](../spec/data_model.md)                      |
+| DSL spec        | [spec/strategy\_dsl\_spec.md](../spec/strategy_dsl_spec.md)       |
+| Architecture            | [architecture/architecture.md](../architecture/architecture.md)   |
 | Roadmap       | [roadmap/Roadmap.md](../roadmap/Roadmap.md)                       |
 
 ***
 
-## 18. 版本历史
+## 18. Version History
 
-| 版本   | 日期         | 变更      |
+| Version   | Date         | Change      |
 | ---- | ---------- | ------- |
-| v1.0 | 2026-07-19 | 初版，求职作品 |
+| v1.0 | 2026-07-19 | Initial version, job-search portfolio |
 
 ***
 
-> 末次更新：2026-07-19 · 作者：赵勋 (Xun Zhao) + AI 协作
-
+> Last updated: 2026-07-19 · Author: Xun Zhao + AI collaboration

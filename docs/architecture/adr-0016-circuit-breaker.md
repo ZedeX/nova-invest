@@ -378,8 +378,8 @@ const circuitBreaker = new CircuitBreaker({
 |-------|-------------|---------------------------|
 | TR-EP02-009 | "CircuitBreaker: 5 failures → 60s cooldown" | Threshold: 5 consecutive failures; Cooldown: 60s via KV TTL |
 | EP02 §2.2 | Multi-source fallback chain (Yahoo → Alpha → Polygon → Mock) | Circuit breaker protects each source independently; tripped sources are skipped in fallback order |
-| EP02 §2.2 | "Mock 模式下读 K 线 / 不发起任何外部 HTTP 请求" | Mock source is circuit-breaker-exempt; never tracked, never tripped |
-| EP02 §3 User Story 5 | "R2 缓存自动启用" | R2 cache hit bypasses circuit breaker (ADR-0002 integration) |
+| EP02 §2.2 | "In Mock mode, read K-line / do not initiate any external HTTP requests" | Mock source is circuit-breaker-exempt; never tracked, never tripped |
+| EP02 §3 User Story 5 | "R2 cache auto-enabled" | R2 cache hit bypasses circuit breaker (ADR-0002 integration) |
 | ADR-0001 §Critical | "Do NOT cache the provider at module level" | CircuitBreaker is request-scoped (KV-backed, no module-level Map) |
 | ADR-0002 §Decision | "R2 miss → fetch Yahoo → write R2" | R2 miss path now includes circuit breaker check before source fetch |
 

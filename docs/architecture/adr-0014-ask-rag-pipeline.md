@@ -58,7 +58,7 @@ Accepted
 
 EP03 §2.4 specifies an `AskRAGPipeline` class with three methods: `embed(query)`, `retrieve(queryEmb, topK=5)`, `assemble(results)`. This pipeline is the core retrieval-augmented generation capability for the Ask Agent. Without it:
 
-1. **Ask Agent has no context**: LLM receives only the user query, producing generic or hallucinated answers — violating EP03 §2.3 forced citation mode and EP01 §ID-6 幻觉率 ≤ 5% target.
+1. **Ask Agent has no context**: LLM receives only the user query, producing generic or hallucinated answers — violating EP03 §2.3 forced citation mode and EP01 §ID-6 hallucination rate ≤ 5% target.
 2. **No multi-source retrieval**: EP03 §2.4 mandates 5 retrieval sources (K-lines metadata, SEC EDGAR earnings, News RSS, Playbooks, User notes). Without a unified pipeline, each source would be queried independently with no cross-source ranking.
 3. **ADR-0007 has no input**: The Citation Validator requires a RAG context string to verify quote substrings. Without this pipeline, there is no RAG context to validate against.
 4. **ADR-0004 AskHandler.onExecute has no implementation**: The Agent Loop's Execute state for Ask must perform RAG retrieval before LLM call. This pipeline IS that retrieval.
@@ -70,7 +70,7 @@ EP03 §2.4 specifies an `AskRAGPipeline` class with three methods: `embed(query)
 - **D1 stores metadata**: Vectorize stores only vector + ID. All retrievable metadata (ticker, date, source_type, title, snippet) lives in D1. Retrieval is a two-step: Vectorize returns IDs → D1 fetches metadata for those IDs.
 - **R2 stores large documents**: SEC filings, news articles, and playbook YAML bodies are too large for D1. R2 stores the full text; D1 stores metadata + R2 key pointer.
 - **ADR-0001 USE_MOCK compliance**: When `USE_MOCK=true`, pipeline must return pre-computed RAG results from `web/public/mock/qa_samples/` with zero external HTTP calls (no Vectorize, no Workers AI, no D1, no R2).
-- **Latency budget**: RAG retrieval must complete in < 2s (EP03 §6.2 反模式: "同步等待 LLM 完成才返回: >5s 必须流式返回" — RAG is part of the pre-LLM phase and must not consume more than 40% of the 5s budget).
+- **Latency budget**: RAG retrieval must complete in < 2s (EP03 §6.2 anti-pattern: "Synchronously waiting for LLM completion before returning: >5s must stream" — RAG is part of the pre-LLM phase and must not consume more than 40% of the 5s budget).
 - **Embedding model**: `@cf/baai/bge-small-en-v1.5` produces 384-dim vectors. All Vectorize indexes must use this model for consistency. Alternative models (e.g., Volcano Ark) deferred to Phase 2.
 
 ### Requirements
@@ -759,9 +759,9 @@ CREATE INDEX idx_news_source ON news_articles(source, published_at DESC);
 | EP03 §2.4 | mergeAndRank() combines results from all sources | `mergeAndRank()` using RRF with source weights |
 | EP03 §2.4 | assemble() produces RAG context string used by Citation Validator | `assemble()` returns `[source_type:source_id] snippet` format consumed by ADR-0007 |
 | EP03 §2.7 | RAGRetrieve loop state | `AskHandler.onExecute()` invokes pipeline in Execute state |
-| EP03 §2.3 | "强制 Citation 模式：所有数字字段必须从结构化数据提取" | Pipeline provides the structured RAG context that citation-validated answers draw from |
+| EP03 §2.3 | "Forced Citation mode: all numeric fields must be extracted from structured data" | Pipeline provides the structured RAG context that citation-validated answers draw from |
 | TR-EP03-008 | AskRAGPipeline (embed → retrieve → assemble) | This ADR is the formal specification for TR-EP03-008 |
-| EP01 §ID-6 | "幻觉率 ≤ 5%" Eval Golden Set | Pipeline provides RAG context; without it, hallucination rate would approach 100% for numeric queries |
+| EP01 §ID-6 | "Hallucination rate ≤ 5%" Eval Golden Set | Pipeline provides RAG context; without it, hallucination rate would approach 100% for numeric queries |
 | ADR-0001 | USE_MOCK compliance: zero external HTTP when true | Mock mode returns pre-computed results; no Vectorize/Workers AI/D1/R2 calls |
 | ADR-0007 | validateCitations needs ragContext string | `assemble()` produces the ragContext string |
 | ADR-0004 | AskHandler.onExecute performs RAG retrieval | Pipeline is invoked from onExecute |

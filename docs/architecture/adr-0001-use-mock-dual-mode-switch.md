@@ -43,7 +43,7 @@ The project must support two runtime modes from a single codebase: (a) **Mock mo
 
 - **Cloudflare Workers stateless**: Global module-level singletons (like `_provider` cache in current `provider.ts`) can leak state across requests when Workers instances are reused. ADR must call this out and prescribe request-scoped instantiation.
 - **Next.js 16 + Pages/Workers**: Env vars exposed via `process.env.USE_MOCK` in dev, `getRequestContext().env.USE_MOCK` in Workers runtime. ADR must standardize on `process.env` with a fallback shim.
-- **Free-tier demo economics**: Mock mode must work with zero API keys to support the "求职作品型" (portfolio project) goal — `pnpm dev` should "just work" out of the box.
+- **Free-tier demo economics**: Mock mode must work with zero API keys to support the "job-seeking portfolio" (portfolio project) goal — `pnpm dev` should "just work" out of the box.
 - **No feature-flag service**: Cloudflare KV could be used but adds complexity; a simple env var is sufficient for a single-tenant demo.
 
 ### Requirements
@@ -215,12 +215,12 @@ If a request needs to call `getProvider()` multiple times, the request handler s
 
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|---------------------------|
-| EP02 DataLayer §2.2 | "单一开关 USE_MOCK 环境变量" | Defines `USE_MOCK` as the canonical switch; codifies the factory pattern |
-| EP02 DataLayer §3 BDD | "Mock 模式下读 K 线 / 不发起任何外部 HTTP 请求 / 响应时间 < 100ms" | Establishes testable contract: MockProvider must not make outbound HTTP requests to third-party APIs; local `/mock/*` static file fetch is permitted |
-| EP02 DataLayer ID-2 | "Mock/Real 切换设计 - 关键决策" | Formalizes the design decision as an ADR |
-| EP01 AgentHarness §验收 | "USE_MOCK=true 时无任何外部 API 调用" | Same contract, asserted at agent layer |
-| EP01 AgentHarness ID-5 | "Provider 切换（本地 vs 云）" | LLM provider uses same env-var pattern (see ADR-0003) |
-| architecture.md §5.3 | "Mock 数据集清单" | Mock path `web/public/mock/klines/*.json` is the canonical location |
+| EP02 DataLayer §2.2 | "Single switch USE_MOCK environment variable" | Defines `USE_MOCK` as the canonical switch; codifies the factory pattern |
+| EP02 DataLayer §3 BDD | "Mock mode reads K-lines / no external HTTP requests / response time < 100ms" | Establishes testable contract: MockProvider must not make outbound HTTP requests to third-party APIs; local `/mock/*` static file fetch is permitted |
+| EP02 DataLayer ID-2 | "Mock/Real switch design - key decision" | Formalizes the design decision as an ADR |
+| EP01 AgentHarness §acceptance | "No external API calls when USE_MOCK=true" | Same contract, asserted at agent layer |
+| EP01 AgentHarness ID-5 | "Provider switch (local vs cloud)" | LLM provider uses same env-var pattern (see ADR-0003) |
+| architecture.md §5.3 | "Mock dataset manifest" | Mock path `web/public/mock/klines/*.json` is the canonical location |
 
 ## Performance Implications
 
@@ -256,7 +256,7 @@ The current `web/src/lib/data/provider.ts` already implements this ADR's intent 
 
 - **ADR-0002** (R2 cache whitelist) — depends on this ADR for the `mode` field in `ProviderConfig`
 - **ADR-0003** (LLM routing + cost_cap) — uses the same env-var-driven switch pattern for LLM provider selection
-- EP02 §2.2 Mock/Real 切换设计 — originating design doc
+- EP02 §2.2 Mock/Real switch design — originating design doc
 - architecture.md §5 — data flow context
 
 ## TECH_DEBT — Module-Level Provider Cache Anti-Pattern

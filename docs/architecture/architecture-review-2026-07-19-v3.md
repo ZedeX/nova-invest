@@ -93,7 +93,7 @@
 |---|---|---|---|
 | TR-EP01-004 | EP01 | ADR-0006 | Hybrid tool protocol (MCP + native) |
 | TR-EP01-005 | EP01 | ADR-0005 | 3-layer Memory (short_term + long_term_structured + long_term_vector) |
-| TR-EP01-008 | EP01 | ADR-0007 | Eval Golden Set (幻觉率 ≤5% enforcement via validator) |
+| TR-EP01-008 | EP01 | ADR-0007 | Eval Golden Set (hallucination rate ≤5% enforcement via validator) |
 | TR-EP02-008 | EP02 | ADR-0006 | Multi-source fallback (source switching is tool-internal per ADR-0006) |
 | TR-EP03-005 | EP03 | ADR-0007 | Forced citation mode (every numeric_fact needs source) |
 | TR-EP03-007 | EP03 | ADR-0007 | validateCitations() detects hallucination |
@@ -216,7 +216,7 @@ Layer 4 (Feature):
 |---|---|---|---|
 | EP01 | §ID-4 State Machine | Needs backref to ADR-0004 | ✅ Applied ([01_AgentHarness.md:192](file:///e:/git/nova-invest/docs/prd/epic/01_AgentHarness.md#L192)) |
 | EP01 | §ID-7 TraceStep | Needs backref to ADR-0004 | ✅ Applied ([01_AgentHarness.md:265](file:///e:/git/nova-invest/docs/prd/epic/01_AgentHarness.md#L265)) |
-| EP01 | §反模式 | Needs backref to ADR-0004 (MAX_STEPS=20, $5 cap) | ✅ Applied ([01_AgentHarness.md:340](file:///e:/git/nova-invest/docs/prd/epic/01_AgentHarness.md#L340)) |
+| EP01 | §anti-pattern | Needs backref to ADR-0004 (MAX_STEPS=20, $5 cap) | ✅ Applied ([01_AgentHarness.md:340](file:///e:/git/nova-invest/docs/prd/epic/01_AgentHarness.md#L340)) |
 | EP03 | §2.7 | Needs ADR-0004/0005/0006/0007 backrefs | ✅ Applied |
 
 ---

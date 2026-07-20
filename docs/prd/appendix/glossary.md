@@ -1,125 +1,125 @@
-# 术语表 (Glossary)
+# Glossary
 
-> **用途**: 统一 Nova Invest 全部 PRD/Epic/Spec 文档术语，避免歧义。
-> **维护规则**: 新增术语必须更新本文档；废弃术语保留并标注 `[DEPRECATED]`。
+> **Purpose**: Unify terminology across all Nova Invest PRD/Epic/Spec documents to avoid ambiguity.
+> **Maintenance Rules**: New terms must be added to this document; deprecated terms retained and marked `[DEPRECATED]`.
 
 ---
 
-## A. 产品与角色
+## A. Product and Roles
 
-| 术语 | 定义 |
+| Term | Definition |
 |---|---|
-| **Nova Invest** | 本项目代号，AI-native 投研工作流系统，个人学习项目 |
-| **竞品** | 市场上的AI投研产品，作为参考对象 |
-| **Prosumer** | Producer + Consumer，专业消费者；本文档指"专业散户" |
-| **Persona** | 用户画像，Nova Invest 定义 3 类：散户 / Prosumer / 半专业 |
-| **PM** | Product Manager 产品经理 |
-| **CPO** | Chief Product Officer 首席产品官 |
+| **Nova Invest** | This project codename, AI-native investment research workflow system, personal learning project |
+| **Competitor** | AI investment research products in the market, as reference objects |
+| **Prosumer** | Producer + Consumer, professional consumer; in this document refers to "professional retail investor" |
+| **Persona** | User persona, Nova Invest defines 3 types: Retail / Prosumer / Semi-professional |
+| **PM** | Product Manager |
+| **CPO** | Chief Product Officer |
 
-## B. AI Agent 相关
+## B. AI Agent Related
 
-| 术语 | 定义 |
+| Term | Definition |
 |---|---|
-| **Agent Harness** | LLM 周围的脚手架：loop + tools + memory + context + guardrails |
-| **LLM** | Large Language Model 大语言模型 |
-| **MCP** | Model Context Protocol，Anthropic 2024.11 推出的工具调用开放协议 |
-| **Function Calling** | LLM 输出结构化 JSON 调用工具的能力 |
-| **RAG** | Retrieval-Augmented Generation 检索增强生成 |
-| **ReAct** | Reason + Act，LLM 边推理边调用工具的循环模式 |
-| **Supervisor-Worker** | 多 Agent 编排模式：Supervisor 路由 + Worker 执行 |
-| **Hand-off** | Agent 之间任务交接协议 |
-| **Eval** | Evaluation 评估，含 Golden Set + LLM-as-judge |
-| **Golden Set** | 人工标注的标准答案集，用于评估 Agent 准确率 |
-| **Hallucination** | 幻觉，LLM 编造不存在的事实 |
-| **Compaction** | 压缩，把长对话历史总结成短摘要 |
-| **Tool Registry** | 工具注册表，统一管理所有可调用工具 |
-| **Token Budget** | 单次 query 的 token 上限，用于成本控制 |
-| **Cost Ceiling** | 单次 query 成本上限，触发自动降级 |
+| **Agent Harness** | Scaffolding around LLM: loop + tools + memory + context + guardrails |
+| **LLM** | Large Language Model |
+| **MCP** | Model Context Protocol, open tool-calling protocol launched by Anthropic in 2024.11 |
+| **Function Calling** | LLM capability to output structured JSON to invoke tools |
+| **RAG** | Retrieval-Augmented Generation |
+| **ReAct** | Reason + Act, loop pattern where LLM reasons while calling tools |
+| **Supervisor-Worker** | Multi-agent orchestration pattern: Supervisor routes + Worker executes |
+| **Hand-off** | Task handoff protocol between Agents |
+| **Eval** | Evaluation, includes Golden Set + LLM-as-judge |
+| **Golden Set** | Human-annotated standard answer set, used to evaluate Agent accuracy |
+| **Hallucination** | LLM fabricates non-existent facts |
+| **Compaction** | Compress long conversation history into short summaries |
+| **Tool Registry** | Tool registry, unified management of all callable tools |
+| **Token Budget** | Token limit per query, for cost control |
+| **Cost Ceiling** | Cost cap per query, triggers automatic model degradation |
 
-## C. 金融与交易
+## C. Finance and Trading
 
-| 术语 | 定义 |
+| Term | Definition |
 |---|---|
-| **OHLCV** | Open/High/Low/Close/Volume K 线数据 |
-| **NBBO** | National Best Bid and Offer 全美最优报价 |
-| **PDT** | Pattern Day Trader 模式日内交易者，账户 < $25K 受限 |
-| **RIA** | Registered Investment Adviser 注册投资顾问 |
-| **Broker-Dealer** | 经纪交易商，需 FINRA 注册 |
-| **Publisher** | 信息发布者，First Amendment 保护，非投顾 |
-| **Paper Trading** | 模拟交易，不涉及真实资金 |
-| **Backtest** | 回测，用历史数据测试策略 |
-| **Sharpe Ratio** | (R-Rf)/σ 单位总风险超额收益 |
-| **Sortino Ratio** | 只对下行波动惩罚的 Sharpe 变体 |
-| **Max Drawdown (MDD)** | 最大回撤 |
-| **Deflated Sharpe** | 多重检验校正后的 Sharpe |
-| **Factor** | 因子，能解释股票收益的统计量 |
-| **Fama-French 3** | Market + Size + Value 三因子模型 |
-| **Momentum** | 动量因子，过去 12-1 月收益 |
-| **Mean Reversion** | 均值回复策略 |
-| **Pairs Trading** | 配对交易，统计套利 |
-| **VWAP** | Volume-Weighted Average Price 成交量加权均价 |
-| **Slippage** | 滑点，回测价与实际成交价偏差 |
-| **Look-ahead bias** | 未来函数，决策时点用了不可得的信息 |
-| **Survivorship bias** | 幸存者偏差，回测只含存活股票 |
-| **Walk-forward** | 滚动训练-测试分析 |
-| **Purged K-Fold** | 时间序列交叉验证，防止信息泄漏 |
+| **OHLCV** | Open/High/Low/Close/Volume K-line data |
+| **NBBO** | National Best Bid and Offer |
+| **PDT** | Pattern Day Trader, accounts < $25K restricted |
+| **RIA** | Registered Investment Adviser |
+| **Broker-Dealer** | Broker-dealer, requires FINRA registration |
+| **Publisher** | Information publisher, First Amendment protected, not investment adviser |
+| **Paper Trading** | Simulated trading, no real money involved |
+| **Backtest** | Test strategies using historical data |
+| **Sharpe Ratio** | (R-Rf)/σ excess return per unit of total risk |
+| **Sortino Ratio** | Sharpe variant that only penalizes downside volatility |
+| **Max Drawdown (MDD)** | Maximum drawdown |
+| **Deflated Sharpe** | Sharpe corrected for multiple testing |
+| **Factor** | Statistical measure that explains stock returns |
+| **Fama-French 3** | Market + Size + Value three-factor model |
+| **Momentum** | Momentum factor, past 12-1 month returns |
+| **Mean Reversion** | Mean reversion strategy |
+| **Pairs Trading** | Pairs trading, statistical arbitrage |
+| **VWAP** | Volume-Weighted Average Price |
+| **Slippage** | Difference between backtest price and actual execution price |
+| **Look-ahead bias** | Future function, using unavailable information at decision point |
+| **Survivorship bias** | Survivorship bias, backtest only contains surviving stocks |
+| **Walk-forward** | Rolling train-test analysis |
+| **Purged K-Fold** | Time-series cross-validation, prevents information leakage |
 
-## D. 技术架构
+## D. Technical Architecture
 
-| 术语 | 定义 |
+| Term | Definition |
 |---|---|
-| **Next.js** | React 全栈框架，Nova Invest 前端 |
-| **Cloudflare Workers** | 边缘 Serverless 计算平台 |
-| **D1** | Cloudflare SQLite 边缘数据库 |
-| **R2** | Cloudflare 对象存储（S3 兼容） |
-| **Vectorize** | Cloudflare 向量数据库服务 |
-| **Pages** | Cloudflare 静态站 + SSR 托管 |
-| **Wrangler** | Cloudflare CLI 工具 |
-| **lightweight-charts** | TradingView 开源图表库 (Apache 2.0)，Phase 1.5 接入 |
-| **LM Studio** | 本地 LLM 运行环境，兼容 OpenAI API |
-| **Ark** | 火山引擎大模型 API 平台 |
-| **OpenTelemetry** | 开源可观测性标准 |
-| **Grafana Cloud** | 可视化监控免费层 |
-| **DSL** | Domain-Specific Language 领域特定语言 |
-| **YAML** | 人类可读的数据序列化格式 |
-| **JSON Schema** | JSON 结构定义标准 |
-| **State Machine** | 状态机，描述对象状态流转 |
-| **Test Seam** | 测试缝，可注入 Mock 的接口边界 |
+| **Next.js** | React full-stack framework, Nova Invest frontend |
+| **Cloudflare Workers** | Edge Serverless compute platform |
+| **D1** | Cloudflare SQLite edge database |
+| **R2** | Cloudflare object storage (S3 compatible) |
+| **Vectorize** | Cloudflare vector database service |
+| **Pages** | Cloudflare static site + SSR hosting |
+| **Wrangler** | Cloudflare CLI tool |
+| **lightweight-charts** | TradingView open-source charting library (Apache 2.0), integrated in Phase 1.5 |
+| **LM Studio** | Local LLM runtime, OpenAI API compatible |
+| **Ark** | Volcengine LLM API platform |
+| **OpenTelemetry** | Open-source observability standard |
+| **Grafana Cloud** | Visualization monitoring free tier |
+| **DSL** | Domain-Specific Language |
+| **YAML** | Human-readable data serialization format |
+| **JSON Schema** | JSON structure definition standard |
+| **State Machine** | State machine, describes object state transitions |
+| **Test Seam** | Test seam, interface boundary for injecting Mocks |
 
-## E. 产品指标
+## E. Product Metrics
 
-| 术语 | 定义 |
+| Term | Definition |
 |---|---|
-| **WAU** | Weekly Active Users 周活 |
-| **WAU-CW** | WAU Complete Workflow，完成 Ask→Build→Dashboard 全流程的周活 |
-| **MAU** | Monthly Active Users 月活 |
-| **D1/D7/D30** | 注册后 1/7/30 日留存 |
-| **ARR** | Annual Recurring Revenue 年度经常性收入 |
-| **ARPU** | Average Revenue Per User 每用户平均收入 |
-| **Credit** | Nova Invest 计费单位 |
-| **Conversion Rate** | 免费转付费转化率 |
-| **NPS** | Net Promoter Score 净推荐值 |
-| **Funnel** | 漏斗，注册→激活→留存→付费 流程 |
-| **North Star** | 北极星指标，Nova Invest 选 WAU-CW |
+| **WAU** | Weekly Active Users |
+| **WAU-CW** | WAU Complete Workflow, weekly active users who complete Ask→Build→Dashboard full workflow |
+| **MAU** | Monthly Active Users |
+| **D1/D7/D30** | 1/7/30-day retention after registration |
+| **ARR** | Annual Recurring Revenue |
+| **ARPU** | Average Revenue Per User |
+| **Credit** | Nova Invest billing unit |
+| **Conversion Rate** | Free-to-paid conversion rate |
+| **NPS** | Net Promoter Score |
+| **Funnel** | Funnel, registration→activation→retention→payment flow |
+| **North Star** | North Star metric, Nova Invest chooses WAU-CW |
 
-## F. 团队与流程
+## F. Team and Process
 
-| 术语 | 定义 |
+| Term | Definition |
 |---|---|
-| **Epic** | 大型需求集，本文档定义 8 个 Epic |
-| **User Story** | 用户故事，"As a... I want... so that..." |
-| **Job Story** | "When... I want... so I can..." 场景化需求 |
-| **BDD** | Behavior-Driven Development 给定/当/那么 |
-| **TDD** | Test-Driven Development 测试驱动开发 |
-| **ADR** | Architecture Decision Record 架构决策记录 |
-| **OKR** | Objectives and Key Results 目标与关键结果 |
-| **PMF** | Product-Market Fit 产品市场契合 |
-| **MVP** | Minimum Viable Product 最小可行产品 |
-| **RFC** | Request for Comments 技术提案 |
+| **Epic** | Large requirement set, this document defines 8 Epics |
+| **User Story** | User story, "As a... I want... so that..." |
+| **Job Story** | "When... I want... so I can..." scenario-based requirement |
+| **BDD** | Behavior-Driven Development Given/When/Then |
+| **TDD** | Test-Driven Development |
+| **ADR** | Architecture Decision Record |
+| **OKR** | Objectives and Key Results |
+| **PMF** | Product-Market Fit |
+| **MVP** | Minimum Viable Product |
+| **RFC** | Request for Comments, technical proposal |
 
-## G. 模块名称
+## G. Module Names
 
-| 缩写 | 全称 |
+| Abbreviation | Full Name |
 |---|---|
 | **AH** | Agent Harness |
 | **DL** | Data Layer |
@@ -130,14 +130,14 @@
 | **SC** | Share & Community |
 | **PB** | Playbook System |
 
-## H. Mock 模式相关
+## H. Mock Mode Related
 
-| 术语 | 定义 |
+| Term | Definition |
 |---|---|
-| **USE_MOCK** | 环境变量，true=本地 Mock，false=真实 API |
-| **Mock Provider** | 返回预制数据的服务实现 |
-| **Real Provider** | 调用真实外部 API 的服务实现 |
-| **Seed Data** | D1 初始化预置数据 |
-| **Mock K 线** | 本地预生成 OHLCV JSON，供前端无网络加载 |
+| **USE_MOCK** | Environment variable, true=local Mock, false=real API |
+| **Mock Provider** | Service implementation returning pre-made data |
+| **Real Provider** | Service implementation calling real external APIs |
+| **Seed Data** | D1 initialization preset data |
+| **Mock K-line** | Locally pre-generated OHLCV JSON, for frontend loading without network |
 
-> 末次更新：2026-07-19
+> Last updated: 2026-07-19

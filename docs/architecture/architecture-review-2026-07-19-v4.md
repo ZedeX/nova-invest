@@ -303,7 +303,7 @@ These ADRs have all direct dependencies on Accepted ADRs and no open conflicts b
 All 4 flags from v3 are verified applied:
 | EP01 | §ID-4 State Machine | Backref to ADR-0004 | ✅ Applied |
 | EP01 | §ID-7 TraceStep | Backref to ADR-0004 | ✅ Applied |
-| EP01 | §反模式 | Backref to ADR-0004 | ✅ Applied |
+| EP01 | §anti-pattern | Backref to ADR-0004 | ✅ Applied |
 | EP03 | §2.7 | ADR-0004/0005/0006/0007 backrefs | ✅ Applied |
 
 ---

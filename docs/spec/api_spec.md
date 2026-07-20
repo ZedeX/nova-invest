@@ -1,22 +1,22 @@
 # API Specification
 
-**文档类型**: 技术规格 / API 接口
-**文档性质标签**: [B] + [C]
-**最后更新**: 2026-07-19
-**关联**: 各 Epic 的 API 接口聚合
+**Document type**: Technical spec / API interface
+**Document nature tag**: [B] + [C]
+**Last updated**: 2026-07-19
+**Related**: Aggregated API interfaces of each Epic
 
 ---
 
-## 1. 概述
+## 1. Overview
 
-nova-invest API 基于 Cloudflare Workers，RESTful 风格，JSON 格式。
+nova-invest API is built on Cloudflare Workers, RESTful style, JSON format.
 
 ### 1.1 Base URL
 
-- 本地开发：`http://localhost:8787`
-- 生产：`https://nova-invest.<account>.workers.dev`
+- Local development: `http://localhost:8787`
+- Production: `https://nova-invest.<account>.workers.dev`
 
-### 1.2 通用响应格式
+### 1.2 Generic response format
 
 ```typescript
 interface ApiResponse<T> {
@@ -29,15 +29,15 @@ interface ApiResponse<T> {
   meta?: {
     request_id: string;
     timestamp: string;
-    mock_mode: boolean;  // USE_MOCK 状态
+    mock_mode: boolean;  // USE_MOCK status
   };
 }
 ```
 
-### 1.3 鉴权
+### 1.3 Authentication
 
-Phase 1.5 之前：无鉴权（Mock 模式默认 mock-user-1）
-Phase 2：JWT Bearer Token
+Before Phase 1.5: no auth (Mock mode defaults to mock-user-1)
+Phase 2: JWT Bearer Token
 
 ```
 Authorization: Bearer <token>
@@ -47,29 +47,29 @@ Authorization: Bearer <token>
 
 ## 2. Data Layer API (Epic 02)
 
-### 2.1 获取 K 线
+### 2.1 Get K-lines
 
 ```http
 GET /api/data/klines?symbol=AAPL&timeframe=1d&from=2024-01-01&to=2025-12-31
 ```
 
-**Query 参数**：
+**Query parameters**:
 
-| 参数 | 类型 | 必须 | 说明 |
+| Parameter | Type | Required | Description |
 |---|---|---|---|
-| symbol | string | 是 | 标的代码 |
-| timeframe | enum | 是 | 1m/5m/15m/1h/1d/1w |
-| from | ISO date | 是 | 起始日期 |
-| to | ISO date | 是 | 结束日期 |
+| symbol | string | Yes | Ticker symbol |
+| timeframe | enum | Yes | 1m/5m/15m/1h/1d/1w |
+| from | ISO date | Yes | Start date |
+| to | ISO date | Yes | End date |
 
-**响应**：
+**Response**:
 
 ```json
 {
   "data": {
     "ticker": "AAPL",
     "timeframe": "1d",
-    "source": "mock",  // 或 "yahoo" / "r2_cache"
+    "source": "mock",  // or "yahoo" / "r2_cache"
     "data": [
       { "t": "2024-01-02", "o": 187.15, "h": 188.44, "l": 186.86, "c": 187.31, "v": 82488700 }
     ]
@@ -77,13 +77,13 @@ GET /api/data/klines?symbol=AAPL&timeframe=1d&from=2024-01-01&to=2025-12-31
 }
 ```
 
-### 2.2 获取实时报价
+### 2.2 Get real-time quote
 
 ```http
 GET /api/data/quote?symbol=AAPL
 ```
 
-**响应**：
+**Response**:
 
 ```json
 {
@@ -100,19 +100,19 @@ GET /api/data/quote?symbol=AAPL
 }
 ```
 
-### 2.3 标的搜索
+### 2.3 Symbol search
 
 ```http
 GET /api/data/symbols/search?q=Apple
 ```
 
-### 2.4 获取基本面
+### 2.4 Get fundamentals
 
 ```http
 GET /api/data/fundamentals?symbol=AAPL&period=2024-Q4
 ```
 
-### 2.5 SSE 行情订阅（Phase 2）
+### 2.5 SSE quote subscription (Phase 2)
 
 ```http
 GET /api/data/stream/AAPL
@@ -123,7 +123,7 @@ Accept: text/event-stream
 
 ## 3. Ask Agent API (Epic 03)
 
-### 3.1 提交问答
+### 3.1 Submit a question
 
 ```http
 POST /api/ask
@@ -136,7 +136,7 @@ Content-Type: application/json
 }
 ```
 
-**响应（同步）**：
+**Response (synchronous)**:
 
 ```json
 {
@@ -158,20 +158,20 @@ Content-Type: application/json
 }
 ```
 
-### 3.2 流式响应（SSE）
+### 3.2 Streaming response (SSE)
 
 ```http
 POST /api/ask/stream
 Accept: text/event-stream
 ```
 
-### 3.3 获取对话历史
+### 3.3 Get conversation history
 
 ```http
 GET /api/ask/history?session_id=sess_xxx&limit=50
 ```
 
-### 3.4 更新用户画像
+### 3.4 Update user profile
 
 ```http
 PATCH /api/ask/profile
@@ -185,7 +185,7 @@ PATCH /api/ask/profile
 
 ## 4. Strategy DSL API (Epic 04)
 
-### 4.1 创建策略
+### 4.1 Create a strategy
 
 ```http
 POST /api/strategy
@@ -197,7 +197,7 @@ Content-Type: application/json
 }
 ```
 
-**响应**：
+**Response**:
 
 ```json
 {
@@ -208,7 +208,7 @@ Content-Type: application/json
 }
 ```
 
-### 4.2 校验策略
+### 4.2 Validate a strategy
 
 ```http
 POST /api/strategy/validate
@@ -217,7 +217,7 @@ POST /api/strategy/validate
 }
 ```
 
-**响应**：
+**Response**:
 
 ```json
 {
@@ -228,7 +228,7 @@ POST /api/strategy/validate
 }
 ```
 
-或
+Or
 
 ```json
 {
@@ -241,7 +241,7 @@ POST /api/strategy/validate
 }
 ```
 
-### 4.3 运行回测
+### 4.3 Run a backtest
 
 ```http
 POST /api/strategy/:id/backtest
@@ -254,7 +254,7 @@ POST /api/strategy/:id/backtest
 }
 ```
 
-**响应**：
+**Response**:
 
 ```json
 {
@@ -266,13 +266,13 @@ POST /api/strategy/:id/backtest
 }
 ```
 
-### 4.4 查询回测结果
+### 4.4 Query backtest result
 
 ```http
 GET /api/strategy/:id/backtest/:backtest_id
 ```
 
-**响应**：
+**Response**:
 
 ```json
 {
@@ -313,13 +313,13 @@ GET /api/strategy/:id/backtest/:backtest_id
 
 ## 5. Broker API (Epic 06)
 
-### 5.1 获取账户
+### 5.1 Get account
 
 ```http
 GET /api/broker/account
 ```
 
-### 5.2 下单
+### 5.2 Place an order
 
 ```http
 POST /api/broker/orders
@@ -328,29 +328,29 @@ POST /api/broker/orders
   "side": "buy",
   "type": "market",
   "quantity": 100,
-  "strategy_id": "str_xxx"  // 可选
+  "strategy_id": "str_xxx"  // optional
 }
 ```
 
-### 5.3 撤单
+### 5.3 Cancel an order
 
 ```http
 DELETE /api/broker/orders/:order_id
 ```
 
-### 5.4 查询订单
+### 5.4 Query orders
 
 ```http
 GET /api/broker/orders?status=pending
 ```
 
-### 5.5 查询持仓
+### 5.5 Query positions
 
 ```http
 GET /api/broker/positions
 ```
 
-### 5.6 查询成交
+### 5.6 Query trades
 
 ```http
 GET /api/broker/trades?from=2025-12-01&to=2025-12-31
@@ -360,7 +360,7 @@ GET /api/broker/trades?from=2025-12-01&to=2025-12-31
 
 ## 6. Playbook API (Epic 08)
 
-### 6.1 创建 Playbook
+### 6.1 Create a Playbook
 
 ```http
 POST /api/playbooks
@@ -376,13 +376,13 @@ POST /api/playbooks
 }
 ```
 
-### 6.2 获取 Playbook
+### 6.2 Get a Playbook
 
 ```http
 GET /api/playbooks/:id?version=1.2.0
 ```
 
-### 6.3 发布新版本
+### 6.3 Publish a new version
 
 ```http
 POST /api/playbooks/:id/versions
@@ -393,7 +393,7 @@ POST /api/playbooks/:id/versions
 }
 ```
 
-### 6.4 创建组合 Playbook
+### 6.4 Create a composite Playbook
 
 ```http
 POST /api/playbooks/:id/compose
@@ -409,13 +409,13 @@ POST /api/playbooks/:id/compose
 }
 ```
 
-### 6.5 用户安装 Playbook
+### 6.5 User installs a Playbook
 
 ```http
 POST /api/playbooks/:id/install
 ```
 
-### 6.6 列出已安装
+### 6.6 List installed Playbooks
 
 ```http
 GET /api/playbooks/installed
@@ -425,7 +425,7 @@ GET /api/playbooks/installed
 
 ## 7. Community API (Epic 07)
 
-### 7.1 发布到社区
+### 7.1 Publish to community
 
 ```http
 POST /api/community/publish
@@ -438,40 +438,40 @@ POST /api/community/publish
 }
 ```
 
-### 7.2 浏览 Feed
+### 7.2 Browse feed
 
 ```http
 GET /api/community/feed?sort=recent&limit=20&offset=0
 ```
 
-**Query 参数**：
+**Query parameters**:
 
-| 参数 | 类型 | 默认 | 说明 |
+| Parameter | Type | Default | Description |
 |---|---|---|---|
 | sort | enum | recent | recent/popular/top_rated |
 | limit | int | 20 | 1-100 |
-| offset | int | 0 | 分页 |
-| tag | string | - | 过滤标签 |
+| offset | int | 0 | Pagination |
+| tag | string | - | Filter tag |
 
-### 7.3 搜索
+### 7.3 Search
 
 ```http
 GET /api/community/search?q=momentum&tag=momentum
 ```
 
-### 7.4 获取详情
+### 7.4 Get details
 
 ```http
 GET /api/community/:package_id
 ```
 
-### 7.5 安装 Playbook
+### 7.5 Install a Playbook
 
 ```http
 POST /api/community/:package_id/install
 ```
 
-### 7.6 评分
+### 7.6 Rate
 
 ```http
 POST /api/community/:package_id/rate
@@ -480,17 +480,17 @@ POST /api/community/:package_id/rate
 }
 ```
 
-### 7.7 评论
+### 7.7 Comment
 
 ```http
 POST /api/community/:package_id/comments
 {
   "content": "Great strategy!",
-  "parent_id": null  // 嵌套回复时填父评论 ID
+  "parent_id": null  // Fill parent comment ID for nested replies
 }
 ```
 
-### 7.8 举报
+### 7.8 Report
 
 ```http
 POST /api/community/:package_id/report
@@ -504,13 +504,13 @@ POST /api/community/:package_id/report
 
 ## 8. Credits API (Appendix A)
 
-### 8.1 查询余额
+### 8.1 Query balance
 
 ```http
 GET /api/credits/balance
 ```
 
-**响应**：
+**Response**:
 
 ```json
 {
@@ -528,7 +528,7 @@ GET /api/credits/balance
 }
 ```
 
-### 8.2 扣费
+### 8.2 Charge
 
 ```http
 POST /api/credits/charge
@@ -538,7 +538,7 @@ POST /api/credits/charge
 }
 ```
 
-**响应**：
+**Response**:
 
 ```json
 {
@@ -551,7 +551,7 @@ POST /api/credits/charge
 }
 ```
 
-或降级：
+Or degraded:
 
 ```json
 {
@@ -565,13 +565,13 @@ POST /api/credits/charge
 }
 ```
 
-### 8.3 查询流水
+### 8.3 Query transactions
 
 ```http
 GET /api/credits/transactions?from=2026-07-01&to=2026-07-31&limit=50
 ```
 
-### 8.4 充值
+### 8.4 Top up
 
 ```http
 POST /api/credits/topup
@@ -580,7 +580,7 @@ POST /api/credits/topup
 }
 ```
 
-**响应**：
+**Response**:
 
 ```json
 {
@@ -602,7 +602,7 @@ Stripe-Signature: ...
 
 ## 9. Watchlist API (Epic 02)
 
-### 9.1 创建 Watchlist
+### 9.1 Create a Watchlist
 
 ```http
 POST /api/watchlists
@@ -611,13 +611,13 @@ POST /api/watchlists
 }
 ```
 
-### 9.2 列出 Watchlists
+### 9.2 List Watchlists
 
 ```http
 GET /api/watchlists
 ```
 
-### 9.3 添加标的
+### 9.3 Add a symbol
 
 ```http
 POST /api/watchlists/:id/items
@@ -626,7 +626,7 @@ POST /api/watchlists/:id/items
 }
 ```
 
-### 9.4 删除标的
+### 9.4 Remove a symbol
 
 ```http
 DELETE /api/watchlists/:id/items/:ticker
@@ -636,13 +636,13 @@ DELETE /api/watchlists/:id/items/:ticker
 
 ## 10. Health & Status API
 
-### 10.1 健康检查
+### 10.1 Health check
 
 ```http
 GET /api/health
 ```
 
-**响应**：
+**Response**:
 
 ```json
 {
@@ -660,65 +660,65 @@ GET /api/health
 }
 ```
 
-### 10.2 系统状态
+### 10.2 System status
 
 ```http
 GET /api/status
 ```
 
-返回更详细的服务状态和配额使用情况。
+Returns more detailed service status and quota usage.
 
 ---
 
-## 11. 错误码总表
+## 11. Error code table
 
-| 模块 | 错误码 | HTTP 状态 | 含义 |
+| Module | Error code | HTTP status | Meaning |
 |---|---|---|---|
-| 通用 | ERR_001 | 400 | 请求参数错误 |
-| 通用 | ERR_002 | 401 | 未鉴权 |
-| 通用 | ERR_003 | 403 | 无权限 |
-| 通用 | ERR_004 | 404 | 资源不存在 |
-| 通用 | ERR_005 | 429 | 限流 |
-| 通用 | ERR_006 | 500 | 内部错误 |
-| 通用 | ERR_007 | 503 | 服务不可用 |
-| Data | DATA_001 | 404 | 标的不存在 |
-| Data | DATA_002 | 429 | 数据源限流 |
-| Ask | ASK_001 | 400 | 查询无法理解 |
-| Ask | ASK_002 | 503 | LLM 服务不可用 |
-| Strategy | STR_001 | 400 | DSL 校验失败 |
-| Strategy | STR_002 | 404 | 策略不存在 |
-| Strategy | STR_003 | 409 | 状态不允许操作 |
-| Broker | BRK_001 | 400 | 订单校验失败 |
-| Broker | BRK_002 | 400 | 资金不足 |
-| Broker | BRK_003 | 400 | 持仓不足 |
-| Broker | BRK_004 | 409 | 订单状态不允许操作 |
-| Playbook | PB_001 | 400 | Playbook 校验失败 |
-| Playbook | PB_002 | 400 | 循环依赖 |
-| Playbook | PB_003 | 400 | 组合权重不等于 1.0 |
-| Playbook | PB_004 | 400 | 版本号非法 |
-| Community | CM_001 | 400 | 重复发布 |
-| Community | CM_002 | 429 | 发布频率超限 |
-| Community | CM_003 | 404 | Playbook 已下架 |
-| Credits | CR_001 | 402 | Credit 不足 |
-| Credits | CR_002 | 400 | 充值金额非法 |
+| Common | ERR_001 | 400 | Invalid request parameter |
+| Common | ERR_002 | 401 | Unauthenticated |
+| Common | ERR_003 | 403 | No permission |
+| Common | ERR_004 | 404 | Resource not found |
+| Common | ERR_005 | 429 | Rate limited |
+| Common | ERR_006 | 500 | Internal error |
+| Common | ERR_007 | 503 | Service unavailable |
+| Data | DATA_001 | 404 | Symbol not found |
+| Data | DATA_002 | 429 | Data source rate limited |
+| Ask | ASK_001 | 400 | Query cannot be understood |
+| Ask | ASK_002 | 503 | LLM service unavailable |
+| Strategy | STR_001 | 400 | DSL validation failed |
+| Strategy | STR_002 | 404 | Strategy not found |
+| Strategy | STR_003 | 409 | Operation not allowed in current state |
+| Broker | BRK_001 | 400 | Order validation failed |
+| Broker | BRK_002 | 400 | Insufficient funds |
+| Broker | BRK_003 | 400 | Insufficient position |
+| Broker | BRK_004 | 409 | Operation not allowed in current order state |
+| Playbook | PB_001 | 400 | Playbook validation failed |
+| Playbook | PB_002 | 400 | Circular dependency |
+| Playbook | PB_003 | 400 | Composite weights do not sum to 1.0 |
+| Playbook | PB_004 | 400 | Invalid version number |
+| Community | CM_001 | 400 | Duplicate publish |
+| Community | CM_002 | 429 | Publish frequency exceeded |
+| Community | CM_003 | 404 | Playbook has been taken down |
+| Credits | CR_001 | 402 | Insufficient credits |
+| Credits | CR_002 | 400 | Invalid top-up amount |
 
 ---
 
-## 12. 限流策略
+## 12. Rate limit policy
 
-| 端点 | 限流 |
+| Endpoint | Rate limit |
 |---|---|
 | /api/ask | 60 req/min/user |
 | /api/strategy/backtest | 10 req/hour/user |
 | /api/broker/orders | 100 req/hour/user |
 | /api/community/* | 200 req/hour/user |
 | /api/credits/topup | 5 req/hour/user |
-| 其他 | 1000 req/hour/user |
+| Others | 1000 req/hour/user |
 
 ---
 
-## 13. 版本历史
+## 13. Version history
 
-| 版本 | 日期 | 变更 |
+| Version | Date | Change |
 |---|---|---|
-| 0.1 | 2026-07-19 | 初稿，覆盖 8 Epic + 1 Appendix 共 50+ 端点 |
+| 0.1 | 2026-07-19 | Initial draft, covering 8 Epics + 1 Appendix with 50+ endpoints |

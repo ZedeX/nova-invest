@@ -43,7 +43,7 @@ Accepted
 | **Engine** | Next.js 16.2.10 + Cloudflare Workers 4 |
 | **Domain** | Core (Ask Agent / Streaming Transport) |
 | **Knowledge Risk** | LOW |
-| **References Consulted** | EP03 §6.2 反模式, ADR-0004 §StepHandler.onSynthesize, ADR-0007 §Validation Pipeline, ADR-0001 §USE_MOCK mode, ADR-0005 §Memory Layer onFinalize, Cloudflare Workers `TransformStream` API, MDN `Server-Sent Events`, `EventSource` API |
+| **References Consulted** | EP03 §6.2 anti-pattern, ADR-0004 §StepHandler.onSynthesize, ADR-0007 §Validation Pipeline, ADR-0001 §USE_MOCK mode, ADR-0005 §Memory Layer onFinalize, Cloudflare Workers `TransformStream` API, MDN `Server-Sent Events`, `EventSource` API |
 | **Post-Cutoff APIs Used** | None |
 | **Verification Required** | Responses >5s stream via SSE; responses ≤5s return as normal JSON; Mock mode never streams; simple_qa never streams; deep_research always streams; citation validation runs post-stream on complete response; streaming does not exceed Workers 30s CPU time limit |
 
@@ -60,7 +60,7 @@ Accepted
 
 ### Problem Statement
 
-EP03 §6.2 反模式 explicitly states: **"同步等待 LLM 完成才返回：>5s 必须流式返回"** — synchronously waiting for LLM completion before returning is forbidden; responses taking longer than 5 seconds must stream back to the client. TR-EP03-019 captures this as: "Streaming response (>5s triggers SSE)".
+EP03 §6.2 anti-pattern explicitly states: **"Synchronously waiting for LLM completion before returning: >5s must stream"** — synchronously waiting for LLM completion before returning is forbidden; responses taking longer than 5 seconds must stream back to the client. TR-EP03-019 captures this as: "Streaming response (>5s triggers SSE)".
 
 Currently, ADR-0004's `AgentLoop.run()` returns a single `LoopResult` after all states complete. The `StepHandler.onSynthesize` handler calls `RealLLM.complete()` which blocks until the full LLM response is available. For deep research queries (Sonnet-tier + multi-step RAG), this can take 10-30s — well beyond the 5s threshold. Users see nothing during this wait, violating the anti-pattern.
 
@@ -297,7 +297,7 @@ export interface StreamingLLMCall {
 
 /**
  * Latency threshold for adaptive streaming mode.
- * Per EP03 §6.2 反模式: >5s must stream.
+ * Per EP03 §6.2 anti-pattern: >5s must stream.
  */
 export const STREAM_THRESHOLD_MS = 5000;
 ```
@@ -516,7 +516,7 @@ declare module "../agent/loop" {
 - **Description**: Every Ask response uses SSE, even simple_qa that returns in <1s. Client always consumes SSE events.
 - **Pros**: Single code path on client and server; no mode detection logic; consistent UX.
 - **Cons**: SSE overhead (event framing, connection management) for responses that complete in <1s; `EventSource`/`fetch` stream setup adds ~50ms latency vs direct JSON; unnecessary complexity for Mock mode (which returns instantly).
-- **Rejection Reason**: EP03 §6.2 says ">5s 必须流式返回" — implying <5s can return normally. Simple_qa (Haiku-tier, <2s) should not pay the SSE overhead. Mock mode must not stream (ADR-0001).
+- **Rejection Reason**: EP03 §6.2 says ">5s must stream" — implying <5s can return normally. Simple_qa (Haiku-tier, <2s) should not pay the SSE overhead. Mock mode must not stream (ADR-0001).
 
 ### Alternative 3: Fixed threshold with pre-classification (no adaptive mode)
 
@@ -576,13 +576,13 @@ declare module "../agent/loop" {
 
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|---------------------------|
-| EP03 §6.2 反模式 | "同步等待 LLM 完成才返回：>5s 必须流式返回" | `STREAM_THRESHOLD_MS = 5000` threshold; `resolveStreamingMode()` detects when to stream; `SSEncoder` delivers SSE |
-| EP03 §6.2 验收 | "流式响应（>5s 时启用 SSE）" | Explicit acceptance criterion in Validation Criteria |
+| EP03 §6.2 anti-pattern | "Synchronously waiting for LLM completion before returning: >5s must stream" | `STREAM_THRESHOLD_MS = 5000` threshold; `resolveStreamingMode()` detects when to stream; `SSEncoder` delivers SSE |
+| EP03 §6.2 Acceptance | "Streaming response (SSE enabled when >5s)" | Explicit acceptance criterion in Validation Criteria |
 | TR-EP03-019 | Streaming response (>5s triggers SSE) | This ADR is the canonical owner |
 | EP03 §2.7 | Ask Agent Loop: LLMCall step | `StreamingLLMCall` wraps LLM call with streaming support; loop state machine unchanged |
-| EP03 §3 BDD | "Mock 模式立即返回" scenario | `resolveStreamingMode()` returns "never" when `USE_MOCK=true` |
+| EP03 §3 BDD | "Mock mode returns instantly" scenario | `resolveStreamingMode()` returns "never" when `USE_MOCK=true` |
 | EP01 §ID-4 | Agent Loop state machine | Loop unchanged; streaming is transport layer inside `onSynthesize` |
-| EP01 §反模式 | "不要让单次 query 成本 > $5" | Streaming does not affect cost tracking; ADR-0004 aggregate ceiling still enforced |
+| EP01 §anti-pattern | "Single query cost must not exceed $5" | Streaming does not affect cost tracking; ADR-0004 aggregate ceiling still enforced |
 | ADR-0007 | Citation validation on complete response | Post-stream validation preserves ADR-0007 contract; `citation` correction event emitted after `done` |
 
 ## Performance Implications
@@ -647,7 +647,7 @@ Migration steps:
 - **ADR-0004** (Agent Loop Design) — Loop state machine unchanged; streaming is transport inside `onSynthesize`; `LoopContext` extended with `sse_encoder?`
 - **ADR-0005** (Memory Layer) — `onFinalize` saves complete response after streaming finishes; streaming does not affect memory persistence
 - **ADR-0007** (Citation Validator) — Validation runs post-stream on complete response; `citation` correction event bridges streaming + validation
-- EP03 §6.2 反模式 — Originating requirement: ">5s 必须流式返回"
+- EP03 §6.2 anti-pattern — Originating requirement: ">5s must stream"
 - TR-EP03-019 — Technical requirement this ADR owns
 
 ## TECH_DEBT — None at ADR Creation

@@ -1,12 +1,12 @@
-# 附录 C：Cloudflare 部署架构
+# Appendix C: Cloudflare Deployment Architecture
 
-**附录类型**: 部署架构 + 免费额度约束
-**文档性质标签**: [A] + [B] + [C]
-**最后更新**: 2026-07-19
+**Appendix Type**: Deployment Architecture + Free Tier Constraints
+**Document Nature Tag**: [A] + [B] + [C]
+**Last Updated**: 2026-07-19
 
 ---
 
-## 1. 总体部署架构 [B]
+## 1. Overall Deployment Architecture [B]
 
 ```mermaid
 flowchart TB
@@ -16,21 +16,21 @@ flowchart TB
 
     subgraph "Cloudflare Edge Network"
         WRK[Workers<br/>API + Ask Agent]
-        WRK --> D1[(D1<br/>SQLite 边缘库)]
-        WRK --> R2[(R2<br/>对象存储)]
-        WRK --> VEC[(Vectorize<br/>向量库)]
-        WRK --> KV[(KV<br/>会话短期记忆)]
+        WRK --> D1[(D1<br/>SQLite edge DB)]
+        WRK --> R2[(R2<br/>object storage)]
+        WRK --> VEC[(Vectorize<br/>vector DB)]
+        WRK --> KV[(KV<br/>session short-term memory)]
         WRK --> AI[Workers AI<br/>fallback LLM]
     end
 
     subgraph "External Services"
-        WRK --> YH[Yahoo Finance<br/>免费]
-        WRK --> AV[Alpha Vantage<br/>免费 25/day]
+        WRK --> YH[Yahoo Finance<br/>free]
+        WRK --> AV[Alpha Vantage<br/>free 25/day]
         WRK --> PG[Polygon Free<br/>5/min]
-        WRK --> SEC[SEC EDGAR<br/>免费]
-        WRK --> FRED[FRED<br/>免费]
-        WRK --> ARK[火山引擎 Ark<br/>付费按量]
-        WRK --> LM[LM Studio<br/>本地开发]
+        WRK --> SEC[SEC EDGAR<br/>free]
+        WRK --> FRED[FRED<br/>free]
+        WRK --> ARK[Volcengine Ark<br/>paid pay-as-you-go]
+        WRK --> LM[LM Studio<br/>local development]
     end
 
     NEXT --> WRK
@@ -38,46 +38,46 @@ flowchart TB
 
 ---
 
-## 2. Cloudflare 免费层约束 [B] - **关键决策**
+## 2. Cloudflare Free Tier Constraints [B] - **Key Decision**
 
-### 2.1 免费层额度表
+### 2.1 Free Tier Allowance Table
 
-| 服务 | 免费额度 | nova-invest 预估用量 | 余量 |
+| Service | Free Allowance | nova-invest Estimated Usage | Headroom |
 |---|---|---|---|
 | Workers | 100,000 req/day | ~10,000 req/day | 90% |
 | Workers CPU | 10ms/req | ~5ms/req | 50% |
-| D1 | 5 GB 存储 + 5M rows read/day | ~500MB + 100K rows/day | 90% |
-| R2 | 10 GB 存储 + 1M Class A ops/month + 10M Class B ops/month | ~50MB + 10K ops/month | 99% |
+| D1 | 5 GB storage + 5M rows read/day | ~500MB + 100K rows/day | 90% |
+| R2 | 10 GB storage + 1M Class A ops/month + 10M Class B ops/month | ~50MB + 10K ops/month | 99% |
 | Vectorize | 30M queried vectors/month + 100K stored vectors | ~1M queries + 10K stored | 96% |
 | KV | 100K reads/day + 1K writes/day | ~50K reads + 100 writes | 50% |
 | Pages | 500 builds/month + unlimited bandwidth | ~30 builds/month | 94% |
-| Workers AI | 10K Neurons/day | 仅 fallback 用 | 99% |
+| Workers AI | 10K Neurons/day | fallback only | 99% |
 
-### 2.2 容量规划
+### 2.2 Capacity Planning
 
-**目标用户规模（Phase 1 PMF Validation，6 个月）**：
-- 注册用户：1,000 人
-- 日活用户（DAU）：100 人
-- 每用户日均请求：100 次（图表 + Ask + 回测）
-- 总日均请求：10,000 → 远低于 100K Workers 上限
+**Target user scale (Phase 1 PMF Validation, 6 months)**:
+- Registered users: 1,000
+- Daily active users (DAU): 100
+- Per-user daily requests: 100 (charts + Ask + backtest)
+- Total daily requests: 10,000 → well below 100K Workers limit
 
-**Phase 2 PMF Scaling（7-12 个月）**：
-- 注册用户：10,000 人
-- DAU：1,000 人
-- 总日均请求：100,000 → 触达 Workers 免费上限 → 需 Workers Paid ($5/月)
+**Phase 2 PMF Scaling (7-12 months)**:
+- Registered users: 10,000
+- DAU: 1,000
+- Total daily requests: 100,000 → reaches Workers free tier limit → need Workers Paid ($5/month)
 
-### 2.3 风险控制
+### 2.3 Risk Control
 
-- **Vectorize**：仅 deep_research 查询走 Vectorize，simple_qa 不走 → 节省向量查询量
-- **R2**：仅缓存 10 个 Mockup 标的 → 远低于 10GB
-- **Workers AI**：仅作 fallback，主路由走外部 LLM → 不消耗 Neurons
-- **D1 rows read**：避免全表扫描，所有查询走索引
+- **Vectorize**: only deep_research queries go through Vectorize, simple_qa doesn't → saves vector query volume
+- **R2**: only cache 10 Mockup tickers → well below 10GB
+- **Workers AI**: only as fallback, main route goes through external LLM → doesn't consume Neurons
+- **D1 rows read**: avoid full-table scans, all queries go through indexes
 
 ---
 
-## 3. Worker 部署架构 [B]
+## 3. Worker Deployment Architecture [B]
 
-### 3.1 Worker 入口路由
+### 3.1 Worker Entry Routing
 
 ```typescript
 // src/workers/index.ts
@@ -86,7 +86,7 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // API 路由
+    // API routes
     if (path.startsWith("/api/ask"))     return askHandler(req, env);
     if (path.startsWith("/api/data"))    return dataHandler(req, env);
     if (path.startsWith("/api/strategy")) return strategyHandler(req, env);
@@ -101,7 +101,7 @@ export default {
 };
 ```
 
-### 3.2 wrangler.toml 配置
+### 3.2 wrangler.toml Configuration
 
 ```toml
 name = "nova-invest"
@@ -109,60 +109,60 @@ main = "src/workers/index.ts"
 compatibility_date = "2025-12-01"
 compatibility_flags = ["nodejs_compat"]
 
-# 静态资源（Next.js 静态导出）
+# Static assets (Next.js static export)
 [assets]
 directory = "./dist"
 binding = "ASSETS"
 
-# D1 数据库
+# D1 database
 [[d1_databases]]
 binding = "DB"
 database_name = "nova-invest-db"
 database_id = "<your-database-id>"
 
-# R2 存储桶
+# R2 bucket
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "nova-invest-r2"
 
-# KV 命名空间（短期会话记忆）
+# KV namespace (short-term session memory)
 [[kv_namespaces]]
 binding = "SESSION_KV"
 id = "<your-kv-namespace-id>"
 
-# Vectorize 索引
+# Vectorize index
 [[vectorize]]
 binding = "VECTORIZE"
 index_name = "nova-invest-vectors"
 
-# 环境变量
+# Environment variables
 [vars]
-USE_MOCK = "false"  # 生产环境
-LLM_PROVIDER = "ark"  # 火山引擎
+USE_MOCK = "false"  # production environment
+LLM_PROVIDER = "ark"  # Volcengine
 ENVIRONMENT = "production"
 
-# Secrets（敏感信息通过 wrangler secret put 设置）
+# Secrets (sensitive info set via wrangler secret put)
 # LLM_API_KEY, ALPHA_VANTAGE_KEY, POLYGON_API_KEY, etc.
 ```
 
-### 3.3 多环境部署
+### 3.3 Multi-environment Deployment
 
-| 环境 | USE_MOCK | LLM_PROVIDER | 说明 |
+| Environment | USE_MOCK | LLM_PROVIDER | Description |
 |---|---|---|---|
-| 本地开发 | true | lmstudio | 完全本地，零成本 |
-| Staging | true | lmstudio | Mock 模式 + LM Studio |
-| Production | false | ark | 真实数据 + 火山引擎 |
+| Local development | true | lmstudio | Fully local, zero cost |
+| Staging | true | lmstudio | Mock mode + LM Studio |
+| Production | false | ark | Real data + Volcengine |
 
-### 3.4 部署脚本
+### 3.4 Deployment Scripts
 
 ```bash
-# .dev.vars (本地开发)
+# .dev.vars (local development)
 USE_MOCK=true
 LLM_PROVIDER=lmstudio
 LMSTUDIO_API_BASE=http://localhost:1234/v1
 DATABASE_URL=local
 
-# 部署到 Cloudflare
+# Deploy to Cloudflare
 pnpm run deploy:cf
 
 # package.json scripts
@@ -181,65 +181,65 @@ pnpm run deploy:cf
 
 ---
 
-## 4. D1 数据库设计 [B]
+## 4. D1 Database Design [B]
 
-### 4.1 表清单（汇总自各 Epic）
+### 4.1 Table Inventory (aggregated from all Epics)
 
-| Epic | 表名 | 用途 |
+| Epic | Table Name | Purpose |
 |---|---|---|
-| 02 DataLayer | symbols | 标的元数据 |
+| 02 DataLayer | symbols | ticker metadata |
 | 02 DataLayer | watchlists | watchlist |
-| 02 DataLayer | watchlist_items | watchlist 条目 |
-| 02 DataLayer | kline_cache_index | R2 K 线缓存索引 |
-| 02 DataLayer | fundamentals | 基本面 |
-| 03 AskAgent | user_profiles | 用户画像 |
-| 03 AskAgent | conversation_history | 对话历史 |
-| 04 Strategy DSL | strategies | 策略 |
-| 04 Strategy DSL | backtest_results | 回测结果 |
-| 06 Broker | broker_accounts | 券商账户 |
-| 06 Broker | orders | 订单 |
-| 06 Broker | positions | 持仓 |
-| 06 Broker | trades | 成交 |
-| 07 Community | community_playbooks | 社区 Playbook |
-| 07 Community | playbook_installs | 安装记录 |
-| 07 Community | playbook_ratings | 评分 |
-| 07 Community | playbook_comments | 评论 |
-| 07 Community | playbook_reports | 举报 |
-| 08 Playbook | playbooks | Playbook 主表 |
-| 08 Playbook | playbook_versions | 版本 |
-| 08 Playbook | playbook_dependencies | 依赖关系 |
-| 08 Playbook | user_playbooks | 用户安装 |
-| Billing | credit_balances | Credit 余额 |
-| Billing | credit_transactions | Credit 流水 |
-| Billing | credit_orders | 充值订单 |
-| Auth | users | 用户 |
+| 02 DataLayer | watchlist_items | watchlist entries |
+| 02 DataLayer | kline_cache_index | R2 K-line cache index |
+| 02 DataLayer | fundamentals | fundamentals |
+| 03 AskAgent | user_profiles | user profiles |
+| 03 AskAgent | conversation_history | conversation history |
+| 04 Strategy DSL | strategies | strategies |
+| 04 Strategy DSL | backtest_results | backtest results |
+| 06 Broker | broker_accounts | broker accounts |
+| 06 Broker | orders | orders |
+| 06 Broker | positions | positions |
+| 06 Broker | trades | trades |
+| 07 Community | community_playbooks | community Playbooks |
+| 07 Community | playbook_installs | install records |
+| 07 Community | playbook_ratings | ratings |
+| 07 Community | playbook_comments | comments |
+| 07 Community | playbook_reports | reports |
+| 08 Playbook | playbooks | Playbook main table |
+| 08 Playbook | playbook_versions | versions |
+| 08 Playbook | playbook_dependencies | dependency relations |
+| 08 Playbook | user_playbooks | user installs |
+| Billing | credit_balances | Credit balance |
+| Billing | credit_transactions | Credit transactions |
+| Billing | credit_orders | top-up orders |
+| Auth | users | users |
 
-### 4.2 索引策略
+### 4.2 Index Strategy
 
-所有表都基于 `user_id` 索引，避免全表扫描。详见各 Epic 的 D1 schema 定义。
+All tables are indexed based on `user_id`, avoiding full-table scans. See each Epic's D1 schema definition for details.
 
-### 4.3 迁移管理
+### 4.3 Migration Management
 
 ```
 migrations/
-├── 0001_init.sql        # 初始 schema
-├── 0002_seed_symbols.sql # 预置标的元数据
-├── 0003_seed_mock_users.sql # Mock 模式预置用户
-├── 0004_seed_mock_playbooks.sql # Mock 模式预置 Playbook
-└── 0005_seed_mock_community.sql # Mock 模式预置社区数据
+├── 0001_init.sql        # initial schema
+├── 0002_seed_symbols.sql # preset ticker metadata
+├── 0003_seed_mock_users.sql # Mock mode preset users
+├── 0004_seed_mock_playbooks.sql # Mock mode preset Playbooks
+└── 0005_seed_mock_community.sql # Mock mode preset community data
 ```
 
-### 4.4 备份策略
+### 4.4 Backup Strategy
 
-- D1 自动备份（Cloudflare 提供）
-- 每周手动导出 SQL 快照到 R2
-- 关键操作前手动备份
+- D1 auto-backup (provided by Cloudflare)
+- Weekly manual SQL snapshot export to R2
+- Manual backup before critical operations
 
 ---
 
-## 5. R2 存储策略 [B]
+## 5. R2 Storage Strategy [B]
 
-### 5.1 R2 对象结构
+### 5.1 R2 Object Structure
 
 ```
 nova-invest-r2/
@@ -249,74 +249,74 @@ nova-invest-r2/
 │   │   ├── 1.1.0.yaml
 │   │   └── 1.2.0.yaml
 │   └── ...
-├── klines/                        # Epic 02 R2 缓存（仅 10 个 Mockup 标的）
+├── klines/                        # Epic 02 R2 cache (10 Mockup tickers only)
 │   ├── AAPL/
 │   │   ├── 1d.json
 │   │   └── 5m.json
 │   ├── MSFT/...
 │   └── ...
-├── mock_data/                     # Mock 数据集（与 git repo 同步）
+├── mock_data/                     # Mock dataset (synced with git repo)
 │   ├── klines/
 │   ├── earnings/
 │   └── qa_samples/
-├── strategy_exports/              # 用户策略导出
+├── strategy_exports/              # user strategy exports
 │   └── user_xxx/
-└── backups/                       # D1 备份
+└── backups/                       # D1 backups
     └── 2026-07-19.sql.gz
 ```
 
-### 5.2 存储预算
+### 5.2 Storage Budget
 
-| 类型 | 预估大小 | 免费额度 |
+| Type | Estimated Size | Free Allowance |
 |---|---|---|
-| Playbooks | < 10MB（每 YAML ~10KB × 1000） | 10GB |
-| K 线缓存（10 标的） | < 5MB | 10GB |
-| Mock 数据 | < 50MB | 10GB |
-| 备份 | < 100MB | 10GB |
-| **总计** | < 200MB | 余量 99% |
+| Playbooks | < 10MB (~10KB per YAML × 1000) | 10GB |
+| K-line cache (10 tickers) | < 5MB | 10GB |
+| Mock data | < 50MB | 10GB |
+| Backups | < 100MB | 10GB |
+| **Total** | < 200MB | Headroom 99% |
 
 ---
 
-## 6. Vectorize 向量库策略 [B]
+## 6. Vectorize Vector DB Strategy [B]
 
-### 6.1 用途
+### 6.1 Purpose
 
-仅用于 Ask Agent 的 `deep_research` 模式：
-- 财报 RAG（SEC EDGAR 文档）
-- 长文档语义检索
+Only used for Ask Agent's `deep_research` mode:
+- Earnings RAG (SEC EDGAR documents)
+- Long document semantic retrieval
 
-### 6.2 预算控制
+### 6.2 Budget Control
 
 ```typescript
-// 仅 deep_research 走 Vectorize
+// Only deep_research goes through Vectorize
 async function searchRAG(query: string, intent: QueryIntent): Promise<RAGResult[]> {
   if (intent !== "deep_research") {
-    // simple_qa 直接走关键词搜索 D1
+    // simple_qa directly goes through keyword search D1
     return await keywordSearch(query);
   }
-  // deep_research 走 Vectorize（消耗向量查询量）
+  // deep_research goes through Vectorize (consumes vector query volume)
   const embedding = await embed(query);
   return await VECTORIZE.query(embedding, { topK: 5 });
 }
 ```
 
-### 6.3 索引结构
+### 6.3 Index Structure
 
 ```
 Vectorize Index: nova-invest-vectors
 - Dimension: 768 (volcengine embedding)
 - Metric: cosine
-- Stored vectors: ~10K (财报文档片段)
-- Queried vectors/month: ~10K (仅 deep_research)
+- Stored vectors: ~10K (earnings document chunks)
+- Queried vectors/month: ~10K (deep_research only)
 ```
 
 ---
 
-## 7. 监控与可观测性 [B]
+## 7. Monitoring and Observability [B]
 
-### 7.1 OpenTelemetry 集成
+### 7.1 OpenTelemetry Integration
 
-**用户决策**："OpenTelemetry + Grafana"
+**User decision**: "OpenTelemetry + Grafana"
 
 ```typescript
 // src/lib/otel.ts
@@ -324,7 +324,7 @@ import { trace, metrics } from "@opentelemetry/api-api";
 
 const tracer = trace.getTracer("nova-invest");
 
-// Worker 中间件
+// Worker middleware
 export function withTracing(handler: Handler): Handler {
   return async (req, env) => {
     const span = tracer.startSpan(`http.${req.url}`);
@@ -342,40 +342,40 @@ export function withTracing(handler: Handler): Handler {
 }
 ```
 
-### 7.2 关键指标
+### 7.2 Key Metrics
 
-| 指标 | 目标 | 告警阈值 |
+| Metric | Target | Alert Threshold |
 |---|---|---|
-| Worker p99 延迟 | < 500ms | > 2s |
-| D1 查询 p99 | < 50ms | > 200ms |
+| Worker p99 latency | < 500ms | > 2s |
+| D1 query p99 | < 50ms | > 200ms |
 | R2 GET p99 | < 100ms | > 500ms |
-| LLM 调用成功率 | > 95% | < 90% |
-| Mock 模式切换正常 | true | false |
-| Credit 扣费错误率 | 0% | > 0.1% |
+| LLM call success rate | > 95% | < 90% |
+| Mock mode switch normal | true | false |
+| Credit charge error rate | 0% | > 0.1% |
 
-### 7.3 日志策略
+### 7.3 Logging Strategy
 
-- **INFO**：用户操作日志（不存 PII）
-- **WARN**：API 失败、降级触发
-- **ERROR**：异常、Bug
-- **DEBUG**：仅开发环境
+- **INFO**: user operation logs (no PII)
+- **WARN**: API failures, degradation triggers
+- **ERROR**: exceptions, bugs
+- **DEBUG**: development environment only
 
-日志输出到 Cloudflare Workers Logs（免费 7 天保留）。
+Logs output to Cloudflare Workers Logs (free 7-day retention).
 
 ### 7.4 Grafana Dashboard
 
-**关键面板**：
-- 请求量 / 错误率 / p99 延迟
-- D1 / R2 / Vectorize 用量
-- LLM 调用次数 / 成本
-- Credit 消耗 / 充值
-- 用户活跃 / 留存
+**Key panels**:
+- Request volume / error rate / p99 latency
+- D1 / R2 / Vectorize usage
+- LLM call count / cost
+- Credit consumption / top-up
+- User activity / retention
 
 ---
 
-## 8. CI/CD 流程 [B]
+## 8. CI/CD Process [B]
 
-### 8.1 GitHub Actions 工作流
+### 8.1 GitHub Actions Workflow
 
 ```yaml
 # .github/workflows/deploy.yml
@@ -415,116 +415,116 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 ```
 
-### 8.2 环境变量管理
+### 8.2 Environment Variable Management
 
-| 类型 | 存储位置 | 示例 |
+| Type | Storage Location | Example |
 |---|---|---|
-| 非敏感 | wrangler.toml `[vars]` | USE_MOCK, ENVIRONMENT |
-| 敏感 | wrangler secret put | LLM_API_KEY, ALPHA_VANTAGE_KEY |
+| Non-sensitive | wrangler.toml `[vars]` | USE_MOCK, ENVIRONMENT |
+| Sensitive | wrangler secret put | LLM_API_KEY, ALPHA_VANTAGE_KEY |
 | GitHub Actions | Secrets | CF_API_TOKEN |
 
 ---
 
-## 9. Mock / 生产环境切换 [B] - **关键决策**
+## 9. Mock / Production Environment Switch [B] - **Key Decision**
 
-### 9.1 双模架构
+### 9.1 Dual-mode Architecture
 
-**用户决策**：`USE_MOCK` 单一开关
+**User decision**: `USE_MOCK` single switch
 
 ```typescript
-// 任何业务代码不直接调用外部 API
-// 必须通过 Provider 抽象层
+// Any business code does not directly call external APIs
+// Must go through Provider abstraction layer
 const provider = getProvider(env);
 const klines = await provider.getKlines("AAPL", "1d", from, to);
 ```
 
-### 9.2 切换流程
+### 9.2 Switch Process
 
 ```
-本地开发（USE_MOCK=true）
+Local development (USE_MOCK=true)
   ↓
-推送到 staging（USE_MOCK=true）
+Push to staging (USE_MOCK=true)
   ↓
-人工验证后切换到 production（USE_MOCK=false）
+After manual verification, switch to production (USE_MOCK=false)
   ↓
-设置 wrangler secret: wrangler secret put USE_MOCK
+Set wrangler secret: wrangler secret put USE_MOCK
 ```
 
-### 9.3 切换前后验证
+### 9.3 Pre/Post Switch Verification
 
 ```bash
-# 切换前验证
-pnpm run test:mock          # Mock 模式测试
-pnpm run test:contract      # Contract 测试（Mock vs Real 数据结构一致）
+# Pre-switch verification
+pnpm run test:mock          # Mock mode tests
+pnpm run test:contract      # Contract tests (Mock vs Real data structure consistent)
 
-# 切换后验证
+# Post-switch verification
 curl https://nova-invest.workers.dev/api/health
-# 期望：{ "status": "ok", "mode": "real", "version": "0.1.0" }
+# Expected: { "status": "ok", "mode": "real", "version": "0.1.0" }
 ```
 
 ---
 
-## 10. 域名与 CDN [B]
+## 10. Domain and CDN [B]
 
-### 10.1 域名规划
+### 10.1 Domain Planning
 
-| 域名 | 用途 |
+| Domain | Purpose |
 |---|---|
-| nova-invest.dev | 主站 |
-| api.nova-invest.dev | API（如需分离） |
-| app.nova-invest.dev | Web 应用 |
+| nova-invest.dev | Main site |
+| api.nova-invest.dev | API (if separated) |
+| app.nova-invest.dev | Web app |
 
-Phase 1 可直接用 `nova-invest.<your-subdomain>.workers.dev`，Phase 2 再绑自定义域。
+Phase 1 can directly use `nova-invest.<your-subdomain>.workers.dev`, Phase 2 bind custom domain.
 
-### 10.2 CDN 配置
+### 10.2 CDN Configuration
 
-- Cloudflare Pages 默认 CDN 加速
-- 静态资源（Mock JSON）缓存 1 小时
-- 动态 API 不缓存
+- Cloudflare Pages default CDN acceleration
+- Static assets (Mock JSON) cached for 1 hour
+- Dynamic API not cached
 
 ---
 
-## 11. 部署清单
+## 11. Deployment Checklist
 
-### 11.1 首次部署
+### 11.1 First Deployment
 
-- [ ] 创建 Cloudflare 账户
-- [ ] 创建 D1 数据库
-- [ ] 创建 R2 存储桶
-- [ ] 创建 KV 命名空间
-- [ ] 创建 Vectorize 索引
-- [ ] 运行 `wrangler login`
-- [ ] 配置 `wrangler.toml`
-- [ ] 运行 `pnpm run db:migrate`
-- [ ] 运行 `pnpm run db:seed`
-- [ ] 设置 secrets：`wrangler secret put LLM_API_KEY`
-- [ ] 上传 Mock 数据到 R2
-- [ ] 部署 Worker：`pnpm run deploy:cf`
-- [ ] 部署 Pages：`pnpm run deploy:pages`
-- [ ] 验证健康检查
-- [ ] 设置 GitHub Actions
+- [ ] Create Cloudflare account
+- [ ] Create D1 database
+- [ ] Create R2 bucket
+- [ ] Create KV namespace
+- [ ] Create Vectorize index
+- [ ] Run `wrangler login`
+- [ ] Configure `wrangler.toml`
+- [ ] Run `pnpm run db:migrate`
+- [ ] Run `pnpm run db:seed`
+- [ ] Set secrets: `wrangler secret put LLM_API_KEY`
+- [ ] Upload Mock data to R2
+- [ ] Deploy Worker: `pnpm run deploy:cf`
+- [ ] Deploy Pages: `pnpm run deploy:pages`
+- [ ] Verify health check
+- [ ] Set up GitHub Actions
 
-### 11.2 日常部署
+### 11.2 Daily Deployment
 
-- [ ] PR 触发测试
-- [ ] Merge to main 触发部署
-- [ ] 部署后健康检查
-- [ ] 监控告警确认
+- [ ] PR triggers tests
+- [ ] Merge to main triggers deployment
+- [ ] Post-deployment health check
+- [ ] Monitoring alert confirmation
 
-### 11.3 回滚
+### 11.3 Rollback
 
 ```bash
-# 列出历史版本
+# List historical versions
 wrangler deployments list
 
-# 回滚到上一版本
+# Rollback to previous version
 wrangler rollback
 ```
 
 ---
 
-## 12. 版本历史
+## 12. Version History
 
-| 版本 | 日期 | 变更 |
+| Version | Date | Changes |
 |---|---|---|
-| 0.1 | 2026-07-19 | 初稿，含免费层约束、wrangler.toml、D1/R2/Vectorize 策略、Mock/Real 切换、CI/CD |
+| 0.1 | 2026-07-19 | Initial draft, including free tier constraints, wrangler.toml, D1/R2/Vectorize strategy, Mock/Real switch, CI/CD |

@@ -66,8 +66,8 @@ Without this ADR:
 - **Cloudflare Workers stateless**: No module-level tool caches (per FP-0001/FP-0002/FP-0006/FP-0018 pattern). Tool handlers are stateless functions; all state flows through `LoopContext`.
 - **Mock mode zero external HTTP (FP-0005)**: Mock tools MUST NOT call external APIs. They return seeded JSON from `web/public/mock/` or delegate to `MockProvider` (ADR-0001).
 - **ADR-0004 TOOL_RETRY_LIMIT=3**: Loop retries same tool ×3; if all fail, returns partial result. Source switching (per EP02 ID-4) is tool-internal - the tool handler itself decides fallback chain.
-- **EP01 §ID-1 "自研 ≤100 行编排器"**: Tool registry must be simple; no heavy framework. Static const map is sufficient for Phase 1.
-- **EP01 §反模式 "Sub-Agent 之间直接调用"**: Tools are invoked by the loop (via `onToolCall`), not by Sub-Agents directly calling each other. `build_strategy` tool is invoked by Ask Agent's loop when user asks "build a strategy for NVDA" - the tool handler dispatches to Build Agent's logic, but the call goes through the loop, not direct Sub-Agent invocation.
+- **EP01 §ID-1 "self-built ≤100-line orchestrator"**: Tool registry must be simple; no heavy framework. Static const map is sufficient for Phase 1.
+- **EP01 §anti-pattern "direct Sub-Agent calls"**: Tools are invoked by the loop (via `onToolCall`), not by Sub-Agents directly calling each other. `build_strategy` tool is invoked by Ask Agent's loop when user asks "build a strategy for NVDA" - the tool handler dispatches to Build Agent's logic, but the call goes through the loop, not direct Sub-Agent invocation.
 - **Phase 1 scope**: MCP protocol adds complexity (JSON-RPC, external server lifecycle). Phase 1 query volume low; all 9 Phase 1 tools can be native. MCP deferred to Phase 2.
 - **ADR-0003 tool_call intent**: `tool_call` intent routes to mid-tier LLM (doubao-pro-32k, max_tokens 800, cost_cap $0.01). Tools are invoked when LLM classifies intent as `tool_call` OR when `onExecute` plan requires tool data.
 
@@ -535,7 +535,7 @@ The current `TOOL_REGISTRY` static map will remain for native tools; MCP tools w
 
 - **Description**: Use MCP protocol for all tools, including internal ones like `get_quote`. Every tool is an MCP server.
 - **Pros**: Uniform protocol; easy to swap implementations; ecosystem-friendly.
-- **Cons**: JSON-RPC serialization overhead (~2-5ms per call); requires running MCP servers (even for internal tools); adds operational complexity; EP01 §ID-1 "自研 ≤100 行编排器" implies minimal deps.
+- **Cons**: JSON-RPC serialization overhead (~2-5ms per call); requires running MCP servers (even for internal tools); adds operational complexity; EP01 §ID-1 "self-built ≤100-line orchestrator" implies minimal deps.
 - **Rejection Reason**: Performance + complexity. Native function call is ~0.1ms (direct function invocation); MCP is ~2-5ms (serialize -> HTTP -> deserialize). For 9 internal tools, native is correct.
 
 ### Alternative 2: Dynamic tool registry (runtime registration)
@@ -570,7 +570,7 @@ The current `TOOL_REGISTRY` static map will remain for native tools; MCP tools w
 
 - **Description**: Classify `search_news` as MCP tool, defer to Phase 2.
 - **Pros**: Consistent with EP01 §ID-2 tool table.
-- **Cons**: EP03 §2.6 explicitly lists `search_news` in `INTERNAL_TOOLS` (native); Phase 1 needs news search capability for Ask Agent demos; deferring would break EP03 Job Story 6 ("通过 function call 调用 search_news").
+- **Cons**: EP03 §2.6 explicitly lists `search_news` in `INTERNAL_TOOLS` (native); Phase 1 needs news search capability for Ask Agent demos; deferring would break EP03 Job Story 6 ("invoke search_news via function call").
 - **Rejection Reason**: EP03 §2.6 overrides EP01 §ID-2 for `search_news` classification. Native in Phase 1; may upgrade to MCP in Phase 2 if external news API requires it.
 
 ## Consequences
@@ -613,15 +613,15 @@ The current `TOOL_REGISTRY` static map will remain for native tools; MCP tools w
 
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|---------------------------|
-| EP01 §ID-2 | "混合：MCP（外部数据源）+ 原生 function call（内部）" | Phase 1: 9 native tools; Phase 2: MCP for external servers. Hybrid model formalized. |
+| EP01 §ID-2 | "Hybrid: MCP (external data sources) + native function call (internal)" | Phase 1: 9 native tools; Phase 2: MCP for external servers. Hybrid model formalized. |
 | EP01 §ID-2 | 10 built-in tools table (get_quote, get_ohlc, etc.) | 9 tools in Phase 1 TOOL_REGISTRY (search_news reclassified native per EP03 §2.6); get_sentiment deferred to Phase 2 MCP. |
 | EP01 §ID-2 | `get_quote` tool name | Canonical name `get_quote` (resolves C6 conflict with EP03 §2.6 `get_current_price`). |
 | EP01 §L5 Tool Calling | "Tool Calling" architecture layer | Static TOOL_REGISTRY + ToolHandler type define this layer. |
-| EP01 §反模式 | "Sub-Agent 之间直接调用（必须通过 Supervisor）" | Tools invoked via loop's `onToolCall`, not direct Sub-Agent calls. `build_strategy` tool dispatches to Build Agent logic but goes through loop. |
+| EP01 §anti-pattern | "direct Sub-Agent calls (must go through Supervisor)" | Tools invoked via loop's `onToolCall`, not direct Sub-Agent calls. `build_strategy` tool dispatches to Build Agent logic but goes through loop. |
 | EP03 §2.6 | `INTERNAL_TOOLS` (get_current_price, get_earnings, search_news) | All 3 are in Phase 1 TOOL_REGISTRY. `get_current_price` renamed to `get_quote` (C6 resolution). |
 | EP03 §2.6 | `MCP_SERVERS` (brokerage, playbook_hub, Phase 2) | Deferred to Phase 2 MCP integration. |
 | EP03 §2.6 | `search_news` listed as INTERNAL_TOOLS | `search_news` is native in Phase 1 (per EP03 §2.6), overriding EP01 §ID-2 MCP classification. |
-| EP03 Job Story 6 | "通过 function call 调用 `get_current_price`" | `get_quote` tool (renamed from `get_current_price` per C6 resolution) implements this. |
+| EP03 Job Story 6 | "invoke `get_current_price` via function call" | `get_quote` tool (renamed from `get_current_price` per C6 resolution) implements this. |
 | ADR-0004 §onToolCall | `onToolCall(ctx, tool: ToolCall): Promise<ToolResult>` | This ADR defines `ToolCall` and `ToolResult` shapes consumed by ADR-0004. |
 | ADR-0004 §executeWithFallback | "retry ×3, then switch source" | Retry ×3 is loop's job (ADR-0004); source switching is tool-internal (this ADR, per EP02 ID-4). |
 | ADR-0004 §TOOL_RETRY_LIMIT=3 | Loop retries same tool ×3 | Tool handlers must be idempotent (same params → same result, or retriable failure). |

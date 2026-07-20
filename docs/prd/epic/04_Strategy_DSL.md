@@ -1,79 +1,79 @@
 # Epic 04: Strategy DSL
 
-**Epic 编号**: 04
-**模块名称**: Strategy DSL（策略领域特定语言）
-**优先级顺序**: 4（B3 中"3"位置）
-**文档性质标签**: [A] + [B] + [C]
-**Spec 模板**: to-spec
-**最后更新**: 2026-07-19
+**Epic ID**: 04
+**Module name**: Strategy DSL (Strategy Domain-Specific Language)
+**Priority order**: 4 (the "3" position in B3)
+**Document nature tags**: [A] + [B] + [C]
+**Spec template**: to-spec
+**Last updated**: 2026-07-19
 
 ---
 
 ## 1. Problem Statement
 
-### 1.1 用户视角问题 [B]
+### 1.1 User-perspective Problem [B]
 
-Prosumer Brenda 想表达"当 NVDA 50 日均线上穿 200 日均线时买入 10% 仓位，跌破 7% 止损"时：
+When Prosumer Brenda wants to express "buy 10% position when NVDA's 50-day MA crosses above the 200-day MA, stop loss at 7% break below":
 
-- **代码门槛高**：现有量化平台（Quantopian 已停 / WorldQuant Brain 学习曲线陡 / Alpaca 需写 Python）都要求她写代码
-- **自然语言模糊**：用 ChatGPT 描述策略后无法直接执行（"买一些"是多少？"涨多了"是什么阈值？）
-- **回测不可信**：现有 AI 生成策略常过拟合（in-sample 完美 out-of-sample 崩盘），用户无从判断
-- **不可组合**：她有 5 个策略想组合执行，但每个平台策略格式封闭
-- **无法分享/复用**：写好的策略难以分享给朋友
+- **High code barrier**: Existing quantitative platforms (Quantopian shut down / WorldQuant Brain steep learning curve / Alpaca requires Python) all require her to write code
+- **Natural language ambiguity**: Describing a strategy with ChatGPT cannot be directly executed ("buy some" is how much? "rose a lot" is what threshold?)
+- **Untrustworthy backtests**: Existing AI-generated strategies often overfit (in-sample perfect, out-of-sample crash); users can't judge
+- **Not composable**: She has 5 strategies she wants to combine and execute, but each platform's strategy format is closed
+- **Cannot share/reuse**: Well-written strategies are hard to share with friends
 
-### 1.2 工程视角问题 [B]
+### 1.2 Engineering-perspective Problem [B]
 
-- **DSL 设计权衡**：YAML（人类可读）vs JSON（机器友好）vs Python（强大但门槛高）—— 用户决策"自定义 YAML/JSON"
-- **校验严格性**：DSL 必须能在执行前完成 schema 校验，避免运行时崩
-- **回测引擎数据需求**：用户明确"回测引擎需要用到 Mockup 的数据"——必须与 Epic 02 Mock K 线集对齐
-- **Playbook 化**：DSL 必须能序列化为 Playbook（Epic 08），可分享可组合
-- **状态机**：策略生命周期：draft → validated → backtested → paper → live
+- **DSL design tradeoffs**: YAML (human-readable) vs JSON (machine-friendly) vs Python (powerful but high barrier) — user decision "custom YAML/JSON"
+- **Validation strictness**: DSL must complete schema validation before execution, avoiding runtime crashes
+- **Backtest engine data needs**: User explicitly stated "the backtest engine needs to use Mockup data" — must align with Epic 02 Mock K-line set
+- **Playbook-ization**: DSL must be serializable to Playbook (Epic 08), shareable and composable
+- **State machine**: Strategy lifecycle: draft → validated → backtested → paper → live
 
-### 1.3 竞品现状分析 [A]
+### 1.3 Competitor Status Analysis [A]
 
-竞品当前在策略层呈现 [INFERRED]：
-- 自然语言 → 简单策略（限单标的、单条件）
-- 内置回测（但数据源不透明）
-- 不可导出/分享 DSL
+Competitor capabilities at the strategy layer [INFERRED]:
+- Natural language → simple strategies (limited to single ticker, single condition)
+- Built-in backtest (but data source opaque)
+- Cannot export/share DSL
 
-**本 Epic 核心差异化特性 [C]**：
-- 显式 YAML DSL（人类可读可编辑）
-- 完整生命周期状态机
-- 回测数据透明（标注源 + 时间范围）
-- Playbook 化（可分享可组合）
+**Core differentiating features of this Epic [C]**:
+- Explicit YAML DSL (human-readable and editable)
+- Complete lifecycle state machine
+- Transparent backtest data (annotated source + time range)
+- Playbook-ization (shareable and composable)
 
 ---
 
 ## 2. Solution
 
-### 2.1 总体架构 [B]
+### 2.1 Overall Architecture [B]
 
 ```mermaid
 flowchart LR
-    NL[自然语言描述] --> G[BuildAgent<br/>LLM 生成]
-    YAML[手动编写 YAML] --> V[DSL Validator<br/>JSON Schema]
+    NL[Natural language description] --> G[BuildAgent<br/>LLM generation]
+    YAML[Manually written YAML] --> V[DSL Validator<br/>JSON Schema]
     G --> V
     V -->|valid| BT[Backtest Engine]
-    V -->|invalid| ERR[错误反馈]
+    V -->|invalid| ERR[Error feedback]
     BT --> R[Backtest Report]
     R --> P[Paper Trade]
     P --> L[Live Trade<br/>Phase 2]
     P --> PB[Playbook<br/>Epic 08]
 ```
 
-### 2.2 DSL 设计 [B] - **关键决策**
+### 2.2 DSL Design [B] - **Key Decision**
 
-**用户决策**：自定义 YAML/JSON DSL
+**User decision**: Custom YAML/JSON DSL
 
-**DSL Schema（YAML 形式）**：
+**DSL Schema (YAML form)**:
 
 ```yaml
 # nova-invest Strategy DSL v1
 version: "1.0"
 metadata:
-  name: "NVDA 金叉死叉策略"
+  name: "NVDA Golden Cross / Death Cross Strategy"
   author: "brenda@example.com"
-  description: "50/200 日均线金叉买入，死叉卖出"
+  description: "Buy on 50/200-day MA golden cross, sell on death cross"
   created_at: "2025-12-15"
 
 universe:
@@ -127,7 +127,7 @@ backtest:
   benchmark: "SPY"
 ```
 
-### 2.3 DSL JSON Schema（验证用）[B]
+### 2.3 DSL JSON Schema (for validation) [B]
 
 ```json
 {
@@ -187,27 +187,27 @@ backtest:
 }
 ```
 
-### 2.4 策略生命周期状态机 [B]
+### 2.4 Strategy Lifecycle State Machine [B]
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Draft: 创建
-    Draft --> Validated: schema 校验通过
-    Draft --> Draft: 编辑修改
-    Validated --> Backtested: 跑回测
-    Validated --> Draft: 修改参数
-    Backtested --> PaperTrading: 启用模拟交易
-    Backtested --> Draft: 优化参数
-    PaperTrading --> Live: Phase 2 真实交易
-    PaperTrading --> Backtested: 调整
+    [*] --> Draft: create
+    Draft --> Validated: schema validation passed
+    Draft --> Draft: edit modify
+    Validated --> Backtested: run backtest
+    Validated --> Draft: modify parameters
+    Backtested --> PaperTrading: enable paper trading
+    Backtested --> Draft: optimize parameters
+    PaperTrading --> Live: Phase 2 real trading
+    PaperTrading --> Backtested: adjust
     Live --> [*]: Phase 2
 ```
 
-### 2.5 回测引擎 [B] - **关键决策**
+### 2.5 Backtest Engine [B] - **Key Decision**
 
-**用户决策**："开源核心 + 自研扩展，数据用免费 API（不本地存储）+ 需要用到 Mockup 的数据"
+**User decision**: "Open-source core + in-house extensions, data via free API (not stored locally) + needs to use Mockup data"
 
-**设计**：
+**Design**:
 
 ```typescript
 // src/lib/backtest/engine.ts
@@ -240,23 +240,23 @@ interface BacktestResult {
 
 class BacktestEngine {
   async run(config: BacktestConfig): Promise<BacktestResult> {
-    // 1. 加载策略
+    // 1. Load strategy
     const strategy = await this.validate(config.strategy);
-    // 2. 加载数据（Mock 或真实）
+    // 2. Load data (Mock or real)
     const data = await this.loadData(strategy.universe.symbols,
       config.start_date, config.end_date, config.data_source);
-    // 3. 计算指标
+    // 3. Compute indicators
     const indicators = this.computeIndicators(data, strategy.indicators);
-    // 4. 生成信号
+    // 4. Generate signals
     const signals = this.generateSignals(data, indicators, strategy.signals);
-    // 5. 模拟交易
+    // 5. Simulate trades
     const trades = this.simulateTrades(signals, strategy.position_sizing,
                                        strategy.risk_management);
-    // 6. 计算 equity curve
+    // 6. Compute equity curve
     const equity = this.computeEquityCurve(trades, config.initial_capital);
-    // 7. 计算指标
+    // 7. Compute metrics
     const metrics = this.computeMetrics(equity, trades);
-    // 8. 计算 benchmark
+    // 8. Compute benchmark
     const bench = await this.loadBenchmark(config.benchmark,
       config.start_date, config.end_date, config.data_source);
     return { trades, equity_curve: equity, metrics,
@@ -265,35 +265,35 @@ class BacktestEngine {
 }
 ```
 
-**回测防过拟合机制**：
+**Backtest anti-overfitting mechanisms**:
 
-1. **样本内/外分割**：默认 70/30 划分，in-sample 优化 out-of-sample 验证
-2. **Walk-forward**：Phase 2 实现，Phase 1 仅固定窗口
-3. **多周期**：支持 1d / 1h / 5m 多周期一致
+1. **In-sample/out-of-sample split**: default 70/30 split, in-sample optimization, out-of-sample validation
+2. **Walk-forward**: Phase 2 implementation, Phase 1 only fixed window
+3. **Multi-period**: support 1d / 1h / 5m multi-period consistency
 
-### 2.6 内置指标库 [B]
+### 2.6 Built-in Indicator Library [B]
 
 ```typescript
 const INDICATOR_LIBRARY = {
-  // 趋势类
+  // Trend
   SMA:   (data, period) => simpleMovingAverage(data, period),
   EMA:   (data, period) => exponentialMovingAverage(data, period),
   MACD:  (data, fast, slow, signal) => macd(data, fast, slow, signal),
-  // 震荡类
+  // Oscillator
   RSI:   (data, period) => relativeStrengthIndex(data, period),
   Stochastic: (data, kPeriod, dPeriod) => stochastic(data, kPeriod, dPeriod),
-  // 波动类
+  // Volatility
   Bollinger: (data, period, stdDev) => bollingerBands(data, period, stdDev),
   ATR:   (data, period) => averageTrueRange(data, period),
-  // 成交量
+  // Volume
   OBV:   (data) => onBalanceVolume(data),
   VWAP:  (data) => volumeWeightedAveragePrice(data),
 };
 ```
 
-### 2.7 信号表达式语法 [B]
+### 2.7 Signal Expression Syntax [B]
 
-支持简单表达式：
+Supports simple expressions:
 
 ```yaml
 signals:
@@ -305,19 +305,19 @@ signals:
     operator: "crossunder"
 ```
 
-**表达式解析器**（基于 jsep）：
+**Expression parser** (based on jsep):
 
 ```typescript
 function evaluateCondition(expr: string, indicators: Record<string, number>): boolean {
-  // 支持 AND / OR / NOT / > / < / = / != 运算符
+  // Supports AND / OR / NOT / > / < / = / != operators
   const ast = jsep(expr);
   return walkAST(ast, indicators);
 }
 ```
 
-### 2.8 DSL 例子（3 个完整策略）[B]
+### 2.8 DSL Examples (3 complete strategies) [B]
 
-**例 1：双均线金叉策略**
+**Example 1: Dual-MA Golden Cross Strategy**
 
 ```yaml
 version: "1.0"
@@ -342,7 +342,7 @@ backtest: { start_date: "2024-01-01", end_date: "2025-12-31",
             initial_capital: 100000, benchmark: "SPY" }
 ```
 
-**例 2：RSI 超卖反弹策略**
+**Example 2: RSI Oversold Bounce Strategy**
 
 ```yaml
 version: "1.0"
@@ -366,7 +366,7 @@ backtest: { start_date: "2024-01-01", end_date: "2025-12-31",
             initial_capital: 100000, benchmark: "SPY" }
 ```
 
-**例 3：Bollinger 突破策略**
+**Example 3: Bollinger Breakout Strategy**
 
 ```yaml
 version: "1.0"
@@ -395,108 +395,108 @@ backtest: { start_date: "2024-01-01", end_date: "2025-12-31",
 
 ### Job Stories [B]
 
-1. **When** Brenda 想表达"金叉买入死叉卖出"，**I want to** 用 YAML 描述而非写 Python，**so that** 学习曲线低。
-2. **When** Brenda 描述完策略，**I want to** 立即看到校验结果（缺什么字段/指标名错误），**so that** 快速迭代。
-3. **When** Brenda 校验通过后，**I want to** 一键跑回测看 Sharpe/最大回撤，**so that** 判断策略是否有效。
-4. **When** Brenda 看到回测结果，**I want to** 看到 in-sample / out-of-sample 分割对比，**so that** 检测过拟合。
-5. **When** Brenda 满意策略，**I want to** 一键发布为 Playbook，**so that** 分享给社区。
-6. **When** Brenda 想组合多个策略，**I want to** 通过 Playbook 引用语法组合，**so that** 不需要重写。
-7. **When** Brenda 启用 Mock 模式，**I want to** 回测用 Mock K 线数据，**so that** 零成本可重复。
-8. **When** Brenda 看到回测报告，**I want to** 看到每个交易的明细（买入日期/价/卖出日期/价/盈亏），**so that** 可以审计。
+1. **When** Brenda wants to express "buy on golden cross, sell on death cross", **I want to** describe it in YAML rather than write Python, **so that** the learning curve is low.
+2. **When** Brenda finishes describing a strategy, **I want to** immediately see validation results (missing fields / wrong indicator names), **so that** she can iterate quickly.
+3. **When** validation passes, **I want to** one-click run the backtest to see Sharpe/max drawdown, **so that** she can judge whether the strategy is effective.
+4. **When** Brenda sees the backtest result, **I want to** see in-sample / out-of-sample split comparison, **so that** she can detect overfitting.
+5. **When** Brenda is satisfied with the strategy, **I want to** one-click publish as Playbook, **so that** she can share with the community.
+6. **When** Brenda wants to combine multiple strategies, **I want to** use Playbook reference syntax to compose, **so that** she doesn't have to rewrite.
+7. **When** Brenda enables Mock mode, **I want to** the backtest to use Mock K-line data, **so that** it's zero-cost and reproducible.
+8. **When** Brenda sees the backtest report, **I want to** see each trade's details (buy date/price, sell date/price, P&L), **so that** she can audit.
 
 ### As-a Stories [B]
 
-1. As a Prosumer, I want to 用 YAML 编写策略，so that 易读易改。
-2. As a Prosumer, I want to 看到 DSL 校验错误信息，so that 知道哪里需要修正。
-3. As a Prosumer, I want to 跑回测看到完整指标（Sharpe/MDD/Alpha/Beta），so that 评估策略质量。
-4. As a Prosumer, I want to 看到 in-sample vs out-of-sample 对比，so that 检测过拟合。
-5. As a Developer, I want to 通过 JSON Schema 扩展 DSL，so that 可以加新指标/新仓位方法。
-6. As an Interviewer, I want to 看到完整的策略生命周期状态机，so that 评估工程严谨性。
-7. As a Free-tier User, I want to 即使回测次数有限也能用 Mock 数据跑，so that 不消耗 Credit。
-8. As a Prosumer, I want to 策略可导出为 Playbook YAML，so that 可以分享。
+1. As a Prosumer, I want to write strategies in YAML, so that they are easy to read and modify.
+2. As a Prosumer, I want to see DSL validation error messages, so that I know what to fix.
+3. As a Prosumer, I want to run a backtest and see complete metrics (Sharpe/MDD/Alpha/Beta), so that I can evaluate strategy quality.
+4. As a Prosumer, I want to see in-sample vs out-of-sample comparison, so that I can detect overfitting.
+5. As a Developer, I want to extend the DSL via JSON Schema, so that I can add new indicators / new position sizing methods.
+6. As an Interviewer, I want to see the complete strategy lifecycle state machine, so that I can evaluate engineering rigor.
+7. As a Free-tier User, I want to run with Mock data even when backtest count is limited, so that I don't consume Credits.
+8. As a Prosumer, I want to export strategies as Playbook YAML, so that I can share them.
 
 ### BDD Gherkin [B]
 
 ```gherkin
-Feature: Strategy DSL 校验与回测
+Feature: Strategy DSL validation and backtest
 
-  Scenario: DSL 校验通过
-    Given 用户提交合法的 YAML DSL
-    When 调用 validate()
-    Then 返回 { valid: true }
-    And 状态从 Draft → Validated
+  Scenario: DSL validation passes
+    Given user submits a valid YAML DSL
+    When validate() is called
+    Then return { valid: true }
+    And state transitions Draft → Validated
 
-  Scenario: DSL 校验失败（缺字段）
-    Given YAML 缺少 signals.entry
-    When 调用 validate()
-    Then 返回 { valid: false, errors: ["signals.entry is required"] }
-    And 状态保持 Draft
+  Scenario: DSL validation fails (missing field)
+    Given YAML is missing signals.entry
+    When validate() is called
+    Then return { valid: false, errors: ["signals.entry is required"] }
+    And state remains Draft
 
-  Scenario: 回测使用 Mock 数据
+  Scenario: Backtest uses Mock data
     Given USE_MOCK=true
-    And 策略 universe.symbols = ["AAPL"]
-    When 调用 backtest.run()
-    Then 加载 web/public/mock/klines/AAPL_1d.json
-    And 不调用任何外部 API
+    And strategy universe.symbols = ["AAPL"]
+    When backtest.run() is called
+    Then load web/public/mock/klines/AAPL_1d.json
+    And do not call any external API
 
-  Scenario: 回测报告包含完整指标
-    Given 已完成回测
-    When 生成报告
-    Then 报告包含 total_return, cagr, sharpe_ratio, max_drawdown,
-         win_rate, profit_factor, alpha, beta 至少 8 个指标
+  Scenario: Backtest report includes complete metrics
+    Given backtest is complete
+    When generating the report
+    Then the report includes total_return, cagr, sharpe_ratio, max_drawdown,
+         win_rate, profit_factor, alpha, beta, at least 8 metrics
 
-  Scenario: 过拟合检测
-    Given 回测周期 2024-01-01 ~ 2025-12-31
-    When 启用 sample_split = 70/30
-    Then in-sample 期间 2024-01-01 ~ 2025-03-31
-    And out-of-sample 期间 2025-04-01 ~ 2025-12-31
-    And 报告显示两段期间 metrics 对比
+  Scenario: Overfitting detection
+    Given backtest period 2024-01-01 ~ 2025-12-31
+    When sample_split = 70/30 is enabled
+    Then in-sample period 2024-01-01 ~ 2025-03-31
+    And out-of-sample period 2025-04-01 ~ 2025-12-31
+    And the report shows metrics comparison for both periods
 
-  Scenario: Playbook 化导出
-    Given 策略状态为 Backtested
-    When 用户点击"Publish as Playbook"
-    Then 生成 Playbook YAML
-    And 注册到 Epic 08 Playbook 系统
-    And 分配唯一 playbook_id
+  Scenario: Playbook-ization export
+    Given strategy state is Backtested
+    When user clicks "Publish as Playbook"
+    Then generate Playbook YAML
+    And register to Epic 08 Playbook system
+    And assign a unique playbook_id
 ```
 
 ---
 
 ## 4. Implementation Decisions
 
-### ID-1: YAML 优先，JSON 等价 [B]
+### ID-1: YAML First, JSON Equivalent [B]
 
-- 用户编辑用 YAML（人类可读）
-- 内部存储用 JSON（机器友好）
-- 转换：YAML ↔ JSON 双向
+- User editing uses YAML (human-readable)
+- Internal storage uses JSON (machine-friendly)
+- Conversion: YAML ↔ JSON bidirectional
 
-### ID-2: JSON Schema 严格校验 [B]
+### ID-2: JSON Schema Strict Validation [B]
 
-- 所有 DSL 必须通过 JSON Schema 校验
-- 不允许未知字段（防止 typo）
-- 字段类型严格（如 `period: 50` 不能写成 `"50"`）
+- All DSL must pass JSON Schema validation
+- Unknown fields not allowed (prevents typos)
+- Field types strict (e.g. `period: 50` cannot be written as `"50"`)
 
-### ID-3: 指标库版本化 [B]
+### ID-3: Indicator Library Versioning [B]
 
-- 内置指标 v1.0 固定行为
-- 新增指标走 v1.1，旧策略仍引用 v1.0 行为
-- 通过 `version` 字段控制
+- Built-in indicators v1.0 fixed behavior
+- New indicators go through v1.1, old strategies still reference v1.0 behavior
+- Controlled via the `version` field
 
-### ID-4: 回测数据源与 Epic 02 对齐 [B]
+### ID-4: Backtest Data Source Aligns with Epic 02 [B]
 
 ```typescript
-// BacktestEngine 调用 Epic 02 的 MarketDataProvider
+// BacktestEngine calls Epic 02's MarketDataProvider
 class BacktestEngine {
   constructor(private dataProvider: MarketDataProvider) {}
   async loadData(symbols, from, to, mode) {
     // mode === "mock" → MockProvider
-    // mode === "real" → RealProvider (含 R2 缓存)
+    // mode === "real" → RealProvider (with R2 cache)
     return this.dataProvider.getKlines(symbols[0], "1d", from, to);
   }
 }
 ```
 
-### ID-5: 仓位 sizing 算法 [B]
+### ID-5: Position Sizing Algorithms [B]
 
 ```typescript
 const POSITION_SIZERS = {
@@ -506,11 +506,11 @@ const POSITION_SIZERS = {
 };
 ```
 
-### ID-6: 风控规则 [B]
+### ID-6: Risk Management Rules [B]
 
-- 止损类型：percent / absolute / atr_multiple
-- 止盈类型：percent / absolute / risk_reward_ratio
-- max_drawdown 触发后：停止开新仓
+- Stop-loss types: percent / absolute / atr_multiple
+- Take-profit types: percent / absolute / risk_reward_ratio
+- After max_drawdown is triggered: stop opening new positions
 
 ### ID-7: D1 Schema [B]
 
@@ -528,7 +528,7 @@ CREATE TABLE strategies (
 CREATE TABLE backtest_results (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   strategy_id  TEXT NOT NULL REFERENCES strategies(id),
-  result_json  TEXT NOT NULL,  -- BacktestResult 序列化
+  result_json  TEXT NOT NULL,  -- BacktestResult serialized
   run_at       TEXT DEFAULT (datetime('now'))
 );
 
@@ -539,24 +539,24 @@ CREATE INDEX idx_strategies_user ON strategies(user_id);
 
 ## 5. Testing Decisions
 
-### 5.1 Test Seams 表 [B]
+### 5.1 Test Seams Table [B]
 
-| Seam | 类型 | 测试内容 |
+| Seam | Type | Test content |
 |---|---|---|
-| TS-1 | Unit | DSL Validator 校验合法/非法 schema |
-| TS-2 | Unit | 指标库计算（SMA/EMA/RSI/MACD/Bollinger/ATR） |
-| TS-3 | Unit | 信号表达式解析器 |
-| TS-4 | Unit | 仓位 sizing 算法 |
-| TS-5 | Integration | BacktestEngine 跑完整回测 |
-| TS-6 | Contract | 3 个内置策略的 Golden 回测结果 |
-| TS-7 | E2E | YAML → 校验 → 回测 → 报告 → Playbook 化 |
+| TS-1 | Unit | DSL Validator validates valid/invalid schema |
+| TS-2 | Unit | Indicator library computation (SMA/EMA/RSI/MACD/Bollinger/ATR) |
+| TS-3 | Unit | Signal expression parser |
+| TS-4 | Unit | Position sizing algorithms |
+| TS-5 | Integration | BacktestEngine runs full backtest |
+| TS-6 | Contract | 3 built-in strategies' Golden backtest results |
+| TS-7 | E2E | YAML → validation → backtest → report → Playbook-ization |
 
 ### 5.2 Golden Set [B]
 
 ```typescript
 // tests/golden/strategy_dsl.golden.test.ts
 describe("Strategy DSL Golden Set", () => {
-  it("双均线金叉策略回测 AAPL 已知结果", async () => {
+  it("Dual-MA golden cross strategy backtest AAPL known result", async () => {
     const strategy = loadYAML("./strategies/ma_cross.yaml");
     const result = await engine.run({ strategy, ... });
     expect(result.metrics.total_return).toBeGreaterThan(-1);
@@ -564,14 +564,14 @@ describe("Strategy DSL Golden Set", () => {
     expect(result.trades.length).toBeGreaterThan(0);
   });
 
-  it("RSI 超卖策略回测 NVDA 结果稳定", async () => {
-    // 同一策略同一数据两次回测结果必须一致（确定性）
+  it("RSI oversold strategy backtest NVDA result is stable", async () => {
+    // Same strategy same data twice must produce identical results (deterministic)
     const r1 = await engine.run(config);
     const r2 = await engine.run(config);
     expect(r1.metrics).toEqual(r2.metrics);
   });
 
-  it("3 个内置策略的指标计算与 talib 库一致", async () => {
+  it("3 built-in strategies' indicator computation matches the talib library", async () => {
     const ourSMA = computeSMA(testData, 50);
     const talibSMA = await talib.SMA(testData, 50);
     expect(ourSMA).toEqual(talibSMA);
@@ -579,79 +579,79 @@ describe("Strategy DSL Golden Set", () => {
 });
 ```
 
-### 5.3 测试策略 [B]
+### 5.3 Test Strategy [B]
 
-- **Unit**：纯函数 + 指标库 + 表达式解析
-- **Contract**：3 个内置策略 Golden 结果固化
-- **Property-based**：随机生成 DSL 验证 validator 鲁棒性
-- **E2E**：用 Miniflare 跑完整 Worker
+- **Unit**: pure functions + indicator library + expression parser
+- **Contract**: 3 built-in strategies' Golden results frozen
+- **Property-based**: randomly generate DSL to validate validator robustness
+- **E2E**: use Miniflare to run the full Worker
 
 ---
 
 ## 6. Out of Scope
 
-### 6.1 模块级非目标 [B]
+### 6.1 Module-level Non-Goals [B]
 
-- **Tick 级回测**：仅日/分钟级
-- **机器学习模型**：Phase 2 考虑接入 scikit-learn / PyTorch 模型作为指标
-- **多资产组合优化**：Phase 2 考虑 Markowitz / Black-Litterman
-- **期权策略**：Phase 3
-- **高频策略**：Phase 3
-- **实时 paper trading 完整闭环**：Phase 1 仅模拟历史，Phase 1.5 加实时 paper
+- **Tick-level backtest**: only daily/minute level
+- **Machine-learning models**: consider integrating scikit-learn / PyTorch models as indicators in Phase 2
+- **Multi-asset portfolio optimization**: consider Markowitz / Black-Litterman in Phase 2
+- **Options strategies**: Phase 3
+- **High-frequency strategies**: Phase 3
+- **Real-time paper trading full loop**: Phase 1 only simulates history; Phase 1.5 adds real-time paper
 
-### 6.2 模块级反模式 [B]
+### 6.2 Module-level Anti-Patterns [B]
 
-- ❌ **DSL 允许任意 Python 代码**：保持声明式
-- ❌ **回测不区分 in/out-of-sample**：必须报告两段
-- ❌ **指标计算与 talib 不一致**：必须与行业标准一致
-- ❌ **回测结果不可重现**：必须固定随机种子
-- ❌ **策略不存历史版本**：每次修改生成新版本
+- ❌ **DSL allows arbitrary Python code**: keep declarative
+- ❌ **Backtest doesn't distinguish in/out-of-sample**: must report both segments
+- ❌ **Indicator computation inconsistent with talib**: must match industry standard
+- ❌ **Backtest results not reproducible**: must fix random seed
+- ❌ **Strategies don't store history versions**: each modification generates a new version
 
 ---
 
 ## 7. Further Notes
 
-### 7.1 参考 [KNOWN]
+### 7.1 References [KNOWN]
 
 - JSON Schema: https://json-schema.org/
-- ta-lib 指标库: https://github.com/TA-Lib/ta-lib
-- jsep 表达式解析: https://github.com/donaldfeury/jsep
-- Quantopian zipline（已停但设计参考）: https://github.com/quantopian/zipline
+- ta-lib indicator library: https://github.com/TA-Lib/ta-lib
+- jsep expression parser: https://github.com/donaldfeury/jsep
+- Quantopian zipline (shut down but design reference): https://github.com/quantopian/zipline
 
-### 7.2 待解问题 [B]
+### 7.2 Open Questions [B]
 
-- Q1: 是否支持自定义指标（用户写 TypeScript）？→ Phase 2
-- Q2: 是否支持多策略组合（portfolio of strategies）？→ Phase 2
+- Q1: Support custom indicators (user-written TypeScript)? → Phase 2
+- Q2: Support multi-strategy portfolios (portfolio of strategies)? → Phase 2
 
-### 7.3 依赖 [B]
+### 7.3 Dependencies [B]
 
-- **上游**：Epic 01 AgentHarness、Epic 02 DataLayer（回测数据）
-- **下游**：Epic 05 Dashboard（回测可视化）、Epic 08 Playbook（DSL → Playbook）
+- **Upstream**: Epic 01 AgentHarness, Epic 02 DataLayer (backtest data)
+- **Downstream**: Epic 05 Dashboard (backtest visualization), Epic 08 Playbook (DSL → Playbook)
 
 ---
 
 ## 8. Acceptance Criteria
 
-- [ ] DSL YAML Schema v1.0 定义并文档化
-- [ ] JSON Schema 校验器实现
-- [ ] 3 个完整策略示例 YAML（金叉/RSI/Bollinger）
-- [ ] 内置指标库 ≥ 8 个（SMA/EMA/RSI/MACD/Bollinger/ATR/OBV/VWAP）
-- [ ] 信号表达式解析器支持 AND/OR/NOT/>/</=
-- [ ] BacktestEngine 实现完整回测流程
-- [ ] 报告包含 ≥ 8 个指标（total_return/cagr/sharpe/mdd/win_rate/profit_factor/alpha/beta）
-- [ ] in/out-of-sample 70/30 分割实现
-- [ ] 仓位 sizing 3 种方法实现
-- [ ] 风控规则（stop_loss/take_profit/max_drawdown）实现
-- [ ] 策略状态机：Draft → Validated → Backtested → Paper
-- [ ] D1 schema 含 strategies + backtest_results 表
-- [ ] Mock 模式下回测完全用 web/public/mock/klines/*.json
-- [ ] Golden 回测结果固化（3 个策略）
-- [ ] 指标计算与 talib 一致性测试通过
+- [ ] DSL YAML Schema v1.0 defined and documented
+- [ ] JSON Schema validator implemented
+- [ ] 3 complete strategy example YAMLs (golden cross/RSI/Bollinger)
+- [ ] Built-in indicator library ≥ 8 (SMA/EMA/RSI/MACD/Bollinger/ATR/OBV/VWAP)
+- [ ] Signal expression parser supports AND/OR/NOT/>/</=
+- [ ] BacktestEngine implements full backtest flow
+- [ ] Report includes ≥ 8 metrics (total_return/cagr/sharpe/mdd/win_rate/profit_factor/alpha/beta)
+- [ ] in/out-of-sample 70/30 split implemented
+- [ ] Position sizing 3 methods implemented
+- [ ] Risk management rules (stop_loss/take_profit/max_drawdown) implemented
+- [ ] Strategy state machine: Draft → Validated → Backtested → Paper
+- [ ] D1 schema includes strategies + backtest_results tables
+- [ ] Mock mode backtest fully uses web/public/mock/klines/*.json
+- [ ] Golden backtest results frozen (3 strategies)
+- [ ] Indicator computation consistency test with talib passes
 
 ---
 
-## 9. 版本历史
+## 9. Version History
 
-| 版本 | 日期 | 变更 |
+| Version | Date | Change |
 |---|---|---|
-| 0.1 | 2026-07-19 | 初稿，含 YAML DSL、JSON Schema、状态机、回测引擎、3 个示例 |
+| 0.1 | 2026-07-19 | Initial draft, including YAML DSL, JSON Schema, state machine, backtest engine, 3 examples |

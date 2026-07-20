@@ -36,14 +36,14 @@ The project must support three LLM runtime modes from a single codebase:
 
 1. **Mock mode** (`USE_MOCK=true`): Zero LLM API calls. Returns pre-generated QA samples from `web/public/mock/qa_samples/*.json`. Used for demos, tests, and zero-cost local development.
 2. **Local mode** (`USE_MOCK=false`, `ENVIRONMENT!="production"`): Uses LM Studio running locally with Qwen 2.5 models. Free, offline-capable, but lower quality.
-3. **Cloud mode** (`USE_MOCK=false`, `ENVIRONMENT="production"`): Uses Volcengine Ark (火山引擎) with Doubao models. Higher quality, costs money per request.
+3. **Cloud mode** (`USE_MOCK=false`, `ENVIRONMENT="production"`): Uses Volcengine Ark (Volcengine) with Doubao models. Higher quality, costs money per request.
 
 Within each non-Mock mode, the LLM must be **routed by query intent** to balance cost vs quality:
 
-- `simple_qa` ("AAPL 现在多少钱") → cheap model (haiku-tier / lite-4k)
-- `deep_research` ("分析 NVDA 过去 3 年财报趋势") → expensive model (sonnet-tier / pro-32k)
-- `tool_call` ("查 TSLA 最近新闻") → mid-tier model with function calling
-- `clarify` ("你觉得我该怎么办") → cheap model
+- `simple_qa` ("How much is AAPL now") → cheap model (haiku-tier / lite-4k)
+- `deep_research` ("Analyze NVDA's financial report trends over the past 3 years") → expensive model (sonnet-tier / pro-32k)
+- `tool_call` ("Search TSLA recent news") → mid-tier model with function calling
+- `clarify` ("What do you think I should do") → cheap model
 
 Each intent has a **cost cap** — if a single request would exceed the cap, the system must degrade to a cheaper model or abort. This protects against runaway costs from long contexts or expensive models.
 
@@ -360,7 +360,7 @@ class RealLLM {
 
 ### Risks
 
-- **Risk**: Regex classifier misclassifies "分析下 TSLA 财报" as `tool_call` (contains "查" sound-alike).
+- **Risk**: Regex classifier misclassifies "Analyze TSLA financial reports" as `tool_call` (contains the character "查" which sounds like "search" in Chinese).
   - **Mitigation**: Phase 1.5 upgrade to LLM classifier; golden test set (EP01 ID-6) catches misclassifications.
 - **Risk**: `estimateCost` underestimates actual cost (input token count off).
   - **Mitigation**: Use 2.5× safety margin in cost_cap (e.g., `deep_research` cap is $0.05, estimated cost is ~$0.02); log actual cost and adjust caps if needed.
@@ -373,15 +373,15 @@ class RealLLM {
 
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|---------------------------|
-| EP01 ID-5 | "LLM 路由策略 + ROUTING 表" | Codifies `ROUTING_RULES` as the canonical routing table |
-| EP01 §验收 | "单次 query 成本 ≤ $0.01（简单）/ $0.05（深度）" (after A1 fix) | cost_cap values match acceptance criteria |
-| EP03 §2.2 | "Query Understanding + classifyIntent + 路由表" | `classifyIntent()` regex matches EP03 §2.2 examples |
-| EP03 §2.2 | "local / cloud 双配置" | `ROUTING_RULES[intent].local` and `.cloud` separate configs |
+| EP01 ID-5 | "LLM routing strategy + ROUTING table" | Codifies `ROUTING_RULES` as the canonical routing table |
+| EP01 §acceptance | "Single query cost ≤ $0.01 (simple) / $0.05 (deep)" (after A1 fix) | cost_cap values match acceptance criteria |
+| EP03 §2.2 | "Query Understanding + classifyIntent + routing table" | `classifyIntent()` regex matches EP03 §2.2 examples |
+| EP03 §2.2 | "local / cloud dual configuration" | `ROUTING_RULES[intent].local` and `.cloud` separate configs |
 | EP03 §2.3 BDD | "cost_cap = $0.05" (after A1 fix) | `deep_research.cloud.cost_cap = 0.05` |
-| EP03 §3 BDD | "超过 cost_cap 仍调用 LLM" listed as forbidden | Cost cap enforcement in `RealLLM.complete()` |
-| EP03 ID-1 | "意图分类器 [B]" | Regex-based classifier is Phase 1 implementation |
+| EP03 §3 BDD | "Still calling LLM after exceeding cost_cap" listed as forbidden | Cost cap enforcement in `RealLLM.complete()` |
+| EP03 ID-1 | "Intent classifier [B]" | Regex-based classifier is Phase 1 implementation |
 | EP03 ID-3 | "Citation Validator" (future) | Not directly addressed, but cost_cap protects against long RAG context blowups |
-| architecture.md §9 | "关键技术决策: LLM 路由" | Formalizes the inline decision as an ADR |
+| architecture.md §9 | "Key technical decision: LLM routing" | Formalizes the inline decision as an ADR |
 
 ## Performance Implications
 
@@ -425,7 +425,7 @@ The current `router.ts` already implements most of this ADR but with the anti-pa
 
 - **ADR-0001** (USE_MOCK dual-mode switch) — same env-var-driven switch pattern; Mock mode returns `MockLLM`
 - **ADR-0002** (R2 cache whitelist) — independent, but shares the "request-scoped factory" pattern
-- EP01 ID-5 LLM 路由策略 — originating design doc
+- EP01 ID-5 LLM routing strategy — originating design doc
 - EP03 §2.2/§2.3/§2.6 — detailed routing rules and BDD
 - architecture.md §9 — inline decision this ADR formalizes
 

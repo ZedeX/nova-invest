@@ -1,52 +1,52 @@
 # Epic 05: Dashboard
 
-**Epic 编号**: 05
-**模块名称**: Dashboard（仪表盘与可视化）
-**优先级顺序**: 5（B3 中"4"位置）
-**文档性质标签**: [A] + [B] + [C]
-**Spec 模板**: to-spec
-**最后更新**: 2026-07-19
+**Epic Number**: 05
+**Module Name**: Dashboard (Dashboard & Visualization)
+**Priority Order**: 5 (position "4" in B3)
+**Document Nature Tag**: [A] + [B] + [C]
+**Spec Template**: to-spec
+**Last Updated**: 2026-07-19
 
 ---
 
 ## 1. Problem Statement
 
-### 1.1 用户视角问题 [B]
+### 1.1 User Perspective Problems [B]
 
-Prosumer Brenda 想监控自己的 5 个策略 + 10 个标的时：
+When Prosumer Brenda wants to monitor her 5 strategies + 10 tickers:
 
-- **多工具切换**：她在 TradingView 看图、在 Robinhood 看持仓、在自家 Excel 跟踪策略表现——信息分散
-- **延迟与限流**：免费行情 API 限流严苛（Alpha Vantage 25 次/天），她写一个简单的"过去 5 年所有财报日次日涨跌"分析就因为限流跑了 3 小时。
-- **回测结果难懂**：Sharpe 1.5 是好是坏？最大回撤 12% 在历史中算什么分位？缺乏直观可视化
-- **Mock 模式与真实模式切换体验差**：开发用 Mock，上线用真实——但用户视角看不到差异
-- **移动端断点**：现有工具大多桌面优先，移动端体验破碎
+- **Multi-tool switching**: She views charts in TradingView, checks positions in Robinhood, and tracks strategy performance in her own Excel—information is scattered
+- **Latency and rate limits**: Free market data APIs have strict rate limits (Alpha Vantage 25 calls/day). A simple "next-day price change on all earnings days over the past 5 years" analysis took 3 hours due to rate limits.
+- **Backtest results hard to understand**: Is Sharpe 1.5 good or bad? What percentile does a 12% max drawdown sit at historically? Lacks intuitive visualization
+- **Poor Mock/Real mode switching experience**: Development uses Mock, production uses Real—but users can't see the difference
+- **Mobile breakpoints**: Most existing tools are desktop-first, mobile experience is broken
 
-### 1.2 工程视角问题 [B]
+### 1.2 Engineering Perspective Problems [B]
 
-- **图表库集成**：用户决策"Next.js + lightweight-charts (Apache 2.0)"，需处理 library 加载、数据 feed 适配；Phase 1 用 SVG 占位
-- **多图表布局**：单一 dashboard 同时显示 K 线 + 指标 + 持仓 + 策略表现，需响应式布局
-- **实时 vs Mock 数据流**：图表必须支持静态加载（Mock）与流式更新（Real SSE）双模
-- **可观测性**：用户决策"OpenTelemetry + Grafana"，前端必须暴露性能埋点
-- **权限与个性化**：免费用户与付费用户 dashboard 不同
+- **Chart library integration**: User decided "Next.js + lightweight-charts (Apache 2.0)", needs to handle library loading, data feed adaptation; Phase 1 uses SVG placeholder
+- **Multi-chart layout**: A single dashboard must simultaneously display K-line + indicators + positions + strategy performance, requires responsive layout
+- **Real-time vs Mock data flow**: Charts must support both static loading (Mock) and streaming updates (Real SSE) dual modes
+- **Observability**: User decided "OpenTelemetry + Grafana", frontend must expose performance instrumentation
+- **Permissions and personalization**: Free users and paid users have different dashboards
 
-### 1.3 竞品现状分析 [A]
+### 1.3 Competitor Status Analysis [A]
 
-竞品 Dashboard 当前呈现 [INFERRED]：
-- 单图表主导（TradingView 嵌入）
-- 策略表现仅在回测后展示
-- 持仓视图与图表分离
+Competitor Dashboard currently shows [INFERRED]:
+- Single-chart dominant (TradingView embed)
+- Strategy performance only shown after backtest
+- Position view separated from chart
 
-**本 Epic 核心差异化特性 [C]**：
-- 多图表同步布局（K 线 + 策略 + 持仓同屏）
-- 策略 overlay 直接在 K 线上显示买卖点
-- 回测报告分位图（与历史 benchmark 对比）
-- 移动端响应式
+**This Epic's core differentiating features [C]**:
+- Multi-chart synchronized layout (K-line + strategy + position on same screen)
+- Strategy overlay directly displays buy/sell points on K-line
+- Backtest report percentile chart (compared with historical benchmark)
+- Mobile responsive
 
 ---
 
 ## 2. Solution
 
-### 2.1 总体架构 [B]
+### 2.1 Overall Architecture [B]
 
 ```mermaid
 flowchart TB
@@ -67,8 +67,8 @@ flowchart TB
     end
 
     subgraph "Real-time Updates"
-        API --> SSE[SSE Stream<br/>生产模式]
-        API --> POLL[Polling 30s<br/>Mock 模式]
+        API --> SSE[SSE Stream<br/>production mode]
+        API --> POLL[Polling 30s<br/>Mock mode]
     end
 
     subgraph "Widgets Composition"
@@ -78,11 +78,11 @@ flowchart TB
     end
 ```
 
-### 2.2 仪表盘布局设计 [B] - **关键决策**
+### 2.2 Dashboard Layout Design [B] - **Key Decision**
 
-**用户决策**：仅 Web 形成最小闭环
+**User decision**: Only Web forms the minimum closed loop
 
-**默认布局（桌面端 12 列网格）**：
+**Default layout (desktop 12-column grid)**:
 
 ```
 +---------------------------------------------------------------+
@@ -104,14 +104,14 @@ flowchart TB
 +---------------------------------------------------------------+
 ```
 
-**移动端**：
-- 单列堆叠
-- 默认隐藏 Sidebar（汉堡菜单）
-- 图表保持 16:9
+**Mobile**:
+- Single-column stack
+- Sidebar hidden by default (hamburger menu)
+- Chart maintains 16:9
 
-### 2.3 图表库集成 [B] - **关键决策**
+### 2.3 Chart Library Integration [B] - **Key Decision**
 
-**用户决策**：lightweight-charts (Apache 2.0)；Phase 1 用自研 SVG 占位，Phase 1.5 接入 lightweight-charts
+**User decision**: lightweight-charts (Apache 2.0); Phase 1 uses self-developed SVG placeholder, Phase 1.5 integrates lightweight-charts
 
 ```typescript
 // src/components/charts/TradingViewChart.tsx
@@ -120,7 +120,7 @@ import { createChart, ColorType } from "lightweight-charts";
 interface TVChartProps {
   symbol: string;
   data: Kline[];
-  markers?: TradeMarker[];  // 策略买卖点
+  markers?: TradeMarker[];  // strategy buy/sell points
   indicators?: IndicatorOverlay[];
 }
 
@@ -146,7 +146,7 @@ export function TradingViewChart({ symbol, data, markers, indicators }: TVChartP
       time: k.t, open: k.o, high: k.h, low: k.l, close: k.c,
     })));
 
-    // 添加策略 markers
+    // Add strategy markers
     if (markers) {
       series.setMarkers(markers.map(m => ({
         time: m.time, position: m.type === "buy" ? "belowBar" : "aboveBar",
@@ -156,7 +156,7 @@ export function TradingViewChart({ symbol, data, markers, indicators }: TVChartP
       })));
     }
 
-    // 添加指标 overlay
+    // Add indicator overlay
     if (indicators) {
       for (const ind of indicators) {
         const line = chart.addLineSeries({ color: ind.color, lineWidth: 1 });
@@ -171,7 +171,7 @@ export function TradingViewChart({ symbol, data, markers, indicators }: TVChartP
 }
 ```
 
-**Datafeed Adapter（Mock/Real 适配器）**：
+**Datafeed Adapter (Mock/Real adapter)**:
 
 ```typescript
 // src/lib/chart/datafeed.ts
@@ -186,9 +186,9 @@ class NovaDatafeed implements IDatafeedChartingLibraryAdapter {
   }
 
   async subscribeBars(symbol, resolution, onTick) {
-    // Mock 模式：不订阅
+    // Mock mode: do not subscribe
     if (this.provider instanceof MockProvider) return;
-    // Real 模式：SSE 订阅
+    // Real mode: SSE subscribe
     const es = new EventSource(`/api/stream/${symbol}?tf=${resolution}`);
     es.onmessage = (e) => onTick(JSON.parse(e.data));
     return () => es.close();
@@ -196,7 +196,7 @@ class NovaDatafeed implements IDatafeedChartingLibraryAdapter {
 }
 ```
 
-### 2.4 Widget 系统 [B]
+### 2.4 Widget System [B]
 
 ```typescript
 // src/components/widgets/types.ts
@@ -210,20 +210,20 @@ interface Widget {
 }
 
 type WidgetType =
-  | "kline_chart"          // TradingView K 线
-  | "positions_table"      // 持仓表
-  | "strategy_equity"      // 策略 equity curve
-  | "strategy_metrics"     // 策略指标卡片
-  | "watchlist"             // 关注列表
-  | "news_feed"             // 新闻流
-  | "ask_agent_panel"       // Ask Agent 对话框
-  | "backtest_report"       // 回测报告
-  | "credit_balance";      // Credit 余额
+  | "kline_chart"          // TradingView K-line
+  | "positions_table"      // positions table
+  | "strategy_equity"      // strategy equity curve
+  | "strategy_metrics"     // strategy metrics card
+  | "watchlist"             // watchlist
+  | "news_feed"             // news feed
+  | "ask_agent_panel"       // Ask Agent dialog
+  | "backtest_report"       // backtest report
+  | "credit_balance";      // Credit balance
 ```
 
-### 2.5 回测报告可视化 [B] - **关键决策**
+### 2.5 Backtest Report Visualization [B] - **Key Decision**
 
-**关键设计**：回测指标必须包含分位图（与历史 benchmark 对比）
+**Key design**: Backtest metrics must include percentile chart (compared with historical benchmark)
 
 ```typescript
 // src/components/widgets/BacktestReport.tsx
@@ -231,21 +231,21 @@ interface BacktestReportProps {
   result: BacktestResult;
   benchmark: { name: string; return: number; sharpe: number; mdd: number };
   history_quantiles: {
-    sharpe: { p10: number; p50: number; p90: number };  // 历史策略分位
+    sharpe: { p10: number; p50: number; p90: number };  // historical strategy percentiles
     mdd:    { p10: number; p50: number; p90: number };
   };
 }
 
-// 渲染：
-// 1. Equity Curve 与 SPY benchmark 对比折线图
-// 2. 关键指标卡片（Sharpe 1.5 ↑ vs SPY 0.8）
-// 3. 分位图：你的策略 Sharpe 在历史 100 个策略中排名 75 分位
-// 4. 交易明细表（可展开）
+// Render:
+// 1. Equity Curve vs SPY benchmark comparison line chart
+// 2. Key metrics card (Sharpe 1.5 ↑ vs SPY 0.8)
+// 3. Percentile chart: your strategy Sharpe ranks 75th percentile among historical 100 strategies
+// 4. Trade detail table (expandable)
 ```
 
-### 2.6 Mock 模式视觉标识 [B]
+### 2.6 Mock Mode Visual Identification [B]
 
-**关键设计**：Mock 模式下顶部始终显示橙色 Badge
+**Key design**: Mock mode always shows orange Badge at top
 
 ```tsx
 export function MockBadge() {
@@ -259,15 +259,15 @@ export function MockBadge() {
 }
 ```
 
-### 2.7 实时更新策略 [B]
+### 2.7 Real-time Update Strategy [B]
 
-| 模式 | 更新方式 | 频率 |
+| Mode | Update Method | Frequency |
 |---|---|---|
-| Mock | 不更新 | 静态 |
-| Real (免费层) | 轮询 | 30s |
-| Real (付费层) | SSE 流 | 实时 |
+| Mock | No update | Static |
+| Real (free tier) | Polling | 30s |
+| Real (paid tier) | SSE stream | Real-time |
 
-### 2.8 路由结构 [B]
+### 2.8 Route Structure [B]
 
 ```typescript
 // src/app/router.ts
@@ -282,9 +282,9 @@ const ROUTES = {
 };
 ```
 
-### 2.9 可观测性埋点 [B]
+### 2.9 Observability Instrumentation [B]
 
-**用户决策**：OpenTelemetry + Grafana
+**User decision**: OpenTelemetry + Grafana
 
 ```typescript
 // src/lib/otel.ts
@@ -296,7 +296,7 @@ export function traceWidgetRender(name: string) {
   return tracer.startSpan(`widget.${name}.render`);
 }
 
-// 在每个 widget 内：
+// Inside each widget:
 const span = traceWidgetRender("kline_chart");
 try {
   // render
@@ -311,76 +311,76 @@ try {
 
 ### Job Stories [B]
 
-1. **When** Brenda 打开 nova-invest，**I want to** 在 1 秒内看到默认 dashboard（图表 + 持仓 + 策略），**so that** 不需要点击多个 tab。
-2. **When** Brenda 切换 Mock/Real 模式，**I want to** 顶部 Badge 清晰提示当前模式，**so that** 不会混淆。
-3. **When** Brenda 选中一个策略，**I want to** 在 K 线图上看到买卖点 markers，**so that** 直观理解策略行为。
-4. **When** Brenda 看回测报告，**I want to** 看到 Sharpe 在历史分位图中的位置，**so that** 知道策略相对水平。
-5. **When** Brenda 在移动端打开，**I want to** 布局自动适配，**so that** 不需要横向滚动。
-6. **When** Brenda 等待数据加载，**I want to** 看到 skeleton placeholder 而非空白，**so that** 知道系统在工作。
-7. **When** Brenda 拖动 widget 调整布局，**I want to** 布局自动保存，**so that** 下次打开一致。
-8. **When** Brenda 在 Real 模式下看 NVDA 价格，**I want to** 每 30 秒自动刷新，**so that** 看到相对实时数据。
+1. **When** Brenda opens nova-invest, **I want to** see the default dashboard (chart + positions + strategy) within 1 second, **so that** I don't need to click multiple tabs.
+2. **When** Brenda switches Mock/Real mode, **I want to** have the top Badge clearly indicate the current mode, **so that** I don't get confused.
+3. **When** Brenda selects a strategy, **I want to** see buy/sell point markers on the K-line chart, **so that** I can intuitively understand strategy behavior.
+4. **When** Brenda views the backtest report, **I want to** see where Sharpe sits in the historical percentile chart, **so that** I know the strategy's relative level.
+5. **When** Brenda opens on mobile, **I want to** have the layout auto-adapt, **so that** I don't need horizontal scrolling.
+6. **When** Brenda waits for data to load, **I want to** see skeleton placeholders instead of blank space, **so that** I know the system is working.
+7. **When** Brenda drags widgets to adjust layout, **I want to** have the layout auto-save, **so that** it's consistent next time I open.
+8. **When** Brenda views NVDA price in Real mode, **I want to** have it auto-refresh every 30 seconds, **so that** I see relatively real-time data.
 
 ### As-a Stories [B]
 
-1. As a Prosumer, I want to 同屏看到 K 线 + 持仓 + 策略表现，so that 全局掌控。
-2. As a Prosumer, I want to 在 K 线上叠加 SMA/EMA/RSI 等指标，so that 做技术分析。
-3. As a Prosumer, I want to 看到策略买卖点 markers，so that 直观理解。
-4. As a Prosumer, I want to 回测报告包含分位图，so that 知道策略水平。
-5. As a Free-tier User, I want to 即使免费也能看 dashboard，so that 不强制付费。
-6. As a Developer, I want to 通过 Widget 系统 扩展，so that 可以加新组件。
-7. As an Interviewer, I want to 看到完整的可观测性埋点，so that 评估工程严谨性。
-8. As a Prosumer, I want to 暗黑模式，so that 长时间使用不刺眼。
+1. As a Prosumer, I want to see K-line + positions + strategy performance on the same screen, so that I have global control.
+2. As a Prosumer, I want to overlay SMA/EMA/RSI and other indicators on the K-line, so that I can do technical analysis.
+3. As a Prosumer, I want to see strategy buy/sell point markers, so that I can intuitively understand.
+4. As a Prosumer, I want to have the backtest report include a percentile chart, so that I know the strategy's level.
+5. As a Free-tier User, I want to be able to view the dashboard even for free, so that I'm not forced to pay.
+6. As a Developer, I want to extend via the Widget system, so that I can add new components.
+7. As an Interviewer, I want to see complete observability instrumentation, so that I can evaluate engineering rigor.
+8. As a Prosumer, I want dark mode, so that long usage doesn't strain my eyes.
 
 ### BDD Gherkin [B]
 
 ```gherkin
-Feature: Dashboard 加载与交互
+Feature: Dashboard loading and interaction
 
-  Scenario: 默认 dashboard 加载
-    Given 用户访问 /
-    When 页面加载完成
-    Then 显示 6 个默认 widget（K 线 + 持仓 + 策略 + watchlist + Ask + Credit）
-    And 加载时间 < 2s（Mock 模式）
-    And Mock 模式下顶部显示橙色 Badge
+  Scenario: Default dashboard load
+    Given user visits /
+    When page finishes loading
+    Then display 6 default widgets (K-line + positions + strategy + watchlist + Ask + Credit)
+    And load time < 2s (Mock mode)
+    And Mock mode shows orange Badge at top
 
-  Scenario: 策略 markers 叠加
-    Given 用户选中策略 MA Cross
-    When K 线图渲染
-    Then 图表上显示绿色↑（买入点）和红色↓（卖出点）markers
-    And 每个 marker 标注价格
+  Scenario: Strategy markers overlay
+    Given user selects strategy MA Cross
+    When K-line chart renders
+    Then chart shows green ↑ (buy point) and red ↓ (sell point) markers
+    And each marker is annotated with price
 
-  Scenario: 指标 overlay
-    Given 用户添加 SMA 50 指标
-    When K 线图渲染
-    Then 图表上叠加一条蓝色 SMA 50 折线
-    And 折线数据来自 Epic 02 Provider
+  Scenario: Indicator overlay
+    Given user adds SMA 50 indicator
+    When K-line chart renders
+    Then chart overlays a blue SMA 50 line
+    And line data comes from Epic 02 Provider
 
-  Scenario: 回测报告分位图
-    Given 用户打开回测报告
-    When 报告渲染
-    Then 显示策略 Sharpe = 1.5
-    And 显示历史 100 个策略分位：你的策略排第 75 分位
-    And 显示 SPY benchmark Sharpe = 0.8 对比
+  Scenario: Backtest report percentile chart
+    Given user opens backtest report
+    When report renders
+    Then display strategy Sharpe = 1.5
+    And display historical 100-strategy percentile: your strategy ranks 75th percentile
+    And display SPY benchmark Sharpe = 0.8 for comparison
 
-  Scenario: 移动端响应式
-    Given 视口宽度 < 768px
-    When dashboard 渲染
-    Then 单列布局
-    And Sidebar 折叠为汉堡菜单
+  Scenario: Mobile responsive
+    Given viewport width < 768px
+    When dashboard renders
+    Then single-column layout
+    And Sidebar collapses to hamburger menu
 
-  Scenario: Real 模式 SSE 流
+  Scenario: Real mode SSE stream
     Given USE_MOCK=false
-    When 用户打开 AAPL K 线
-    Then 订阅 /api/stream/AAPL SSE
-    And 每 30s 收到一次价格更新
-    And 图表自动追加最新 bar
+    When user opens AAPL K-line
+    Then subscribe to /api/stream/AAPL SSE
+    And receive price updates every 30s
+    And chart auto-appends latest bar
 
-  Scenario: Mock 模式静态加载
+  Scenario: Mock mode static load
     Given USE_MOCK=true
-    When 用户打开 AAPL K 线
-    Then 直接加载 web/public/mock/klines/AAPL_1d.json
-    And 不订阅 SSE
-    And 不轮询
+    When user opens AAPL K-line
+    Then directly load web/public/mock/klines/AAPL_1d.json
+    And do not subscribe to SSE
+    And do not poll
 ```
 
 ---
@@ -389,14 +389,14 @@ Feature: Dashboard 加载与交互
 
 ### ID-1: lightweight-charts vs TradingView Charting Library Full [B]
 
-**决策**：用 lightweight-charts（开源 Apache 2.0）
-- TradingView Charting Library Full 需要申请 license 且有商业限制
-- lightweight-charts 满足所有 Phase 1 需求（K 线 + markers + line overlay）
-- 体积小（45KB gzip），加载快
+**Decision**: Use lightweight-charts (open source Apache 2.0)
+- TradingView Charting Library Full requires license application and has commercial restrictions
+- lightweight-charts meets all Phase 1 requirements (K-line + markers + line overlay)
+- Small size (45KB gzip), fast loading
 
-### ID-2: Widget 网格系统 [B]
+### ID-2: Widget Grid System [B]
 
-用 `react-grid-layout`（MIT 协议）实现可拖拽 widget 布局
+Use `react-grid-layout` (MIT license) to implement draggable widget layout
 
 ```typescript
 import { Responsive, WidthProvider } from "react-grid-layout";
@@ -411,12 +411,12 @@ const DEFAULT_LAYOUT = {
     { i: "strategy_met", x: 6, y: 12, w: 6, h: 8 },
     { i: "ask_panel",    x: 0, y: 20, w: 12, h: 6 },
   ],
-  md: [/* 适配中等屏幕 */],
-  sm: [/* 单列堆叠 */],
+  md: [/* adapt to medium screens */],
+  sm: [/* single-column stack */],
 };
 ```
 
-### ID-3: 主题系统 [B]
+### ID-3: Theme System [B]
 
 ```typescript
 // Tailwind 4 + next-themes
@@ -426,22 +426,22 @@ export const themes = {
 };
 ```
 
-### ID-4: 性能预算 [B]
+### ID-4: Performance Budget [B]
 
-- 首屏 LCP < 2s（Mock 模式）
-- 首屏 LCP < 3s（Real 模式）
-- 单 widget 渲染 < 100ms
-- K 线图加载 500 条数据 < 500ms
+- First screen LCP < 2s (Mock mode)
+- First screen LCP < 3s (Real mode)
+- Single widget render < 100ms
+- K-line chart loading 500 bars < 500ms
 
-### ID-5: 可访问性 [B]
+### ID-5: Accessibility [B]
 
-- 所有交互元素支持键盘导航
-- 颜色对比度 ≥ AA（WCAG 2.1）
-- 图表提供文本替代
+- All interactive elements support keyboard navigation
+- Color contrast ≥ AA (WCAG 2.1)
+- Charts provide text alternatives
 
-### ID-6: 错误边界 [B]
+### ID-6: Error Boundaries [B]
 
-每个 widget 独立错误边界，单个 widget 崩溃不影响整体
+Each widget has an independent error boundary; a single widget crash doesn't affect the whole
 
 ```typescript
 <ErrorBoundary fallback={<WidgetError widget={name} />}>
@@ -449,10 +449,10 @@ export const themes = {
 </ErrorBoundary>
 ```
 
-### ID-7: 数据加载状态 [B]
+### ID-7: Data Loading State [B]
 
 ```typescript
-// 使用 SWR 统一数据加载
+// Use SWR for unified data loading
 function useWidgetData<T>(key: string): { data: T; error: Error; isLoading: boolean } {
   const { data, error, isLoading } = useSWR(key, fetcher, {
     revalidateOnFocus: false,
@@ -466,21 +466,21 @@ function useWidgetData<T>(key: string): { data: T; error: Error; isLoading: bool
 
 ## 5. Testing Decisions
 
-### 5.1 Test Seams 表 [B]
+### 5.1 Test Seams Table [B]
 
-| Seam | 类型 | 测试内容 |
+| Seam | Type | Test Content |
 |---|---|---|
-| TS-1 | Unit | 单个 widget 渲染（snapshot） |
-| TS-2 | Unit | TradingView datafeed adapter 转换 |
-| TS-3 | Integration | Dashboard 整体布局响应式 |
-| TS-4 | E2E | Playwright 跑完整 dashboard 流程 |
-| TS-5 | Visual | Mock vs Real 模式下视觉回归 |
+| TS-1 | Unit | Single widget render (snapshot) |
+| TS-2 | Unit | TradingView datafeed adapter conversion |
+| TS-3 | Integration | Dashboard overall layout responsiveness |
+| TS-4 | E2E | Playwright runs full dashboard flow |
+| TS-5 | Visual | Visual regression under Mock vs Real modes |
 
 ### 5.2 Golden Set [B]
 
 ```typescript
 describe("Dashboard Golden Set", () => {
-  it("Mock 模式 dashboard 加载所有 widget", async () => {
+  it("Mock mode dashboard loads all widgets", async () => {
     render(<Dashboard mode="mock" />);
     await waitFor(() => {
       expect(screen.getByTestId("widget-kline")).toBeInTheDocument();
@@ -489,7 +489,7 @@ describe("Dashboard Golden Set", () => {
     });
   });
 
-  it("TradingView chart 渲染 AAPL 500 条 K 线", async () => {
+  it("TradingView chart renders AAPL 500 K-lines", async () => {
     const data = await loadMockKlines("AAPL");
     render(<TradingViewChart data={data} />);
     expect(container.querySelectorAll("canvas")).toHaveLength(1);
@@ -497,82 +497,82 @@ describe("Dashboard Golden Set", () => {
 });
 ```
 
-### 5.3 测试策略 [B]
+### 5.3 Testing Strategy [B]
 
-- **Unit**：组件渲染 + datafeed adapter
-- **Visual Regression**：Playwright + 主题切换截图
-- **E2E**：完整用户流程（登录 → 加载 → 切换标的 → 看回测）
-- **Performance**：Lighthouse CI 检查 LCP/FCP
+- **Unit**: Component render + datafeed adapter
+- **Visual Regression**: Playwright + theme switch screenshots
+- **E2E**: Full user flow (login → load → switch ticker → view backtest)
+- **Performance**: Lighthouse CI checks LCP/FCP
 
 ---
 
 ## 6. Out of Scope
 
-### 6.1 模块级非目标 [B]
+### 6.1 Module-level Non-goals [B]
 
-- **自定义 widget 开发**：Phase 2 开放 widget SDK
-- **多 dashboard 切换**：Phase 2
-- **复杂图表类型（renko/point&figure）**：Phase 2
-- **3D 可视化**：Phase 3
-- **协作 dashboard（多用户同屏）**：Phase 3
+- **Custom widget development**: Phase 2 opens widget SDK
+- **Multi-dashboard switching**: Phase 2
+- **Complex chart types (renko/point&figure)**: Phase 2
+- **3D visualization**: Phase 3
+- **Collaborative dashboard (multi-user same screen)**: Phase 3
 
-### 6.2 模块级反模式 [B]
+### 6.2 Module-level Anti-patterns [B]
 
-- ❌ **客户端轮询行情**：必须走 SSE 或 SWR dedupingInterval
-- ❌ **K 线数据存 React Context**：用 SWR 缓存避免重渲染
-- ❌ **图表组件每次重渲染都重新初始化**：用 `useMemo` + stable refs
-- ❌ **widget 崩溃导致整页白屏**：必须独立错误边界
-- ❌ **Mock 模式无视觉提示**：必须 Badge 标识
+- ❌ **Client-side polling for market data**: Must use SSE or SWR dedupingInterval
+- ❌ **K-line data stored in React Context**: Use SWR cache to avoid re-renders
+- ❌ **Chart component re-initializes on every re-render**: Use `useMemo` + stable refs
+- ❌ **Widget crash causes full-page white screen**: Must have independent error boundaries
+- ❌ **Mock mode without visual indicator**: Must have Badge marker
 
 ---
 
 ## 7. Further Notes
 
-### 7.1 参考 [KNOWN]
+### 7.1 References [KNOWN]
 
 - TradingView lightweight-charts: https://tradingview.github.io/lightweight-charts/
 - react-grid-layout: https://github.com/react-grid-layout/react-grid-layout
 - SWR: https://swr.vercel.app/
 - Tailwind CSS 4: https://tailwindcss.com/
 
-### 7.2 待解问题 [B]
+### 7.2 Open Questions [B]
 
-- Q1: 是否需要支持图表截图导出？→ Phase 1.5
-- Q2: 是否需要 widget 市场分享？→ Phase 2
+- Q1: Need to support chart screenshot export? → Phase 1.5
+- Q2: Need a widget marketplace sharing? → Phase 2
 
-### 7.3 依赖 [B]
+### 7.3 Dependencies [B]
 
-- **上游**：Epic 01 AgentHarness、Epic 02 DataLayer（K 线）、Epic 04 Strategy DSL（回测报告）
-- **下游**：用户交互入口（所有 Epic 的可视化层）
+- **Upstream**: Epic 01 AgentHarness, Epic 02 DataLayer (K-line), Epic 04 Strategy DSL (backtest report)
+- **Downstream**: User interaction entry (visualization layer for all Epics)
 
 ---
 
 ## 8. Acceptance Criteria
 
-- [ ] Next.js 16 项目骨架创建
-- [ ] 默认 dashboard 含 6 个 widget
-- [ ] TradingView lightweight-charts 集成 K 线
-- [ ] 支持指标 overlay（SMA/EMA/RSI 至少 3 个）
-- [ ] 支持策略 markers（买卖点）
-- [ ] 持仓表 widget（从 Epic 06 取数据）
-- [ ] 策略 equity curve widget（从 Epic 04 取数据）
-- [ ] 回测报告 widget 含分位图
+- [ ] Next.js 16 project skeleton created
+- [ ] Default dashboard contains 6 widgets
+- [ ] TradingView lightweight-charts integrates K-line
+- [ ] Supports indicator overlay (at least 3 of SMA/EMA/RSI)
+- [ ] Supports strategy markers (buy/sell points)
+- [ ] Positions table widget (fetches data from Epic 06)
+- [ ] Strategy equity curve widget (fetches data from Epic 04)
+- [ ] Backtest report widget with percentile chart
 - [ ] Watchlist widget
-- [ ] Ask Agent panel widget（嵌入 Epic 03）
-- [ ] Credit 余额 widget
-- [ ] Mock Badge 显示
-- [ ] 暗黑/明亮主题切换
-- [ ] 响应式（桌面 / 平板 / 移动）
-- [ ] react-grid-layout 可拖拽布局
-- [ ] 错误边界独立
-- [ ] SWR 数据加载
-- [ ] OpenTelemetry 埋点
-- [ ] Lighthouse LCP < 2s（Mock 模式）
+- [ ] Ask Agent panel widget (embeds Epic 03)
+- [ ] Credit balance widget
+- [ ] Mock Badge display
+- [ ] Dark/light theme switch
+- [ ] Responsive (desktop / tablet / mobile)
+- [ ] react-grid-layout draggable layout
+- [ ] Independent error boundaries
+- [ ] SWR data loading
+- [ ] OpenTelemetry instrumentation
+- [ ] Lighthouse LCP < 2s (Mock mode)
 
 ---
 
-## 9. 版本历史
+## 9. Version History
 
-| 版本 | 日期 | 变更 |
+| Version | Date | Changes |
 |---|---|---|
-| 0.1 | 2026-07-19 | 初稿，含布局、TradingView 集成、Widget 系统、回测报告可视化 |
+| 0.1 | 2026-07-19 | Initial draft, including layout, TradingView integration, Widget system, backtest report visualization |

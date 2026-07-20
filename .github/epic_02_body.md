@@ -30,7 +30,7 @@ Build the data layer with Mock/Real Provider abstraction, D1 schema, and R2 cach
 
 - [x] All 10 Mock symbols return valid K-line data in dev
 - [x] Real mode fetches live Yahoo data with graceful fallback to Mock on error
-- [ ] D1 schema deployed to Cloudflare (migrations applied)
+- [x] D1 schema deployed to Cloudflare (10/10 migrations applied — confirmed 2026-07-21)
 - [x] R2 cache stores only whitelisted symbols
 
 ## References

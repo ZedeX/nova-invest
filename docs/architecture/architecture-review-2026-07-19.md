@@ -70,7 +70,7 @@ The 3 existing ADRs cover only **Data Layer foundation** (EP02) and **LLM routin
 
 - **Type**: Performance budget conflict
 - **EP01 §ID-5 claims**: `simple_qa: { cost_cap: 0.01 }`
-- **EP01 §BDD claims**: `单次 query 成本 ≤ $0.01（简单）`
+- **EP01 §BDD claims**: `single query cost ≤ $0.01 (simple)`
 - **ADR-0003 claims**: `simple_qa.cloud.cost_cap = 0.001`
 - **EP03 §2.2 claims**: `simple_qa.cloud.cost_cap = 0.001` (matches ADR-0003)
 - **Impact**: 10x discrepancy. project_memory.md "A1 fix" mentions deep_research ($0.50 -> $0.05) but does NOT mention simple_qa ($0.01 -> $0.001). EP01 is stale.
@@ -114,7 +114,7 @@ The 3 existing ADRs cover only **Data Layer foundation** (EP02) and **LLM routin
 ### 🟡 CONFLICT C7: Community Mock data location (architecture.md §5.3 vs filesystem) [LOW]
 
 - **Type**: Documentation drift
-- **architecture.md §5.3 claims**: `社区 | D1 seed | Playbook 样本 + 创作者档案` (D1 seed)
+- **architecture.md §5.3 claims**: `Community | D1 seed | Playbook samples + creator profiles` (D1 seed)
 - **Actual filesystem**: `web/public/mock/community/*.json` (static JSON)
 - **Impact**: Architectural doc misleads future contributors.
 - **Resolution**: Update architecture.md §5.3.
@@ -123,7 +123,7 @@ The 3 existing ADRs cover only **Data Layer foundation** (EP02) and **LLM routin
 
 - **Type**: Scope conflict
 - **EP02 §ID-4 claims**: "Phase 1: Yahoo + Mock fallback" (only)
-- **EP02 §8 Acceptance claims**: "USE_MOCK=false 时按优先级走 Yahoo -> Alpha Vantage -> Polygon -> Mock"
+- **EP02 §8 Acceptance claims**: "When USE_MOCK=false, traverse Yahoo -> Alpha Vantage -> Polygon -> Mock by priority"
 - **Impact**: Acceptance criteria cannot pass in Phase 1 (no Alpha Vantage/Polygon code).
 - **Resolution**: Update §8 to phase-gated acceptance.
 
@@ -194,7 +194,7 @@ Feature layer (Proposed, not yet written):
 - ✅ All 8 modules from systems-index (Master PRD §9.2) appear in architecture §7 module dependencies
 - ✅ §3 9-layer Agent Harness maps to EP01 §2 architecture
 - ⚠️ **§9.4 LLM routing decision** mentions only "local + cloud" 2-tier - missing Mock as third tier (stale vs ADR-0003)
-- ⚠️ **§5.3 Mock dataset** lists `社区 | D1 seed` - stale vs actual filesystem
+- ⚠️ **§5.3 Mock dataset** lists `Community | D1 seed` - stale vs actual filesystem
 - ⚠️ **No ADR references** in architecture.md - decisions are inline, not linked to ADR-0001/0002/0003
 - ⚠️ **No data flow for Build/Dashboard/Broker/Playbook** - §4 only covers Ask Agent flow
 

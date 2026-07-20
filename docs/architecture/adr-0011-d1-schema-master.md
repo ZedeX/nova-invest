@@ -464,7 +464,7 @@ CREATE INDEX IF NOT EXISTS idx_news_source ON news_articles(source, published_at
 
 - **Description**: Define schema in `schema.prisma` or Drizzle TS, generate SQL migrations from it.
 - **Pros**: Type-safe schema. Auto-generated migrations. Better DX.
-- **Cons**: Adds dependency. Cloudflare D1 + Prisma has known compatibility issues. Drizzle works but adds learning curve. EP01 ID-1 says "自研轻量", implies minimal deps.
+- **Cons**: Adds dependency. Cloudflare D1 + Prisma has known compatibility issues. Drizzle works but adds learning curve. EP01 ID-1 says "self-developed lightweight", implies minimal deps.
 - **Rejection Reason**: Premature complexity for Phase 1. Revisit in Phase 1.5 if schema churn is high. ADR-0011 keeps raw SQL as source of truth.
 
 ### Alternative 3: Multiple D1 databases (one per Epic)
@@ -511,14 +511,14 @@ CREATE INDEX IF NOT EXISTS idx_news_source ON news_articles(source, published_at
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|---------------------------|
 | EP02 §2.4 | D1 schema: symbols/watchlists/kline_cache_index/fundamentals 4 tables | Defines all 4 with FKs to users + symbols |
-| EP02 ID-5 | "D1 作为元数据存储，K 线不入 D1" | Codified in §Critical Implementation Rules #2 |
-| EP02 ID-6 | "标的元数据预置：Mockup 池 + S&P 500 前 100" | `symbols.is_mockup` flag + seed.sql |
+| EP02 ID-5 | "D1 as metadata storage, K-line not in D1" | Codified in §Critical Implementation Rules #2 |
+| EP02 ID-6 | "Symbol metadata preset: Mockup pool + S&P 500 top 100" | `symbols.is_mockup` flag + seed.sql |
 | EP03 §2.5 | user_profiles + conversation_history tables | Defined in Migration 003; `holdings_json` column REMOVED |
 | EP04 §ID-7 | strategies + backtest_results tables | Defined in Migration 004 with FK to users |
 | EP06 §2.6 | broker_accounts/orders/positions/trades 4 tables | Defined in Migration 005; `symbol` renamed to `ticker`; FKs to symbols + strategies added |
 | EP06 ID-3 | Order ID generation `ord_<timestamp>_<random6>` | `orders.id TEXT PRIMARY KEY` (app-generated) |
 | EP07 §2.4 | community_playbooks + 4 related tables | Defined in Migration 007; `yaml_r2_key` removed; `status` renamed to `moderation_status` |
-| EP07 ID-3 | "安装即'复制引用'而非'复制内容'" | `user_playbook_installs` references `playbook_id` + `package_id`, no content copy |
+| EP07 ID-3 | "Install is 'copy reference' not 'copy content'" | `user_playbook_installs` references `playbook_id` + `package_id`, no content copy |
 | EP08 §2.8 | playbooks + playbook_versions + playbook_dependencies + user_playbooks 4 tables | Defined in Migration 006; `playbook_dependencies` PK fixed; `user_playbooks` merged with EP07 `playbook_installs` into `user_playbook_installs` |
 | EP08 ID-2 | SemVer strict validation | `playbook_versions.version TEXT` + app-level `semver.valid()` check |
 | EP08 ID-3 | Parallel composition weight sum = 1.0 | `playbook_dependencies.weight REAL` + app-level validation |

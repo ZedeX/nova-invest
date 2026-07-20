@@ -24,7 +24,7 @@ PaperBroker simulator with 5bps slippage. Real broker integration via MCP server
 - [x] D1 migrations for 4 broker tables — Migration 005
 - [x] Account value / Cash / Positions Value / Unrealized P&L calculation
 - [x] Order validation (insufficient funds, market hours, etc.) — 5 risk rules, Sprint 6
-- [ ] MCP broker server (Phase 2)
+- [~] MCP broker server (Phase 2) — superseded by `AlpacaBrokerAdapter` (live Alpaca Paper Trading, 2026-07-21); MCP server remains optional for AI-agent-driven trading
 
 ## Acceptance Criteria
 

@@ -26,7 +26,7 @@ Accepted
 | **Engine** | Next.js 16.2.10 + Cloudflare Workers 4 + KV (short-term) + D1 (long-term structured) |
 | **Domain** | Core (Memory Layer / Agent State) |
 | **Knowledge Risk** | LOW |
-| **References Consulted** | EP01 §ID-3, EP03 §2.5/§反模式, ADR-0001 §USE_MOCK, ADR-0004 §LoopContext.memory_ref, ADR-0011 §Migration 003 (user_profiles + conversation_history), `docs/registry/architecture.yaml`, architecture.md §3 Layer 4 |
+| **References Consulted** | EP01 §ID-3, EP03 §2.5/§anti-pattern, ADR-0001 §USE_MOCK, ADR-0004 §LoopContext.memory_ref, ADR-0011 §Migration 003 (user_profiles + conversation_history), `docs/registry/architecture.yaml`, architecture.md §3 Layer 4 |
 | **Post-Cutoff APIs Used** | None |
 | **Verification Required** | `MemoryRef` loads short_term eagerly + user_profile lazily; Mock mode uses in-memory Map (no KV/D1 calls); pronoun resolution via LLM prompt history; user data isolation (no cross-user access); conversation_history persists across sessions |
 
@@ -47,9 +47,9 @@ EP01 §ID-3 specifies a 3-layer Memory architecture:
 
 ```typescript
 type Memory = {
-  short_term: Message[];           // 对话窗口（最近 N 条）
-  long_term_structured: UserPref;   // D1 用户偏好
-  long_term_vector: Embedding[];    // Vectorize 历史检索
+  short_term: Message[];           // Conversation window (most recent N messages)
+  long_term_structured: UserPref;   // D1 user preferences
+  long_term_vector: Embedding[];    // Vectorize history retrieval
 };
 ```
 
@@ -57,8 +57,8 @@ EP03 §2.5 adds storage detail: short_term uses KV (session-scoped, context_wind
 
 ADR-0004 §LoopContext defines `memory_ref?: MemoryRef` field with comment "per future ADR-0005" - the shape is undefined. Without this ADR:
 
-1. AgentLoop cannot load conversation history for multi-turn dialog (EP03 Job Story 3: "那它的 EPS 呢?" needs previous ticker context).
-2. Cross-session personalization (EP03 Job Story 4: "基于我的持仓分析风险") has no mechanism to load user_profile.
+1. AgentLoop cannot load conversation history for multi-turn dialog (EP03 Job Story 3: "What about its EPS?" needs previous ticker context).
+2. Cross-session personalization (EP03 Job Story 4: "Analyze risk based on my positions") has no mechanism to load user_profile.
 3. Mock mode has no memory strategy (would break multi-turn demo flow).
 4. `LoopContext.memory_ref` shape is undefined - Sub-Agent handlers cannot access memory.
 
@@ -67,7 +67,7 @@ ADR-0004 §LoopContext defines `memory_ref?: MemoryRef` field with comment "per 
 - **Cloudflare Workers stateless**: No module-level memory caches (per FP-0001/FP-0002/FP-0006 pattern). All memory state must be loaded per-request via `MemoryStore` interface.
 - **Mock mode zero external HTTP (FP-0005)**: Mock mode MUST NOT call KV, D1, or Vectorize APIs. Uses in-memory Map + seeded JSON.
 - **EP01 §ID-3 3-layer contract**: The ADR must define all 3 layers, even if Phase 1 defers Vectorize. The `MemoryRef` shape must accommodate future Vectorize addition without breaking changes.
-- **EP03 §反模式 "跨用户共享长期记忆"**: Strict user_id scoping in all D1 queries + KV key format. No cross-user access.
+- **EP03 §anti-pattern "cross-user sharing of long-term memory"**: Strict user_id scoping in all D1 queries + KV key format. No cross-user access.
 - **EP03 §2.5 context_window 4096 tokens**: Short-term memory must be bounded. Messages beyond 4096 tokens are summarized or dropped (FIFO).
 - **ADR-0011 D1 schema frozen**: `user_profiles` and `conversation_history` tables already defined. This ADR must use them as-is (no schema changes).
 - **ADR-0004 LoopContext interface**: `memory_ref?: MemoryRef` is the consumption point. This ADR defines `MemoryRef` shape; ADR-0004 interface unchanged.
@@ -393,7 +393,7 @@ function truncateToTokenBudget(messages: Message[], maxTokens: number): Message[
 
 ### Pronoun Resolution via LLM Prompt History
 
-EP03 Job Story 3: "Brenda 在第二次对话问'那它的 EPS 呢？'，Ask Agent 知道'它'指 AAPL"
+EP03 Job Story 3: "Brenda asks 'What about its EPS?' in the second conversation, Ask Agent knows 'it' refers to AAPL"
 
 **Phase 1 approach**: Include `memoryRef.short_term` (last N messages, ≤ 4096 tokens) in the LLM prompt as conversation history. The LLM handles coreference resolution naturally.
 
@@ -413,7 +413,7 @@ Answer the question, using "it"/"this"/etc. from the history to resolve referenc
 `;
 ```
 
-**No separate NLP module**. The LLM's built-in coreference resolution handles common cases ("它" -> last mentioned ticker, "这家公司" -> last analyzed company). Phase 1.5 may add rule-based fallback if LLM misresolution rate > 10%.
+**No separate NLP module**. The LLM's built-in coreference resolution handles common cases ("it" -> last mentioned ticker, "this company" -> last analyzed company). Phase 1.5 may add rule-based fallback if LLM misresolution rate > 10%.
 
 ### Loop Integration
 
@@ -527,7 +527,7 @@ The current `MemoryRef` shape already includes `vector_ref?: string` - Phase 1.5
 
 ### Alternative 5: LLM-based coreference resolution module (separate from prompt history)
 
-- **Description**: Build a separate NLP module that resolves pronouns ("它" -> "AAPL") before passing the query to the main LLM.
+- **Description**: Build a separate NLP module that resolves pronouns ("it" -> "AAPL") before passing the query to the main LLM.
 - **Pros**: More deterministic; doesn't rely on LLM's coreference ability.
 - **Cons**: Extra LLM call or rule engine (~$0.0001 per resolution or 5ms regex); Phase 1 query volume doesn't justify; LLMs (especially Sonnet-tier) handle coreference well in-context; adds maintenance burden.
 - **Rejection Reason**: LLM via prompt history is sufficient for Phase 1. Revisit if misresolution rate > 10%.
@@ -536,7 +536,7 @@ The current `MemoryRef` shape already includes `vector_ref?: string` - Phase 1.5
 
 - **Description**: Load everything at onInit, no lazy loading.
 - **Pros**: Simpler code; no lazy load complexity.
-- **Cons**: Adds cold-start latency (KV + D1 + Vectorize = 3 calls × 10-50ms = 30-150ms); many queries don't need user_profile (e.g., "AAPL 现在多少钱" doesn't need personalization); wastes resources.
+- **Cons**: Adds cold-start latency (KV + D1 + Vectorize = 3 calls × 10-50ms = 30-150ms); many queries don't need user_profile (e.g., "How much is AAPL now" doesn't need personalization); wastes resources.
 - **Rejection Reason**: Hybrid loading (short_term eager + user_profile lazy) optimizes latency for the common case.
 
 ## Consequences
@@ -556,7 +556,7 @@ The current `MemoryRef` shape already includes `vector_ref?: string` - Phase 1.5
 ### Negative
 
 - **2/3 layers only in Phase 1**: EP01 §ID-3 conceptual `long_term_vector` is deferred. Documentation must note this gap.
-- **Pronoun resolution depends on LLM quality**: If LLM misresolves "它", user gets wrong answer. No deterministic fallback in Phase 1.
+- **Pronoun resolution depends on LLM quality**: If LLM misresolves "it", user gets wrong answer. No deterministic fallback in Phase 1.
 - **KV cost at scale**: KV free tier 100K reads/day, 1K writes/day. At >1000 queries/day, short_term writes may exceed free tier (each query = 1 KV write for saveShortTerm).
 - **Mock mode no persistence**: In-memory Map resets on Worker restart. Multi-turn Mock demos must complete in a single session.
 - **context_window 4096 tokens is rough estimate**: `truncateToTokenBudget` uses 1 token ≈ 4 chars heuristic. Actual token count may vary (especially for Chinese text where 1 char ≈ 1-2 tokens). May exceed or under-use the budget.
@@ -565,7 +565,7 @@ The current `MemoryRef` shape already includes `vector_ref?: string` - Phase 1.5
 ### Risks
 
 - **Risk**: LLM misresolves pronouns > 10% of the time.
-  - **Mitigation**: Phase 1.5 add rule-based fallback (regex for "它" -> last mentioned ticker). Monitor via Eval Golden Set.
+  - **Mitigation**: Phase 1.5 add rule-based fallback (regex for "it" -> last mentioned ticker). Monitor via Eval Golden Set.
 - **Risk**: KV write quota exceeded at scale (>1000 queries/day).
   - **Mitigation**: Phase 1.5 consider batching short_term saves (debounce); or migrate to D1 for short_term (Alternative 2).
 - **Risk**: `truncateToTokenBudget` heuristic causes prompt overflow (LLM API rejects).
@@ -581,13 +581,13 @@ The current `MemoryRef` shape already includes `vector_ref?: string` - Phase 1.5
 |------------|-------------|---------------------------|
 | EP01 §ID-3 | `type Memory = { short_term: Message[]; long_term_structured: UserPref; long_term_vector: Embedding[] }` | Defines all 3 layers; Phase 1 implements 2 (short_term + long_term_structured), long_term_vector shape reserved in MemoryRef.vector_ref |
 | EP01 §ID-3 | `type UserPref = { watchlist; preferences; past_strategies; credit_balance }` | UserPref interface defined; watchlist/past_strategies/credit_balance are derived from other D1 tables (not stored in user_profiles per ADR-0011) |
-| EP01 §L4 Memory | "对话 + 向量 + 结构化" architecture layer | 2/3 implemented (对话=KV, 结构化=D1); 向量=Vectorize deferred |
+| EP01 §L4 Memory | "dialog + vector + structured" architecture layer | 2/3 implemented (dialog=KV, structured=D1); vector=Vectorize deferred |
 | EP03 §2.5 | Short-term memory: sessionId/messages/context_window 4096/last_topic (KV) | `ShortTermStore` (KV) + `truncateToTokenBudget(messages, 4096)` + Message.metadata for last_topic |
 | EP03 §2.5 | Long-term memory D1 schema: user_profiles + conversation_history | Reuses ADR-0011 Migration 003 tables; `D1UserProfileStore` + `appendConversation()` |
 | EP03 §2.5 | `user_profiles.holdings` column REMOVED per ADR-0011 | UserPref does NOT include holdings; derived from EP06 positions table via SQL JOIN |
-| EP03 §反模式 | "跨用户共享长期记忆" forbidden | KV key format `session:{user_id}:{session_id}` + D1 WHERE user_id = ?; strict isolation |
-| EP03 Job Story 3 | "那它的 EPS 呢?" - pronoun resolution via conversation history | LLM prompt includes short_term Message[] history; LLM handles coreference |
-| EP03 Job Story 4 | "基于我的持仓分析风险" - cross-session personalization | `loadUserProfile()` lazy loads from D1; personalization data available |
+| EP03 §anti-pattern | "cross-user sharing of long-term memory" forbidden | KV key format `session:{user_id}:{session_id}` + D1 WHERE user_id = ?; strict isolation |
+| EP03 Job Story 3 | "What about its EPS?" - pronoun resolution via conversation history | LLM prompt includes short_term Message[] history; LLM handles coreference |
+| EP03 Job Story 4 | "Analyze risk based on my positions" - cross-session personalization | `loadUserProfile()` lazy loads from D1; personalization data available |
 | EP03 Job Story 7 | Mock mode returns pre-built samples immediately | MockMemoryStore uses in-memory Map + seeded JSON; no KV/D1 calls (FP-0005) |
 | EP03 §2.7 | Ask Agent Loop includes SaveMemory state | `StepHandler.onFinalize` saves short_term to KV + appends conversation to D1 |
 | ADR-0004 §LoopContext | `memory_ref?: MemoryRef` field "per future ADR-0005" | This ADR defines `MemoryRef` shape (session_id, user_id, short_term, user_profile?, vector_ref?) |
@@ -666,4 +666,4 @@ Migration steps:
 - **ADR-0014** (Observability Schema, future) - Memory events (load, save, truncate) should emit TraceStep events.
 - **EP01 §ID-3** - Originating design doc (3-layer Memory type).
 - **EP03 §2.5** - Storage mapping detail (KV + D1 + Vectorize).
-- **EP03 §反模式** - "跨用户共享长期记忆" forbidden (user isolation requirement).
+- **EP03 §anti-pattern** - "cross-user sharing of long-term memory" forbidden (user isolation requirement).

@@ -1,28 +1,28 @@
 # Strategy DSL Specification
 
-**文档类型**: 技术规格 / DSL 语法
-**文档性质标签**: [B] + [C]
-**最后更新**: 2026-07-19
-**关联**: Epic 04 Strategy DSL
+**Document type**: Technical spec / DSL syntax
+**Document nature tag**: [B] + [C]
+**Last updated**: 2026-07-19
+**Related**: Epic 04 Strategy DSL
 
 ---
 
-## 1. 概述
+## 1. Overview
 
-nova-invest Strategy DSL v1.0 是用于描述交易策略的声明式 YAML/JSON DSL。
+nova-invest Strategy DSL v1.0 is a declarative YAML/JSON DSL used to describe trading strategies.
 
-### 1.1 设计原则
+### 1.1 Design Principles
 
-1. **声明式**：描述"做什么"，不描述"怎么做"
-2. **人类可读**：YAML 优先
-3. **机器可校验**：JSON Schema 严格校验
-4. **可组合**：可作为 Playbook 一部分（Epic 08）
-5. **可回测**：与 BacktestEngine 集成
-6. **可分享**：可序列化为 R2 对象
+1. **Declarative**: describes "what to do", not "how to do it"
+2. **Human-readable**: YAML first
+3. **Machine-verifiable**: strict JSON Schema validation
+4. **Composable**: can be part of a Playbook (Epic 08)
+5. **Backtestable**: integrates with BacktestEngine
+6. **Shareable**: serializable as R2 object
 
 ---
 
-## 2. DSL 顶层结构
+## 2. DSL Top-Level Structure
 
 ```yaml
 version: "1.0"
@@ -72,69 +72,69 @@ backtest:
   end_date: ISO8601
   initial_capital: number
   benchmark: string
-  sample_split?: number  # 0-1, 默认 0.7
+  sample_split?: number  # 0-1, default 0.7
 ```
 
 ---
 
-## 3. 字段规范
+## 3. Field Specifications
 
 ### 3.1 `version`
 
-- 类型：string
-- 必须：是
-- 允许值：`"1.0"`（DSL 语义版本，与 Playbook SemVer 不同）
+- Type: string
+- Required: Yes
+- Allowed values: `"1.0"` (DSL semantic version, different from Playbook SemVer)
 
 ### 3.2 `metadata`
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| name | string | 是 | 策略名 |
-| author | string | 是 | 作者 |
-| description | string | 否 | 描述 |
-| created_at | ISO8601 | 是 | 创建时间 |
+| name | string | Yes | Strategy name |
+| author | string | Yes | Author |
+| description | string | No | Description |
+| created_at | ISO8601 | Yes | Creation time |
 
 ### 3.3 `universe`
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| type | enum | 是 | single/multi/index |
-| symbols | string[] | type != index 时 | 标的列表 |
-| index | enum | type = index 时 | SP500/NASDAQ100 |
+| type | enum | Yes | single/multi/index |
+| symbols | string[] | when type != index | Symbol list |
+| index | enum | when type = index | SP500/NASDAQ100 |
 
-**校验规则**：
-- `type=single` 时 `symbols.length == 1`
-- `type=multi` 时 `symbols.length >= 2`
-- `type=index` 时 `symbols` 必须为空，`index` 必填
+**Validation rules**:
+- When `type=single`, `symbols.length == 1`
+- When `type=multi`, `symbols.length >= 2`
+- When `type=index`, `symbols` must be empty, `index` is required
 
 ### 3.4 `schedule`
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| frequency | enum | 是 | daily/hourly/on_event |
-| timezone | string | 是 | IANA 时区，如 "America/New_York" |
+| frequency | enum | Yes | daily/hourly/on_event |
+| timezone | string | Yes | IANA timezone, e.g. "America/New_York" |
 
 ### 3.5 `data`
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| source | enum | 是 | mock/yahoo/alpha/polygon |
-| timeframe | enum | 是 | 1m/5m/15m/1h/1d/1w |
-| lookback_days | integer | 是 | ≥ 30 |
+| source | enum | Yes | mock/yahoo/alpha/polygon |
+| timeframe | enum | Yes | 1m/5m/15m/1h/1d/1w |
+| lookback_days | integer | Yes | ≥ 30 |
 
 ### 3.6 `indicators`
 
-数组，每个元素：
+Array, each element:
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| name | string | 是 | 唯一标识，用于 signals 引用 |
-| type | enum | 是 | SMA/EMA/RSI/MACD/Bollinger/ATR/OBV/VWAP |
-| params | object | 是 | 类型相关参数 |
+| name | string | Yes | Unique identifier, used for signals reference |
+| type | enum | Yes | SMA/EMA/RSI/MACD/Bollinger/ATR/OBV/VWAP |
+| params | object | Yes | Type-related parameters |
 
-#### 指标参数表
+#### Indicator Parameter Table
 
-| 类型 | 必填参数 | 可选参数 |
+| Type | Required parameters | Optional parameters |
 |---|---|---|
 | SMA | period: int, field: "close"/"open"/"high"/"low"/"volume" | - |
 | EMA | period: int, field | - |
@@ -147,28 +147,28 @@ backtest:
 
 ### 3.7 `signals`
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| entry | Condition | 是 | 入场条件 |
-| exit | Condition | 否 | 出场条件 |
+| entry | Condition | Yes | Entry condition |
+| exit | Condition | No | Exit condition |
 
-#### `Condition` 结构
+#### `Condition` Structure
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| condition | string | 是 | 表达式，如 `sma_50 > sma_200 AND rsi_14 < 30` |
-| operator | enum | 是 | crossover/crossunder/gt/lt/eq |
+| condition | string | Yes | Expression, e.g. `sma_50 > sma_200 AND rsi_14 < 30` |
+| operator | enum | Yes | crossover/crossunder/gt/lt/eq |
 
-#### 表达式语法
+#### Expression Syntax
 
-支持运算符：
+Supported operators:
 
-- 比较：`>`, `<`, `>=`, `<=`, `==`, `!=`
-- 逻辑：`AND`, `OR`, `NOT`
-- 算术：`+`, `-`, `*`, `/`
-- 字段引用：`sma_50`, `close`, `volume` 等
+- Comparison: `>`, `<`, `>=`, `<=`, `==`, `!=`
+- Logical: `AND`, `OR`, `NOT`
+- Arithmetic: `+`, `-`, `*`, `/`
+- Field reference: `sma_50`, `close`, `volume`, etc.
 
-**BNF 文法**：
+**BNF Grammar**:
 
 ```bnf
 expr        := or_expr
@@ -186,14 +186,14 @@ number      := [0-9]+("." [0-9]+)?
 
 ### 3.8 `position_sizing`
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| method | enum | 是 | percent_equity/fixed_amount/kelly |
-| params | object | 是 | 方法相关参数 |
+| method | enum | Yes | percent_equity/fixed_amount/kelly |
+| params | object | Yes | Method-related parameters |
 
-#### 各方法参数
+#### Method Parameters
 
-| 方法 | 参数 |
+| Method | Parameters |
 |---|---|
 | percent_equity | percent: number (0-100) |
 | fixed_amount | amount: number (USD) |
@@ -201,48 +201,48 @@ number      := [0-9]+("." [0-9]+)?
 
 ### 3.9 `risk_management`
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| stop_loss | StopLossConfig | 否 | 止损 |
-| take_profit | TakeProfitConfig | 否 | 止盈 |
-| max_positions | integer | 是 | 最大持仓数 |
-| max_drawdown | number | 是 | 最大回撤（百分比） |
+| stop_loss | StopLossConfig | No | Stop loss |
+| take_profit | TakeProfitConfig | No | Take profit |
+| max_positions | integer | Yes | Maximum number of positions |
+| max_drawdown | number | Yes | Maximum drawdown (percentage) |
 
 #### `StopLossConfig`
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| type | enum | 是 | percent/absolute/atr_multiple |
-| value | number | 是 | 止损阈值 |
+| type | enum | Yes | percent/absolute/atr_multiple |
+| value | number | Yes | Stop loss threshold |
 
 #### `TakeProfitConfig`
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| type | enum | 是 | percent/absolute/risk_reward_ratio |
-| value | number | 是 | 止盈阈值 |
+| type | enum | Yes | percent/absolute/risk_reward_ratio |
+| value | number | Yes | Take profit threshold |
 
 ### 3.10 `execution`
 
-| 字段 | 类型 | 必须 | 默认 | 说明 |
+| Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| order_type | enum | 是 | market | market/limit |
-| slippage_bps | number | 是 | 5 | 滑点（基点） |
-| commission_bps | number | 是 | 1 | 佣金（基点） |
+| order_type | enum | Yes | market | market/limit |
+| slippage_bps | number | Yes | 5 | Slippage (basis points) |
+| commission_bps | number | Yes | 1 | Commission (basis points) |
 
 ### 3.11 `backtest`
 
-| 字段 | 类型 | 必须 | 说明 |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| start_date | ISO8601 | 是 | 起始日期 |
-| end_date | ISO8601 | 是 | 结束日期 |
-| initial_capital | number | 是 | 初始资金（USD） |
-| benchmark | string | 是 | 基准，如 "SPY" |
-| sample_split | number | 否 | in/out-of-sample 分割，默认 0.7 |
+| start_date | ISO8601 | Yes | Start date |
+| end_date | ISO8601 | Yes | End date |
+| initial_capital | number | Yes | Initial capital (USD) |
+| benchmark | string | Yes | Benchmark, e.g. "SPY" |
+| sample_split | number | No | in/out-of-sample split, default 0.7 |
 
 ---
 
-## 4. 完整 JSON Schema
+## 4. Complete JSON Schema
 
 ```json
 {
@@ -376,9 +376,9 @@ number      := [0-9]+("." [0-9]+)?
 
 ---
 
-## 5. 完整示例
+## 5. Complete Examples
 
-### 5.1 简单双均线策略
+### 5.1 Simple Dual Moving Average Strategy
 
 ```yaml
 version: "1.0"
@@ -440,7 +440,7 @@ backtest:
   sample_split: 0.7
 ```
 
-### 5.2 RSI 超卖反弹策略
+### 5.2 RSI Oversold Rebound Strategy
 
 ```yaml
 version: "1.0"
@@ -482,7 +482,7 @@ backtest:
   benchmark: "SPY"
 ```
 
-### 5.3 Bollinger 突破策略
+### 5.3 Bollinger Breakout Strategy
 
 ```yaml
 version: "1.0"
@@ -525,41 +525,41 @@ backtest:
 
 ---
 
-## 6. 校验错误码
+## 6. Validation Error Codes
 
-| 错误码 | 含义 |
+| Error code | Meaning |
 |---|---|
-| DSL_001 | 缺少必填字段 |
-| DSL_002 | 字段类型错误 |
-| DSL_003 | 字段值不在允许范围 |
-| DSL_004 | universe.type 与 symbols 长度不匹配 |
-| DSL_005 | indicator.name 重复 |
-| DSL_006 | signals.condition 引用未定义的 indicator |
-| DSL_007 | signals.operator 不匹配 condition 类型 |
-| DSL_008 | position_sizing.params 缺失 |
+| DSL_001 | Missing required field |
+| DSL_002 | Field type error |
+| DSL_003 | Field value not in allowed range |
+| DSL_004 | universe.type and symbols length mismatch |
+| DSL_005 | indicator.name duplicate |
+| DSL_006 | signals.condition references undefined indicator |
+| DSL_007 | signals.operator does not match condition type |
+| DSL_008 | position_sizing.params missing |
 | DSL_009 | risk_management.max_drawdown > 100 |
 | DSL_010 | backtest.start_date >= end_date |
 | DSL_011 | backtest.initial_capital < 1000 |
-| DSL_012 | 表达式语法错误 |
-| DSL_013 | additional properties 不允许 |
+| DSL_012 | Expression syntax error |
+| DSL_013 | Additional properties not allowed |
 
 ---
 
-## 7. DSL ↔ Playbook 关系
+## 7. DSL ↔ Playbook Relationship
 
-| 项 | Strategy DSL | Playbook |
+| Item | Strategy DSL | Playbook |
 |---|---|---|
-| 范围 | 仅策略本身 | 策略 + 元数据 + 叙事 + 依赖 + 版本 |
-| 文件 | 单个 YAML | 含 dsl_ref 引用 或 dsl_inline |
-| 版本 | 无版本概念 | SemVer 版本化 |
-| 组合 | 不支持 | 支持 parallel/sequential/conditional |
-| 分享 | 不直接分享 | 通过 Epic 07 社区分享 |
-| 存储 | 可存 D1 (strategies.dsl_yaml) | YAML 存 R2 |
+| Scope | Strategy only | Strategy + metadata + narrative + dependencies + version |
+| File | Single YAML | Contains dsl_ref reference or dsl_inline |
+| Version | No version concept | SemVer versioned |
+| Composition | Not supported | Supports parallel/sequential/conditional |
+| Sharing | Not directly shared | Shared via Epic 07 community |
+| Storage | Can be stored in D1 (strategies.dsl_yaml) | YAML stored in R2 |
 
 ---
 
-## 8. 版本历史
+## 8. Version History
 
-| 版本 | 日期 | 变更 |
+| Version | Date | Change |
 |---|---|---|
-| 0.1 | 2026-07-19 | 初稿，含完整字段规范、JSON Schema、3 个示例、错误码 |
+| 0.1 | 2026-07-19 | Initial draft, including complete field specs, JSON Schema, 3 examples, error codes |

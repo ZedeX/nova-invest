@@ -1,51 +1,51 @@
 # Epic 06: Broker Integration
 
-**Epic 编号**: 06
-**模块名称**: Broker Integration（券商集成与交易执行）
-**优先级顺序**: 6（B3 中"6"位置）
-**文档性质标签**: [A] + [B] + [C]
-**Spec 模板**: to-spec
-**最后更新**: 2026-07-19
+**Epic Number**: 06
+**Module Name**: Broker Integration (Broker Integration & Trade Execution)
+**Priority Order**: 6 (position "6" in B3)
+**Document Nature Tag**: [A] + [B] + [C]
+**Spec Template**: to-spec
+**Last Updated**: 2026-07-19
 
 ---
 
 ## 1. Problem Statement
 
-### 1.1 用户视角问题 [B]
+### 1.1 User Perspective Problems [B]
 
-Prosumer Brenda 想从"分析 → 策略 → 实盘"闭环时：
+When Prosumer Brenda wants to close the loop from "analysis → strategy → live trading":
 
-- **多账户散乱**：她在 Robinhood 持有部分仓位、Alpaca 跑策略、Charles Schwab 存 IRA——每个券商一个 App，无法统一查看
-- **API 接入门槛高**：Alpaca paper trading API 需注册账号 + 申请 API key，Robinhood 无官方 API，Interactive Brokers TWS API 文档厚如字典
-- **不敢一键执行**：策略信号出来后还要手动切换到券商 App 下单，过程割裂，容易错过时机
-- **paper → live 跨越无渐进**：直接从回测跳到实盘，没有 paper trading 中间态
-- **延迟与限流**：免费行情 API 限流严苛（Alpha Vantage 25 次/天），她写一个简单的"过去 5 年所有财报日次日涨跌"分析就因为限流跑了 3 小时。
+- **Scattered multi-account**: She holds partial positions in Robinhood, runs strategies in Alpaca, keeps IRA in Charles Schwab—each broker has its own app, no unified view
+- **High API access barrier**: Alpaca paper trading API requires account registration + API key application, Robinhood has no official API, Interactive Brokers TWS API documentation is as thick as a dictionary
+- **Afraid to execute in one click**: After a strategy signal appears, she still has to manually switch to the broker app to place orders, the process is fragmented and easy to miss the timing
+- **No gradual paper → live transition**: Jumps directly from backtest to live trading, no paper trading intermediate state
+- **Latency and rate limits**: Free market data APIs have strict rate limits (Alpha Vantage 25 calls/day). A simple "next-day price change on all earnings days over the past 5 years" analysis took 3 hours due to rate limits.
 
-### 1.2 工程视角问题 [B]
+### 1.2 Engineering Perspective Problems [B]
 
-- **券商适配抽象**：每家券商 API 协议不同（REST / WebSocket / FIX），必须抽象统一接口
-- **Phase 1 不接真实券商**：用户决策"Phase 1 显式非目标 = 自建券商"，所以 Phase 1 只做 paper trading 模拟器
-- **风险隔离**：执行层必须与策略层物理隔离，避免 Bug 导致真实下单
-- **MCP 集成**：用户决策"外部工具走 MCP"——券商未来作为 MCP server 接入
+- **Broker adaptation abstraction**: Each broker's API protocol is different (REST / WebSocket / FIX), must abstract a unified interface
+- **Phase 1 doesn't connect real brokers**: User decided "Phase 1 explicit non-goal = self-built broker", so Phase 1 only does paper trading simulator
+- **Risk isolation**: Execution layer must be physically isolated from strategy layer, to avoid bugs causing real orders
+- **MCP integration**: User decided "external tools go through MCP"—brokers will be integrated as MCP servers in the future
 
-### 1.3 竞品现状分析 [A]
+### 1.3 Competitor Status Analysis [A]
 
-竞品当前在券商层呈现 [INFERRED]：
-- 不接真实券商
-- 仅模拟持仓展示
-- 无 paper trading 模拟器
+Competitors currently show at broker layer [INFERRED]:
+- Don't connect real brokers
+- Only simulate position display
+- No paper trading simulator
 
-**本 Epic 核心差异化特性 [C]**：
-- 完整 paper trading 模拟器
-- 券商抽象层（Phase 2 接 Alpaca/IBKR）
-- 持仓跨券商聚合
-- MCP 协议占位
+**This Epic's core differentiating features [C]**:
+- Complete paper trading simulator
+- Broker abstraction layer (Phase 2 integrates Alpaca/IBKR)
+- Cross-broker position aggregation
+- MCP protocol placeholder
 
 ---
 
 ## 2. Solution
 
-### 2.1 总体架构 [B]
+### 2.1 Overall Architecture [B]
 
 ```mermaid
 flowchart TB
@@ -55,28 +55,28 @@ flowchart TB
 
     subgraph "Broker Abstraction Layer"
         BA[BrokerAdapter Interface]
-        BA --> PB[PaperBroker<br/>Phase 1 内置模拟器]
+        BA --> PB[PaperBroker<br/>Phase 1 built-in simulator]
         BA --> AB[AlpacaBroker<br/>Phase 2 MCP server]
         BA --> IB[IBKRBroker<br/>Phase 2 MCP server]
-        BA --> RB[RobinhoodBroker<br/>Phase 3 反向工程]
+        BA --> RB[RobinhoodBroker<br/>Phase 3 reverse engineering]
     end
 
     subgraph "PaperBroker Internals"
         PB --> OE[Order Engine]
         PB --> PM[Position Manager]
-        PB --> AE[Account Engine<br/>虚拟资金]
-        PB --> FE[Fill Engine<br/>模拟成交]
+        PB --> AE[Account Engine<br/>virtual funds]
+        PB --> FE[Fill Engine<br/>simulated execution]
     end
 
     subgraph "Storage"
         PB --> D1[(D1<br/>orders/positions/trades)]
-        PB --> R2[(R2<br/>历史回放快照)]
+        PB --> R2[(R2<br/>historical replay snapshots)]
     end
 
     S --> BA
 ```
 
-### 2.2 Broker Adapter 接口 [B] - **关键决策**
+### 2.2 Broker Adapter Interface [B] - **Key Decision**
 
 ```typescript
 // src/lib/broker/types.ts
@@ -84,31 +84,31 @@ interface BrokerAdapter {
   name: string;
   mode: "paper" | "live";
 
-  // 账户
+  // Account
   getAccount(): Promise<Account>;
   getBalance(): Promise<Balance>;
 
-  // 订单
+  // Orders
   placeOrder(order: Order): Promise<OrderResult>;
   cancelOrder(orderId: string): Promise<boolean>;
   getOrder(orderId: string): Promise<Order>;
   listOrders(status?: OrderStatus): Promise<Order[]>;
 
-  // 持仓
+  // Positions
   getPosition(symbol: string): Promise<Position>;
   listPositions(): Promise<Position[]>;
 
-  // 历史成交
+  // Historical trades
   listTrades(from: Date, to: Date): Promise<Trade[]>;
 
-  // 实时（Phase 2）
+  // Real-time (Phase 2)
   subscribeQuotes(symbols: string[], cb: (q: Quote) => void): () => void;
 }
 ```
 
-### 2.3 PaperBroker 模拟器设计 [B] - **关键决策**
+### 2.3 PaperBroker Simulator Design [B] - **Key Decision**
 
-**用户决策**：Phase 1 显式非目标 = 自建券商，所以 PaperBroker 是核心
+**User decision**: Phase 1 explicit non-goal = self-built broker, so PaperBroker is the core
 
 ```typescript
 class PaperBroker implements BrokerAdapter {
@@ -118,18 +118,18 @@ class PaperBroker implements BrokerAdapter {
   constructor(private db: D1Database, private dataProvider: MarketDataProvider) {}
 
   async placeOrder(order: Order): Promise<OrderResult> {
-    // 1. 校验订单（资金/持仓/限价）
+    // 1. Validate order (funds/position/limit price)
     const account = await this.getAccount();
     this.validateOrder(order, account);
 
-    // 2. 计算成交价（含 slippage）
+    // 2. Calculate fill price (including slippage)
     const quote = await this.dataProvider.getQuote(order.symbol);
     const fillPrice = this.computeFillPrice(order, quote);
 
-    // 3. 模拟成交
+    // 3. Simulate execution
     const trade = await this.executeFill(order, fillPrice);
 
-    // 4. 更新持仓和资金
+    // 4. Update position and balance
     await this.updatePosition(order, trade);
     await this.updateBalance(order, trade);
 
@@ -137,7 +137,7 @@ class PaperBroker implements BrokerAdapter {
   }
 
   private computeFillPrice(order: Order, quote: Quote): number {
-    const slippageBps = 5;  // 5 bps 默认滑点
+    const slippageBps = 5;  // 5 bps default slippage
     const base = order.side === "buy" ? quote.ask : quote.bid;
     const slippage = base * (slippageBps / 10000);
     return order.side === "buy" ? base + slippage : base - slippage;
@@ -145,37 +145,37 @@ class PaperBroker implements BrokerAdapter {
 }
 ```
 
-### 2.4 订单类型支持 [B]
+### 2.4 Order Type Support [B]
 
 ```typescript
 type OrderType =
-  | "market"        // 市价单
-  | "limit"         // 限价单
-  | "stop"          // 止损单
-  | "stop_limit"    // 止损限价
-  | "trailing_stop"; // 跟踪止损（Phase 1.5）
+  | "market"        // market order
+  | "limit"         // limit order
+  | "stop"          // stop order
+  | "stop_limit"    // stop-limit order
+  | "trailing_stop"; // trailing stop (Phase 1.5)
 
 type OrderSide = "buy" | "sell" | "sell_short" | "buy_to_cover";
 
 type OrderStatus =
-  | "pending"      // 待成交
-  | "partial"      // 部分成交
-  | "filled"       // 全部成交
-  | "cancelled"    // 已撤单
-  | "rejected";    // 已拒绝
+  | "pending"      // pending fill
+  | "partial"      // partial fill
+  | "filled"       // fully filled
+  | "cancelled"    // cancelled
+  | "rejected";    // rejected
 ```
 
-### 2.5 订单生命周期状态机 [B]
+### 2.5 Order Lifecycle State Machine [B]
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pending: 提交订单
-    Pending --> Filled: 全部成交
-    Pending --> Partial: 部分成交
-    Pending --> Cancelled: 用户撤单
-    Pending --> Rejected: 校验失败
-    Partial --> Filled: 剩余成交
-    Partial --> Cancelled: 撤剩余
+    [*] --> Pending: Submit order
+    Pending --> Filled: Fully filled
+    Pending --> Partial: Partially filled
+    Pending --> Cancelled: User cancels
+    Pending --> Rejected: Validation failed
+    Partial --> Filled: Remaining filled
+    Partial --> Cancelled: Cancel remaining
     Filled --> [*]
     Cancelled --> [*]
     Rejected --> [*]
@@ -183,23 +183,23 @@ stateDiagram-v2
 
 ### 2.6 D1 Schema [B]
 
-> **注意（2026-07-19 修订）**：`symbol` 列已统一为 `ticker` per [ADR-0011](../../architecture/adr-0011-d1-schema-master.md)。
-> `orders.status` 已重命名为 `order_status` 以避免与 `lifecycle_status`/`moderation_status` 混淆。
-> 所有 FK 显式声明。Canonical schema 见 ADR-0011 §Master Schema。
+> **Note (revised 2026-07-19)**: `symbol` column unified to `ticker` per [ADR-0011](../../architecture/adr-0011-d1-schema-master.md).
+> `orders.status` renamed to `order_status` to avoid confusion with `lifecycle_status`/`moderation_status`.
+> All FKs explicitly declared. Canonical schema see ADR-0011 §Master Schema.
 
 ```sql
--- 账户表
+-- Account table
 CREATE TABLE broker_accounts (
   id           TEXT PRIMARY KEY,
   user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   broker_name  TEXT NOT NULL,  -- paper / alpaca / ibkr
   mode         TEXT NOT NULL,  -- paper / live
-  balance      REAL DEFAULT 100000,  -- 虚拟资金默认 10 万
+  balance      REAL DEFAULT 100000,  -- virtual funds default 100k
   currency     TEXT DEFAULT "USD",
   created_at   TEXT DEFAULT (datetime('now'))
 );
 
--- 订单表
+-- Orders table
 CREATE TABLE orders (
   id           TEXT PRIMARY KEY,           -- ord_<timestamp>_<random6>
   user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -221,7 +221,7 @@ CREATE TABLE orders (
 CREATE INDEX idx_orders_user ON orders(user_id, created_at);
 CREATE INDEX idx_orders_status ON orders(order_status);
 
--- 持仓表
+-- Positions table
 CREATE TABLE positions (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -235,7 +235,7 @@ CREATE TABLE positions (
   UNIQUE(user_id, account_id, ticker)
 );
 
--- 成交表
+-- Trades table
 CREATE TABLE trades (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   order_id     TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
@@ -250,16 +250,16 @@ CREATE TABLE trades (
 CREATE INDEX idx_trades_order ON trades(order_id);
 ```
 
-### 2.7 MCP 适配占位 [B]
+### 2.7 MCP Adaptation Placeholder [B]
 
-**用户决策**：MCP 协议占位（Phase 2 启用）
+**User decision**: MCP protocol placeholder (enabled in Phase 2)
 
 ```typescript
-// Phase 1 占位：MCP server 注册但不连接
+// Phase 1 placeholder: MCP server registered but not connected
 const MCP_BROKER_SERVERS = [
   {
     name: "alpaca-broker",
-    url: "mock://alpaca-mcp",  // Phase 2 替换为真实 MCP server
+    url: "mock://alpaca-mcp",  // Phase 2 replace with real MCP server
     tools: ["place_order", "get_positions", "get_account"],
     status: "phase2_pending"
   },
@@ -271,29 +271,29 @@ const MCP_BROKER_SERVERS = [
   }
 ];
 
-// Phase 2 实现真实 MCP server 连接
+// Phase 2 implement real MCP server connection
 async function connectMCPServer(server: MCPServer): Promise<void> {
   // Real implementation in Phase 2
   throw new Error("MCP broker integration is Phase 2");
 }
 ```
 
-### 2.8 风控规则 [B]
+### 2.8 Risk Management Rules [B]
 
 ```typescript
 class BrokerRiskManager {
-  // 单笔最大金额
+  // Max single order value
   maxOrderValue = 50000;
-  // 单日最大交易次数
+  // Max daily trade count
   maxDailyTrades = 100;
-  // 单标的最大持仓占比
+  // Max position percent per ticker
   maxPositionPercent = 30;  // 30% of equity
 
   validateOrder(order: Order, account: Account): ValidationResult {
     if (order.quantity * order.limit_price > this.maxOrderValue) {
       return { ok: false, reason: "Order exceeds max value" };
     }
-    // ... 其他规则
+    // ... other rules
     return { ok: true };
   }
 }
@@ -305,100 +305,100 @@ class BrokerRiskManager {
 
 ### Job Stories [B]
 
-1. **When** Brenda 想执行策略信号，**I want to** 一键从策略 → 下单（paper 模式），**so that** 不需要手动切换 App。
-2. **When** Brenda 提交订单，**I want to** 看到订单状态从 pending → filled 的实时更新，**so that** 知道是否成交。
-3. **When** Brenda 查看持仓，**I want to** 看到当前价、平均成本、未实现盈亏，**so that** 评估持仓表现。
-4. **When** Brenda 跑策略 paper trade 1 个月，**I want to** 系统自动模拟所有买卖和资金变动，**so that** 验证策略真实表现。
-5. **When** Brenda 在 Mock 模式下，**I want to** PaperBroker 用 Mock K 线成交，**so that** 零成本可重复演示。
-6. **When** Brenda 跨多个券商账户（Phase 2），**I want to** 看到聚合持仓视图，**so that** 全局掌控。
-7. **When** Brenda 想撤单，**I want to** 一键撤单且看到撤单确认，**so that** 避免误操作。
-8. **When** Brenda 下单失败（资金不足），**I want to** 看到清晰的错误原因，**so that** 知道如何修正。
+1. **When** Brenda wants to execute a strategy signal, **I want to** go from strategy → order (paper mode) in one click, **so that** I don't need to manually switch apps.
+2. **When** Brenda submits an order, **I want to** see real-time updates from pending → filled, **so that** I know whether it executed.
+3. **When** Brenda checks positions, **I want to** see current price, average cost, and unrealized P&L, **so that** I can evaluate position performance.
+4. **When** Brenda runs a strategy paper trade for 1 month, **I want to** the system to automatically simulate all buys/sells and capital changes, **so that** I can verify the strategy's real performance.
+5. **When** Brenda is in Mock mode, **I want to** PaperBroker to fill using Mock K-lines, **so that** I have zero-cost repeatable demos.
+6. **When** Brenda spans multiple broker accounts (Phase 2), **I want to** see an aggregated position view, **so that** I have global control.
+7. **When** Brenda wants to cancel an order, **I want to** one-click cancel with confirmation, **so that** I avoid misoperation.
+8. **When** Brenda's order fails (insufficient funds), **I want to** see a clear error reason, **so that** I know how to fix it.
 
 ### As-a Stories [B]
 
-1. As a Prosumer, I want to paper trade 模拟交易，so that 不冒真金白银风险。
-2. As a Prosumer, I want to 看到完整订单生命周期，so that 跟踪每笔交易。
-3. As a Prosumer, I want to 持仓表显示 P&L，so that 评估表现。
-4. As a Developer, I want to 通过 BrokerAdapter 接口扩展券商，so that Phase 2 接入真实券商。
-5. As a Free-tier User, I want to 即使免费也能 paper trade，so that 试用完整闭环。
-6. As an Interviewer, I want to 看到 paper broker 的成交价模拟（含滑点），so that 评估工程严谨性。
-7. As a Prosumer, I want to 风控规则防止单笔过大，so that 避免灾难性损失。
-8. As a Prosumer, I want to 历史成交可查询，so that 复盘交易。
+1. As a Prosumer, I want to paper trade simulated trading, so that I don't risk real money.
+2. As a Prosumer, I want to see the complete order lifecycle, so that I can track every trade.
+3. As a Prosumer, I want to the positions table to show P&L, so that I can evaluate performance.
+4. As a Developer, I want to extend brokers via the BrokerAdapter interface, so that Phase 2 can integrate real brokers.
+5. As a Free-tier User, I want to paper trade even for free, so that I can try the full loop.
+6. As an Interviewer, I want to see the paper broker's fill price simulation (including slippage), so that I can evaluate engineering rigor.
+7. As a Prosumer, I want to risk management rules to prevent oversized single orders, so that I avoid catastrophic losses.
+8. As a Prosumer, I want to query historical trades, so that I can review trades.
 
 ### BDD Gherkin [B]
 
 ```gherkin
-Feature: PaperBroker 交易执行
+Feature: PaperBroker trade execution
 
-  Scenario: 市价单成交
-    Given PaperBroker 账户余额 $100,000
-    And AAPL 当前 ask = $187.50
-    When 用户下 buy 100 AAPL market order
-    Then 订单状态 → filled
-    And 成交价 = $187.50 + 5bps = $187.59
-    And 持仓 AAPL = 100 股 @ $187.59
-    And 余额减少 $18,759
+  Scenario: Market order fill
+    Given PaperBroker account balance $100,000
+    And AAPL current ask = $187.50
+    When user places buy 100 AAPL market order
+    Then order status → filled
+    And fill price = $187.50 + 5bps = $187.59
+    And position AAPL = 100 shares @ $187.59
+    And balance decreases by $18,759
 
-  Scenario: 限价单未成交
-    Given AAPL 当前 bid/ask = $187.45/$187.50
-    When 用户下 buy 100 AAPL limit @ $180.00
-    Then 订单状态 → pending
-    And 不更新持仓
+  Scenario: Limit order not filled
+    Given AAPL current bid/ask = $187.45/$187.50
+    When user places buy 100 AAPL limit @ $180.00
+    Then order status → pending
+    And do not update position
 
-  Scenario: 资金不足拒绝
-    Given 账户余额 $5,000
-    When 用户下 buy 100 AAPL @ $187
-    Then 订单状态 → rejected
-    And 错误原因 = "Insufficient funds (need $18,750, have $5,000)"
+  Scenario: Insufficient funds rejected
+    Given account balance $5,000
+    When user places buy 100 AAPL @ $187
+    Then order status → rejected
+    And error reason = "Insufficient funds (need $18,750, have $5,000)"
 
-  Scenario: 卖空超出持仓
-    Given 用户持有 AAPL 50 股
-    When 用户下 sell 100 AAPL
-    Then 订单状态 → rejected
-    And 错误原因 = "Insufficient shares (have 50, want 100)"
+  Scenario: Sell short exceeds position
+    Given user holds AAPL 50 shares
+    When user places sell 100 AAPL
+    Then order status → rejected
+    And error reason = "Insufficient shares (have 50, want 100)"
 
-  Scenario: Mock 模式成交价从 Mock K 线
+  Scenario: Mock mode fill price from Mock K-line
     Given USE_MOCK=true
-    And web/public/mock/klines/AAPL_1d.json 最新收盘 $187.31
-    When 用户下 buy 100 AAPL market
-    Then 成交价 = $187.31 + 5bps
+    And web/public/mock/klines/AAPL_1d.json latest close $187.31
+    When user places buy 100 AAPL market
+    Then fill price = $187.31 + 5bps
 
-  Scenario: 撤单
-    Given 订单 ABC123 状态 = pending
-    When 用户撤单
-    Then 订单状态 → cancelled
-    And 不更新持仓/资金
+  Scenario: Cancel order
+    Given order ABC123 status = pending
+    When user cancels
+    Then order status → cancelled
+    And do not update position/balance
 
-  Scenario: 策略自动下单
-    Given 策略 MA Cross 信号 = BUY NVDA 10%
-    And PaperBroker 模式
-    When 信号触发
-    Then 自动下 buy NVDA market order
-    And 订单 strategy_id = MA Cross 的 ID
-    And 持仓更新
+  Scenario: Strategy auto-order
+    Given strategy MA Cross signal = BUY NVDA 10%
+    And PaperBroker mode
+    When signal triggers
+    Then auto place buy NVDA market order
+    And order strategy_id = MA Cross's ID
+    And position updated
 ```
 
 ---
 
 ## 4. Implementation Decisions
 
-### ID-1: Phase 1 仅 PaperBroker [B]
+### ID-1: Phase 1 PaperBroker Only [B]
 
-**用户决策**："Phase 1 显式非目标 = 自建券商 + 不接真实券商"
+**User decision**: "Phase 1 explicit non-goal = self-built broker + no real broker connection"
 
-Phase 1 实现：
-- ✅ PaperBroker 模拟器
-- ✅ 完整订单生命周期
-- ✅ 持仓/资金管理
-- ✅ Mock K 线成交价
+Phase 1 implements:
+- ✅ PaperBroker simulator
+- ✅ Complete order lifecycle
+- ✅ Position/balance management
+- ✅ Mock K-line fill price
 
-Phase 1 不实现：
-- ❌ Alpaca 真实连接
-- ❌ IBKR TWS 连接
-- ❌ 实时行情流（仅 polling）
-- ❌ 真实资金
+Phase 1 does not implement:
+- ❌ Alpaca real connection
+- ❌ IBKR TWS connection
+- ❌ Real-time quote stream (polling only)
+- ❌ Real funds
 
-### ID-2: 成交价滑点模型 [B]
+### ID-2: Fill Price Slippage Model [B]
 
 ```typescript
 function computeFillPrice(order, quote, slippageBps = 5) {
@@ -408,45 +408,45 @@ function computeFillPrice(order, quote, slippageBps = 5) {
 }
 ```
 
-支持配置：
+Supports configuration:
 - `slippage_bps`: 0-50
 - `commission_bps`: 0-10
-- `market_impact`: 大单自动加价
+- `market_impact`: large orders auto-markup
 
-### ID-3: 订单 ID 生成 [B]
+### ID-3: Order ID Generation [B]
 
 ```typescript
 function generateOrderId(): string {
-  // 时间戳 + 用户 ID hash + 随机数
+  // timestamp + user ID hash + random
   return `ord_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 ```
 
-### ID-4: 风控硬约束 [B]
+### ID-4: Risk Management Hard Constraints [B]
 
-- 单笔订单金额 > $50,000 → 拒绝
-- 单日交易次数 > 100 → 拒绝
-- 单标的持仓占比 > 30% → 拒绝加仓
-- 资金不足 → 拒绝
-- 持仓不足 → 拒绝卖出
+- Single order value > $50,000 → reject
+- Daily trade count > 100 → reject
+- Single ticker position percent > 30% → reject adding
+- Insufficient funds → reject
+- Insufficient position → reject sell
 
-### ID-5: 资金结算 T+1（模拟） [B]
+### ID-5: Fund Settlement T+1 (simulated) [B]
 
 ```typescript
-// 实时记录但 T+1 结算（模拟真实市场）
+// Real-time record but T+1 settlement (simulates real market)
 async function settleTrades(accountId: string) {
   const unsettledTrades = await db.query(
     "SELECT * FROM trades WHERE executed_at < date('now', '-1 day') AND settled = 0"
   );
-  // 批量更新 balance
+  // Batch update balance
 }
 ```
 
-### ID-6: 跨券商聚合视图（Phase 2 占位） [B]
+### ID-6: Cross-broker Aggregation View (Phase 2 placeholder) [B]
 
 ```typescript
-// Phase 1: 仅 paper broker
-// Phase 2: 聚合 paper + alpaca + ibkr + robinhood
+// Phase 1: paper broker only
+// Phase 2: aggregate paper + alpaca + ibkr + robinhood
 async function getAggregatedPositions(userId: string): Promise<Position[]> {
   const brokers = await listUserBrokers(userId);
   const allPositions = await Promise.all(
@@ -460,125 +460,125 @@ async function getAggregatedPositions(userId: string): Promise<Position[]> {
 
 ## 5. Testing Decisions
 
-### 5.1 Test Seams 表 [B]
+### 5.1 Test Seams Table [B]
 
-| Seam | 类型 | 测试内容 |
+| Seam | Type | Test Content |
 |---|---|---|
-| TS-1 | Unit | `PaperBroker.placeOrder()` 各订单类型 |
-| TS-2 | Unit | `computeFillPrice()` 滑点计算 |
-| TS-3 | Unit | `BrokerRiskManager.validateOrder()` 风控规则 |
-| TS-4 | Integration | 订单 → 成交 → 持仓 → 资金完整闭环 |
-| TS-5 | Contract | BrokerAdapter 接口契约 |
-| TS-6 | E2E | 策略信号 → 自动下单 → 持仓更新 |
+| TS-1 | Unit | `PaperBroker.placeOrder()` various order types |
+| TS-2 | Unit | `computeFillPrice()` slippage calculation |
+| TS-3 | Unit | `BrokerRiskManager.validateOrder()` risk management rules |
+| TS-4 | Integration | Order → trade → position → balance full loop |
+| TS-5 | Contract | BrokerAdapter interface contract |
+| TS-6 | E2E | Strategy signal → auto-order → position update |
 
 ### 5.2 Golden Set [B]
 
 ```typescript
 describe("Broker Golden Set", () => {
-  it("完整 paper trade 闭环", async () => {
+  it("complete paper trade loop", async () => {
     const broker = new PaperBroker(db, mockProvider);
     await broker.deposit("user-1", 100000);
 
-    // 买入
+    // Buy
     const buyOrder = await broker.placeOrder({
       symbol: "AAPL", side: "buy", type: "market", quantity: 100
     });
     expect(buyOrder.status).toBe("filled");
 
-    // 检查持仓
+    // Check position
     const pos = await broker.getPosition("user-1", "AAPL");
     expect(pos.quantity).toBe(100);
 
-    // 卖出
+    // Sell
     const sellOrder = await broker.placeOrder({
       symbol: "AAPL", side: "sell", type: "market", quantity: 100
     });
     expect(sellOrder.status).toBe("filled");
 
-    // 持仓归零
+    // Position zero
     const posAfter = await broker.getPosition("user-1", "AAPL");
     expect(posAfter.quantity).toBe(0);
   });
 
-  it("风控规则全部生效", async () => {
-    // 单笔超限、单日超次、单标的超占比、资金不足、持仓不足
-    // ... 5 个子用例
+  it("all risk management rules take effect", async () => {
+    // Single order over limit, daily count over limit, single ticker over percent, insufficient funds, insufficient position
+    // ... 5 subcases
   });
 });
 ```
 
-### 5.3 测试策略 [B]
+### 5.3 Testing Strategy [B]
 
-- **Unit**：纯函数 + 订单类型 + 风控规则
-- **Integration**：完整交易闭环（用 Miniflare）
-- **Property-based**：随机订单验证 paper broker 不崩
+- **Unit**: pure functions + order types + risk management rules
+- **Integration**: complete trade loop (using Miniflare)
+- **Property-based**: random orders verify paper broker doesn't crash
 
 ---
 
 ## 6. Out of Scope
 
-### 6.1 模块级非目标 [B]
+### 6.1 Module-level Non-goals [B]
 
-- **真实券商连接**：Phase 2
-- **真实资金交易**：Phase 2
-- **期权/期货下单**：Phase 3
-- **港股/A股下单**：Phase 3
-- **实时 WebSocket 行情**：Phase 2
-- **保证金交易**：Phase 3
-- **做空借券**：Phase 2
+- **Real broker connection**: Phase 2
+- **Real funds trading**: Phase 2
+- **Options/futures orders**: Phase 3
+- **HK-shares/A-shares orders**: Phase 3
+- **Real-time WebSocket quotes**: Phase 2
+- **Margin trading**: Phase 3
+- **Short borrowing**: Phase 2
 
-### 6.2 模块级反模式 [B]
+### 6.2 Module-level Anti-patterns [B]
 
-- ❌ **Phase 1 接真实券商 API**：明确非目标
-- ❌ **订单无风控直接执行**：必须经过 BrokerRiskManager
-- ❌ **成交价无滑点**：默认 5bps 滑点
-- ❌ **持仓和资金不一致**：每笔交易必须同步更新两者
-- ❌ **跨用户共享账户**：严格隔离
-- ❌ **Mock 模式下也调真实券商 API**：Mock 模式仅用 PaperBroker + Mock K 线
+- ❌ **Phase 1 connecting real broker API**: explicit non-goal
+- ❌ **Order executed without risk management**: must go through BrokerRiskManager
+- ❌ **Fill price without slippage**: default 5bps slippage
+- ❌ **Position and balance inconsistent**: every trade must synchronously update both
+- ❌ **Cross-user account sharing**: strict isolation
+- ❌ **Mock mode calling real broker API**: Mock mode uses only PaperBroker + Mock K-line
 
 ---
 
 ## 7. Further Notes
 
-### 7.1 参考 [KNOWN]
+### 7.1 References [KNOWN]
 
 - Alpaca Paper Trading API: https://alpaca.markets/docs/api-references/paper-trading-api/
 - Interactive Brokers TWS API: https://interactivebrokers.github.io/tws-api/
 - Polygon.io paper trading: https://polygon.io/docs/stocks/getting-started
 - FIX Protocol: https://www.fixtrading.org/
 
-### 7.2 待解问题 [B]
+### 7.2 Open Questions [B]
 
-- Q1: Phase 2 接 Alpaca 还是 IBKR 优先？→ 待 Phase 2 评估
-- Q2: 是否支持做空借券？→ Phase 2
+- Q1: Phase 2 priority Alpaca or IBKR? → to be evaluated in Phase 2
+- Q2: Support short borrowing? → Phase 2
 
-### 7.3 依赖 [B]
+### 7.3 Dependencies [B]
 
-- **上游**：Epic 01 AgentHarness、Epic 02 DataLayer（行情）、Epic 04 Strategy DSL（信号）
-- **下游**：Epic 05 Dashboard（持仓表展示）、Epic 07 Share（分享策略表现）
+- **Upstream**: Epic 01 AgentHarness, Epic 02 DataLayer (quotes), Epic 04 Strategy DSL (signals)
+- **Downstream**: Epic 05 Dashboard (positions table display), Epic 07 Share (sharing strategy performance)
 
 ---
 
 ## 8. Acceptance Criteria
 
-- [ ] `BrokerAdapter` 接口已定义
-- [ ] `PaperBroker` 实现完整订单生命周期
-- [ ] 支持 4 种订单类型（market/limit/stop/stop_limit）
-- [ ] 成交价滑点模型实现
-- [ ] 持仓 + 资金双账本同步更新
-- [ ] 风控 5 项规则实现
-- [ ] D1 schema 含 broker_accounts/orders/positions/trades 4 表
-- [ ] 策略自动下单接口（strategy_id 关联）
-- [ ] Mock 模式下成交价来自 Mock K 线
-- [ ] MCP broker server 占位（Phase 2 启用）
-- [ ] Golden Set 测试通过（完整闭环 + 风控）
-- [ ] 订单 ID 生成不冲突
-- [ ] 撤单功能实现
+- [ ] `BrokerAdapter` interface defined
+- [ ] `PaperBroker` implements complete order lifecycle
+- [ ] Supports 4 order types (market/limit/stop/stop_limit)
+- [ ] Fill price slippage model implemented
+- [ ] Position + balance dual-ledger sync update
+- [ ] 5 risk management rules implemented
+- [ ] D1 schema contains broker_accounts/orders/positions/trades 4 tables
+- [ ] Strategy auto-order interface (strategy_id association)
+- [ ] Mock mode fill price from Mock K-line
+- [ ] MCP broker server placeholder (enabled in Phase 2)
+- [ ] Golden Set tests pass (complete loop + risk management)
+- [ ] Order ID generation no conflicts
+- [ ] Cancel order function implemented
 
 ---
 
-## 9. 版本历史
+## 9. Version History
 
-| 版本 | 日期 | 变更 |
+| Version | Date | Changes |
 |---|---|---|
-| 0.1 | 2026-07-19 | 初稿，含 PaperBroker、订单生命周期、风控、D1 schema、MCP 占位 |
+| 0.1 | 2026-07-19 | Initial draft, including PaperBroker, order lifecycle, risk management, D1 schema, MCP placeholder |

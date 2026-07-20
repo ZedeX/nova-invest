@@ -1,50 +1,50 @@
 # Epic 02: Data Layer
 
-**Epic 编号**: 02
-**模块名称**: Data Layer
-**优先级顺序**: 2（B3 优先级 1→5→2→3→4→6→7→8 中的"5"位置，上移后为第 2 个）
-**文档性质标签**: [A] 分析竞品现状 + [B] 规划下一迭代 + [C] 个人项目型
-**Spec 模板**: to-spec
-**最后更新**: 2026-07-19
+**Epic ID**: 02
+**Module name**: Data Layer
+**Priority order**: 2 (the "5" position in B3 priority 1→5→2→3→4→6→7→8, the 2nd after being moved up)
+**Document nature tags**: [A] Analyzing competitor status quo + [B] Planning next iteration + [C] Personal project type
+**Spec template**: to-spec
+**Last updated**: 2026-07-19
 
 ---
 
 ## 1. Problem Statement
 
-### 1.1 用户视角问题 [B]
+### 1.1 User-perspective Problem [B]
 
-Prosumer Brenda 想分析 NVDA 时遇到的核心痛点：
+Core pain points when Prosumer Brenda wants to analyze NVDA:
 
-- **数据散乱**：她需要从 Yahoo Finance 看价格、从 SEC EDGAR 找财报、从 StockTwits 看情绪、从 FRED 查宏观数据。每打开一个新源都要重新输入标的、重新调整时间窗口。
-- **延迟与限流**：免费行情 API 限流严苛（Alpha Vantage 25 次/天、Yahoo 非官方接口易封 IP），她写一个简单的"过去 5 年所有财报日次日涨跌"分析就因为限流跑了 3 小时。
-- **Mock 与生产不可切换**：现有市面"AI 投资助手"要么纯 Mock（演示漂亮但不可靠）要么纯生产（一上线就被 API 账单击垮），缺少可一键切换的双模架构。
-- **R2 缓存策略不明**：用户细化决策明确"R2 仅存储部分 Mockup 用到的真实 K 线"，但哪些算"Mockup 用到"缺乏定义。
+- **Scattered data**: She needs to look at prices on Yahoo Finance, find earnings on SEC EDGAR, view sentiment on StockTwits, query macro data on FRED. Each new source requires re-entering the ticker and re-adjusting the time window.
+- **Latency and rate limiting**: Free market data APIs have severe rate limits (Alpha Vantage 25 requests/day, Yahoo's unofficial interface easily IP-banned). A simple "next-day price change for all earnings days over the past 5 years" analysis took 3 hours due to rate limiting.
+- **Mock and production not switchable**: Existing "AI investment assistants" on the market are either pure Mock (pretty demo but unreliable) or pure production (instantly crushed by API bills on launch), lacking a one-click switchable dual-mode architecture.
+- **Unclear R2 cache strategy**: The user's refined decision specifies "R2 only stores part of the real K-lines used by Mockup", but what counts as "used by Mockup" is undefined.
 
-### 1.2 工程视角问题 [B]
+### 1.2 Engineering-perspective Problem [B]
 
-- **多源异构**：行情（K 线/Tick）、基本面（财报/SEC filings）、新闻（RSS/Twitter）、宏观数据（FRED）数据格式完全不同，需要统一 normalize。
-- **Mock/Real 双模**：本地开发用 LM Studio，部署到 Cloudflare 用火山引擎 Ark；K 线本地用预生成 JSON 包，生产用真实 API；必须有 Provider 抽象层 + `USE_MOCK` 开关。
-- **免费额度约束**：Cloudflare D1 5GB、R2 10GB、Workers 100K req/day；Yahoo Finance 非官方接口易限流；Alpha Vantage 25 req/day 免费层；Polygon free tier 5 req/min。
-- **回测引擎的数据需求**：用户明确"回测引擎需要用到 Mockup 的数据"，意味着 Mock 数据不能是简单的"10 天样本"，必须有足够长度（≥2 年）支撑真实回测。
+- **Multi-source heterogeneity**: Market data (K-line/Tick), fundamentals (earnings/SEC filings), news (RSS/Twitter), macro data (FRED) have completely different formats and require unified normalization.
+- **Mock/Real dual mode**: Local development uses LM Studio, deployment to Cloudflare uses Volcengine Ark; K-lines use pre-generated JSON packages locally, real APIs in production; must have a Provider abstraction layer + `USE_MOCK` switch.
+- **Free quota constraints**: Cloudflare D1 5GB, R2 10GB, Workers 100K req/day; Yahoo Finance unofficial interface easily rate-limited; Alpha Vantage 25 req/day free tier; Polygon free tier 5 req/min.
+- **Backtest engine data needs**: The user explicitly stated "the backtest engine needs to use Mockup data", meaning Mock data cannot be a simple "10-day sample" — it must be long enough (≥2 years) to support real backtests.
 
-### 1.3 竞品现状分析 [A]
+### 1.3 Competitor Status Analysis [A]
 
-竞品当前在数据层呈现的能力 [INFERRED]：
-- 内置 Yahoo Finance 数据源（从公开接口可推断）
-- 自有财报 RAG（基于 SEC EDGAR）
-- 实时行情延迟约 15 分钟（免费层特征）
-- 未公开 Mock 模式切换
+Competitor capabilities at the data layer [INFERRED]:
+- Built-in Yahoo Finance data source (inferred from public interface)
+- Proprietary earnings RAG (based on SEC EDGAR)
+- Real-time quote latency ~15 minutes (free tier characteristic)
+- Mock mode switching not publicly disclosed
 
-**本 Epic 核心差异化特性 [C]**：
-- 显式 Mock/Real 双模开关（竞品未公开此能力）
-- R2 智能缓存热门 K 线（竞品未提及缓存策略）
-- 多源 fallback（Yahoo → Alpha Vantage → Polygon → Mock）— Phase 1 仅 Yahoo → Mock；Phase 1.5 起启用完整链
+**Core differentiating features of this Epic [C]**:
+- Explicit Mock/Real dual-mode switch (competitor has not disclosed this capability)
+- R2 smart caching of popular K-lines (competitor does not mention cache strategy)
+- Multi-source fallback (Yahoo → Alpha Vantage → Polygon → Mock) — Phase 1 only Yahoo → Mock; full chain enabled from Phase 1.5
 
 ---
 
 ## 2. Solution
 
-### 2.1 总体架构 [B]
+### 2.1 Overall Architecture [B]
 
 ```mermaid
 flowchart TB
@@ -56,22 +56,22 @@ flowchart TB
     end
 
     subgraph "Real Provider Sources"
-        R --> Y[Yahoo Finance<br/>免费 非官方]
+        R --> Y[Yahoo Finance<br/>Free unofficial]
         R --> A[Alpha Vantage<br/>25 req/day]
         R --> PG[Polygon Free<br/>5 req/min]
-        R --> F[FRED<br/>宏观 免费]
-        R --> S[SEC EDGAR<br/>财报 免费]
+        R --> F[FRED<br/>Macro free]
+        R --> S[SEC EDGAR<br/>Earnings free]
     end
 
     subgraph "Mock Data Sources"
-        M --> MK[web/public/mock/klines/*.json<br/>10 标的 × 2 年 日线]
-        M --> ME[web/public/mock/earnings/*.json<br/>财报样本]
-        M --> MQ[web/public/mock/qa_samples/*.json<br/>问答样本]
+        M --> MK[web/public/mock/klines/*.json<br/>10 tickers × 2 years daily]
+        M --> ME[web/public/mock/earnings/*.json<br/>Earnings samples]
+        M --> MQ[web/public/mock/qa_samples/*.json<br/>Q&A samples]
     end
 
     subgraph "Cache Layer"
-        P --> R2[(R2<br/>热门 K 线缓存<br/>≤10GB)]
-        P --> D1[(D1 SQLite<br/>标的元数据<br/>watchlist)]
+        P --> R2[(R2<br/>Hot K-line cache<br/>≤10GB)]
+        P --> D1[(D1 SQLite<br/>Ticker metadata<br/>watchlist)]
     end
 
     subgraph "Consumer"
@@ -87,9 +87,9 @@ flowchart TB
     BE --> P
 ```
 
-### 2.2 Mock/Real 切换设计 [B] - **关键决策**
+### 2.2 Mock/Real Switching Design [B] - **Key Decision**
 
-**单一开关 `USE_MOCK` 环境变量**：
+**Single `USE_MOCK` environment variable switch**:
 
 ```typescript
 // src/lib/data/provider.ts
@@ -97,8 +97,8 @@ export type DataSourceMode = "mock" | "real";
 
 interface ProviderConfig {
   mode: DataSourceMode;
-  mockDataPath: string;      // 静态 JSON 路径
-  realSources: SourcePriority[]; // 真实源优先级
+  mockDataPath: string;      // static JSON path
+  realSources: SourcePriority[]; // real source priority
   r2Cache: { enabled: boolean; ttl: number; maxSize: number };
 }
 
@@ -106,72 +106,72 @@ function getProvider(env: Env): MarketDataProvider {
   const mode = env.USE_MOCK === "true" ? "mock" : "real";
   return mode === "mock" ? new MockProvider() : new RealProvider({
     sources: [
-      // Phase 1: 仅 yahoo + mock fallback（当前实现）
-      // Phase 1.5: 启用 alpha + polygon
-      // Phase 2: 启用 sec + fred
+      // Phase 1: only yahoo + mock fallback (current implementation)
+      // Phase 1.5: enable alpha + polygon
+      // Phase 2: enable sec + fred
       { name: "yahoo",   priority: 1, rateLimit: { req: 100, per: "minute" } },
       { name: "alpha",   priority: 2, rateLimit: { req: 25,   per: "day"    } }, // Phase 1.5
       { name: "polygon", priority: 3, rateLimit: { req: 5,    per: "minute" } }, // Phase 1.5
-      { name: "mock",    priority: 99, fallback: true }, // 兜底（Phase 1 即启用）
+      { name: "mock",    priority: 99, fallback: true }, // fallback (Phase 1 enables)
     ],
     r2: { enabled: true, ttl: 3600, maxSize: 5 * 1024 * 1024 * 1024 /* 5GB */ },
   });
 }
 ```
 
-**Mock 数据落点**（用户 Q3 决策的"前端 + Worker 中间层 + D1"三层）：
+**Mock data placement** (the user's Q3 decision: "frontend + Worker middle layer + D1" three layers):
 
-| 层 | Mock 实现 | 数据来源 |
+| Layer | Mock implementation | Data source |
 |---|---|---|
-| 前端层 | `web/public/mock/*.json` 直接 fetch | 预生成静态文件 |
-| Worker 层 | `MockProvider` 类拦截请求 | `web/public/mock/klines/*.json` |
-| D1 层 | 启动脚本 `seed.sql` 预置 | 测试账号/Credit/策略草稿 |
+| Frontend layer | `web/public/mock/*.json` direct fetch | Pre-generated static files |
+| Worker layer | `MockProvider` class intercepts requests | `web/public/mock/klines/*.json` |
+| D1 layer | Startup script `seed.sql` pre-populates | Test accounts/Credits/strategy drafts |
 
-### 2.3 R2 缓存策略（细化用户决策）[B]
+### 2.3 R2 Cache Strategy (refining user decision) [B]
 
-**用户细化决策**："R2 仅存储部分 Mockup 用到的真实 K 线"
+**User refined decision**: "R2 only stores part of the real K-lines used by Mockup"
 
-**"Mockup 用到"的精确定义**：
-1. Mock 数据集 (`web/public/mock/klines/*.json`) 涵盖的 10 个标的
-2. 这 10 个标的的真实历史 K 线（过去 2 年日线 + 过去 30 天分钟线）
-3. 总量预估：10 标的 × 2 年 × 252 交易日 × 6 字段 ≈ 30K 条记录 → JSON ≈ 5MB → 完全在 R2 免费层内
+**Precise definition of "used by Mockup"**:
+1. The 10 tickers covered by the Mock dataset (`web/public/mock/klines/*.json`)
+2. Real historical K-lines for these 10 tickers (past 2 years daily + past 30 days minute)
+3. Volume estimate: 10 tickers × 2 years × 252 trading days × 6 fields ≈ 30K records → JSON ≈ 5MB → well within R2 free tier
 
-**R2 缓存策略**：
+**R2 cache strategy**:
 
-> **注意（2026-07-19 修订）**：原稿 `daily: 86400 (1天)` 与 ADR-0002 `R2_TTL.PRICE: 3600 (1小时)` 不一致。
-> 已对齐 ADR-0002 的 1 小时 price TTL（保证数据新鲜度，Yahoo API 压力可控）。详见 [ADR-0002](../../architecture/adr-0002-r2-cache-whitelist.md)。
+> **Note (revised 2026-07-19)**: Original `daily: 86400 (1 day)` is inconsistent with ADR-0002 `R2_TTL.PRICE: 3600 (1 hour)`.
+> Aligned to ADR-0002's 1-hour price TTL (ensures data freshness, Yahoo API load manageable). See [ADR-0002](../../architecture/adr-0002-r2-cache-whitelist.md).
 
 ```typescript
 interface R2CacheStrategy {
-  // 仅缓存"Mockup 命中标的"
+  // only cache "Mockup hit tickers"
   cachedSymbols: ["AAPL", "MSFT", "NVDA", "GOOG", "META", "AMZN", "TSLA", "NFLX", "AMD", "INTC"];
-  // 不缓存冷门标的（生产模式下直接走 Yahoo API）
+  // do not cache obscure tickers (in production mode go directly to Yahoo API)
   cacheKey: (symbol, timeframe) => `klines/${symbol}/${timeframe}.json`;
   ttl: {
-    price:       3600,      // 1 小时（per ADR-0002 R2_TTL.PRICE；原 86400 已弃用）
-    fundamental: 604800     // 7 天（per ADR-0002 R2_TTL.FUNDAMENTAL）
+    price:       3600,      // 1 hour (per ADR-0002 R2_TTL.PRICE; original 86400 deprecated)
+    fundamental: 604800     // 7 days (per ADR-0002 R2_TTL.FUNDAMENTAL)
   };
-  // 优雅降级：R2 miss -> 真实 API -> 写回 R2 -> 返回
+  // graceful degradation: R2 miss -> real API -> write-back R2 -> return
   fallback: "real_api_then_cache";
 }
 ```
 
-**Mock 模式下 R2 行为**：
-- Mock 模式下 R2 不参与（直接读 `web/public/mock/klines/*.json`）
-- 仅在生产模式且标的在 `cachedSymbols` 列表内时才写 R2
+**R2 behavior in Mock mode**:
+- R2 is not used in Mock mode (reads `web/public/mock/klines/*.json` directly)
+- R2 is only written in production mode and only when the ticker is in the `cachedSymbols` list
 
 ### 2.4 D1 Schema [B]
 
 ```sql
--- 标的元数据表
+-- Ticker metadata table
 CREATE TABLE symbols (
   ticker      TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
   exchange    TEXT NOT NULL,  -- NYSE/NASDAQ/AMEX
   sector      TEXT,
   industry    TEXT,
-  market_cap  INTEGER,        -- 单位：USD
-  is_mockup   INTEGER DEFAULT 0,  -- 1 = 在 Mockup 池中
+  market_cap  INTEGER,        -- unit: USD
+  is_mockup   INTEGER DEFAULT 0,  -- 1 = in Mockup pool
   created_at  TEXT DEFAULT (datetime('now'))
 );
 
@@ -190,7 +190,7 @@ CREATE TABLE watchlist_items (
   PRIMARY KEY (watchlist_id, ticker)
 );
 
--- 行情缓存元数据（实际 K 线数据在 R2，这里只存指针）
+-- Market data cache metadata (actual K-line data is in R2, only pointers stored here)
 CREATE TABLE kline_cache_index (
   ticker       TEXT NOT NULL,
   timeframe    TEXT NOT NULL,  -- 1d/5m/15m/1h
@@ -199,7 +199,7 @@ CREATE TABLE kline_cache_index (
   PRIMARY KEY (ticker, timeframe)
 );
 
--- 基本面数据缓存（小型，直接存 D1）
+-- Fundamentals cache (small, stored directly in D1)
 CREATE TABLE fundamentals (
   ticker       TEXT NOT NULL,
   field        TEXT NOT NULL,  -- pe_ratio/eps/revenue/...
@@ -210,11 +210,11 @@ CREATE TABLE fundamentals (
 );
 ```
 
-### 2.5 Mock K 线数据格式 [B]
+### 2.5 Mock K-line Data Format [B]
 
-**用户 Q3 决策**："本地预生成美股日线 / 分钟线 JSON 包"
+**User Q3 decision**: "Locally pre-generate US stock daily / minute JSON packages"
 
-**Mock K 线 JSON Schema**：
+**Mock K-line JSON Schema**:
 
 ```json
 {
@@ -240,16 +240,16 @@ CREATE TABLE fundamentals (
 }
 ```
 
-**Mock 数据集清单**（`web/public/mock/klines/` 目录）：
+**Mock dataset inventory** (`web/public/mock/klines/` directory):
 
-| 文件 | 标的 | 时间跨度 | 数据点数 | 大小估算 |
+| File | Ticker | Time span | Data points | Size estimate |
 |---|---|---|---|---|
-| AAPL_1d.json | Apple | 2024-01-02 ~ 2025-12-31 | ~500 条 | ~80KB |
-| AAPL_5m.json | Apple | 2025-06-01 ~ 2025-06-30 | ~12000 条 | ~2MB |
-| MSFT_1d.json | Microsoft | 同上 | ~500 条 | ~80KB |
-| ... | （共 10 标的 × 2 时间框架 = 20 文件） | | | **~30MB 总计** |
+| AAPL_1d.json | Apple | 2024-01-02 ~ 2025-12-31 | ~500 entries | ~80KB |
+| AAPL_5m.json | Apple | 2025-06-01 ~ 2025-06-30 | ~12000 entries | ~2MB |
+| MSFT_1d.json | Microsoft | Same as above | ~500 entries | ~80KB |
+| ... | (10 tickers × 2 timeframes = 20 files total) | | | **~30MB total** |
 
-**Mock 数据生成脚本**（开发期一次性运行，从真实 Yahoo API 拉取后落盘）：
+**Mock data generation script** (run once during development, pulled from real Yahoo API then persisted):
 
 ```typescript
 // scripts/generate_mock_data.ts
@@ -275,7 +275,7 @@ async function main() {
 }
 ```
 
-**注意**：生成脚本仅运行一次，生成的 JSON 作为静态资产提交到 Git。后续 Mock 模式不再依赖任何外部 API。
+**Note**: The generation script runs only once; the generated JSON is committed to Git as a static asset. Subsequent Mock mode no longer depends on any external API.
 
 ### 2.6 Provider Interface [B]
 
@@ -303,89 +303,89 @@ export interface Kline {
 
 ## 3. User Stories
 
-### Job Stories（业务动机） [B]
+### Job Stories (business motivation) [B]
 
-1. **When** Brenda 打开 NVDA 分析页，**I want to** 在 200ms 内看到 K 线图，**so that** 不需要等待 Yahoo API 响应。
-2. **When** Brenda 在本地开发环境跑 demo，**I want to** 一键开启 Mock 模式无需配置 API key，**so that** 演示流畅且零成本。
-3. **When** Brenda 查询一个冷门标的（如 RKLB），**I want to** 系统自动 fallback 到真实 API 且不被限流，**so that** 不会因单源失败导致整个分析中断。
-4. **When** 回测引擎需要 2 年历史数据，**I want to** Mock 数据集已包含足够的真实历史，**so that** 回测结果可信。
-5. **When** Brenda 在 Cloudflare 部署后切换到生产模式，**I want to** R2 缓存自动启用且不超 10GB，**so that** 不会产生 R2 费用。
-6. **When** Brenda 重复查询 AAPL，**I want to** 第二次查询命中 R2 缓存（<50ms），**so that** Workers 请求数下降。
+1. **When** Brenda opens the NVDA analysis page, **I want to** see the K-line chart within 200ms, **so that** she doesn't have to wait for Yahoo API response.
+2. **When** Brenda runs a demo in the local dev environment, **I want to** enable Mock mode with one click without configuring API keys, **so that** the demo is smooth and zero-cost.
+3. **When** Brenda queries an obscure ticker (e.g. RKLB), **I want to** the system to automatically fall back to the real API without being rate-limited, **so that** the entire analysis is not interrupted by a single source failure.
+4. **When** the backtest engine needs 2 years of historical data, **I want to** the Mock dataset to already contain enough real history, **so that** backtest results are credible.
+5. **When** Brenda switches to production mode after Cloudflare deployment, **I want to** R2 cache to be auto-enabled and not exceed 10GB, **so that** no R2 fees are incurred.
+6. **When** Brenda repeatedly queries AAPL, **I want to** the second query to hit R2 cache (<50ms), **so that** Workers request count drops.
 
 ### As-a Stories [B]
 
-1. As a Prosumer, I want to 查询任何美股标的的日线/分钟线 K 线，so that 可以做技术分析。
-2. As a Prosumer, I want to 看到实时报价（延迟 ≤15 分钟免费层），so that 不需要离开 nova-invest 切换到其他工具。
-3. As a Prosumer, I want to 查询标的财报数据（营收/利润/EPS），so that 可以做基本面分析。
-4. As a Prosumer, I want to 创建多个 watchlist，so that 可以分组管理关注的标的。
-5. As a Developer, I want to 通过 `USE_MOCK=true` 一键切换 Mock 模式，so that 本地开发无需 API key。
-6. As a Developer, I want to 通过 Provider 抽象层扩展新数据源，so that 不需要修改业务代码。
-7. As an Interviewer reviewing the repo, I want to 看到 Mock 数据集 + Mock/Real 切换设计，so that 评估候选人的工程能力。
-8. As a Free-tier User, I want to 即使 Yahoo API 限流也能用 Mock 数据兜底，so that 不会因为免费层限制完全无法使用。
+1. As a Prosumer, I want to query daily/minute K-lines for any US stock ticker, so that I can do technical analysis.
+2. As a Prosumer, I want to see real-time quotes (free-tier latency ≤15 minutes), so that I don't need to leave nova-invest to switch to other tools.
+3. As a Prosumer, I want to query ticker earnings data (revenue/profit/EPS), so that I can do fundamental analysis.
+4. As a Prosumer, I want to create multiple watchlists, so that I can group-manage watched tickers.
+5. As a Developer, I want to switch to Mock mode with one click via `USE_MOCK=true`, so that local development needs no API key.
+6. As a Developer, I want to extend new data sources through the Provider abstraction layer, so that no business code changes are needed.
+7. As an Interviewer reviewing the repo, I want to see the Mock dataset + Mock/Real switch design, so that I can evaluate the candidate's engineering ability.
+8. As a Free-tier User, I want to fall back to Mock data even when Yahoo API is rate-limited, so that I'm not completely blocked by free-tier limits.
 
-### BDD Gherkin 验收规则 [B]
+### BDD Gherkin Acceptance Rules [B]
 
 ```gherkin
-Feature: Mock/Real 切换
+Feature: Mock/Real switching
 
-  Scenario: Mock 模式下读 K 线
-    Given 环境变量 USE_MOCK=true
-    And web/public/mock/klines/AAPL_1d.json 存在
-    When 用户请求 AAPL 日线
-    Then 返回 web/public/mock/klines/AAPL_1d.json 的内容
-    And 不发起任何外部 HTTP 请求
-    And 响应时间 < 100ms
+  Scenario: Read K-line in Mock mode
+    Given environment variable USE_MOCK=true
+    And web/public/mock/klines/AAPL_1d.json exists
+    When user requests AAPL daily
+    Then return the contents of web/public/mock/klines/AAPL_1d.json
+    And no external HTTP requests are made
+    And response time < 100ms
 
-  Scenario: Real 模式下读 K 线命中 R2 缓存
-    Given 环境变量 USE_MOCK=false
-    And R2 中存在 klines/AAPL/1d.json
-    When 用户请求 AAPL 日线
-    Then 直接从 R2 读取返回
-    And 不调用 Yahoo/Alpha Vantage API
-    And 响应时间 < 50ms
+  Scenario: Read K-line in Real mode hitting R2 cache
+    Given environment variable USE_MOCK=false
+    And klines/AAPL/1d.json exists in R2
+    When user requests AAPL daily
+    Then read directly from R2 and return
+    And do not call Yahoo/Alpha Vantage API
+    And response time < 50ms
 
-  Scenario: Real 模式下 R2 miss 但在 cachedSymbols 内
-    Given 环境变量 USE_MOCK=false
-    And R2 中无 klines/NVDA/1d.json
-    And NVDA 在 cachedSymbols 列表内
-    When 用户请求 NVDA 日线
-    Then 调用 Yahoo Finance API
-    And 将结果写入 R2 缓存
-    And 返回数据
+  Scenario: Real mode R2 miss but within cachedSymbols
+    Given environment variable USE_MOCK=false
+    And klines/NVDA/1d.json not in R2
+    And NVDA is in cachedSymbols list
+    When user requests NVDA daily
+    Then call Yahoo Finance API
+    And write the result to R2 cache
+    And return data
 
-  Scenario: Real 模式下冷门标的
-    Given 环境变量 USE_MOCK=false
-    And 用户请求 RKLB 日线
-    And RKLB 不在 cachedSymbols 内
-    When 调用 Yahoo Finance API
-    Then 返回数据但不写 R2（避免缓存膨胀）
+  Scenario: Real mode obscure ticker
+    Given environment variable USE_MOCK=false
+    And user requests RKLB daily
+    And RKLB is not in cachedSymbols
+    When Yahoo Finance API is called
+    Then return data but do not write R2 (avoid cache bloat)
 
-  Scenario: 多源 fallback
+  Scenario: Multi-source fallback
     Given USE_MOCK=false
-    And Yahoo Finance 返回 429 限流
-    When 用户请求 AAPL 日线
-    Then 自动切换到 Alpha Vantage
-    And Alpha Vantage 也失败时降级到 Mock 数据
-    And 记录 warning 级别日志
+    And Yahoo Finance returns 429 rate limited
+    When user requests AAPL daily
+    Then automatically switch to Alpha Vantage
+    And when Alpha Vantage also fails, degrade to Mock data
+    And log a warning-level entry
 
-  Scenario: Mock 数据集生成脚本
-    Given 开发者运行 pnpm run gen:mock
-    When 脚本从 Yahoo Finance 拉取 10 个标的 2 年日线
-    Then 生成 web/public/mock/klines/{SYMBOL}_1d.json 共 10 个文件
-    And 每个文件包含 500+ 条 K 线数据
-    And 文件总大小 < 50MB
+  Scenario: Mock dataset generation script
+    Given developer runs pnpm run gen:mock
+    When script pulls 10 tickers × 2 years daily from Yahoo Finance
+    Then generate web/public/mock/klines/{SYMBOL}_1d.json, 10 files total
+    And each file contains 500+ K-line entries
+    And total file size < 50MB
 ```
 
 ---
 
 ## 4. Implementation Decisions
 
-### ID-1: Provider 抽象模式 [B]
+### ID-1: Provider Abstraction Pattern [B]
 
-采用 Strategy Pattern，所有业务代码只依赖 `MarketDataProvider` 接口，不感知具体实现。
+Uses Strategy Pattern — all business code depends only on the `MarketDataProvider` interface, unaware of concrete implementations.
 
 ```typescript
-// 简化的 Provider 路由
+// Simplified Provider routing
 class ProviderRouter implements MarketDataProvider {
   constructor(private primary: MarketDataProvider,
               private fallbacks: MarketDataProvider[]) {}
@@ -403,17 +403,17 @@ class ProviderRouter implements MarketDataProvider {
 }
 ```
 
-### ID-2: `USE_MOCK` 单一开关 [B]
+### ID-2: `USE_MOCK` Single Switch [B]
 
-- 单一环境变量 `USE_MOCK` 控制全局数据源
-- `USE_MOCK=true` → 所有数据请求走 `MockProvider`
-- `USE_MOCK=false` → 所有数据请求走 `RealProvider`（含 R2 缓存）
-- `.dev.vars` 文件默认 `USE_MOCK=true`
-- Cloudflare Workers 部署时通过 `wrangler secret put USE_MOCK` 设置为 `false`
+- Single environment variable `USE_MOCK` controls global data source
+- `USE_MOCK=true` → all data requests go through `MockProvider`
+- `USE_MOCK=false` → all data requests go through `RealProvider` (including R2 cache)
+- `.dev.vars` defaults to `USE_MOCK=true`
+- Cloudflare Workers deployment sets it to `false` via `wrangler secret put USE_MOCK`
 
-### ID-3: R2 缓存"Mockup 命中标的"白名单 [B]
+### ID-3: R2 Cache "Mockup hit tickers" Whitelist [B]
 
-**用户细化决策的精确实施**：
+**Precise implementation of user's refined decision**:
 
 ```typescript
 const R2_CACHE_SYMBOLS = new Set([
@@ -426,43 +426,43 @@ function shouldCacheR2(symbol: string): boolean {
 }
 ```
 
-**为何仅缓存这 10 个**：
-- 这是 Mock 数据集涵盖的标的，保证 Mock 与 Real 模式下"看得见"的标的完全一致
-- 10 个标的 × 2 年日线 × 6 字段 × 8 字节 ≈ 250KB/标的 → 总缓存 < 5MB，远低于 R2 10GB 免费层
-- 冷门标的（用户查询 RKLB）不缓存，避免缓存膨胀
+**Why only these 10 are cached**:
+- These are the tickers covered by the Mock dataset, ensuring "visible" tickers are identical under Mock and Real modes
+- 10 tickers × 2 years daily × 6 fields × 8 bytes ≈ 250KB/ticker → total cache < 5MB, well below R2 10GB free tier
+- Obscure tickers (user queries RKLB) are not cached, avoiding cache bloat
 
-### ID-4: 真实数据源优先级 [B]
+### ID-4: Real Data Source Priority [B]
 
-| 优先级 | 源 | 限流 | 用途 | 备注 | Phase |
+| Priority | Source | Rate limit | Use | Note | Phase |
 |---|---|---|---|---|---|
-| 1 | Yahoo Finance 非官方 | 100 req/min | K 线/报价 | 免费，无 key，但易封 IP | Phase 1 |
-| 2 | Alpha Vantage Free | 25 req/day | K 线 + 基本面 | 需免费 API key | Phase 1.5 |
-| 3 | Polygon Free | 5 req/min | K 线 | 需免费 API key | Phase 1.5 |
-| 4 | SEC EDGAR | 无明确限流 | 财报 | 完全免费 | Phase 2 |
-| 5 | FRED | 120 req/min | 宏观 | 完全免费 | Phase 2 |
-| 99 | Mock 数据集 | 无限 | 兜底 fallback | 仅在所有真实源失败时 | Phase 1 |
+| 1 | Yahoo Finance unofficial | 100 req/min | K-line/quote | Free, no key, but easily IP-banned | Phase 1 |
+| 2 | Alpha Vantage Free | 25 req/day | K-line + fundamentals | Requires free API key | Phase 1.5 |
+| 3 | Polygon Free | 5 req/min | K-line | Requires free API key | Phase 1.5 |
+| 4 | SEC EDGAR | No explicit rate limit | Earnings | Completely free | Phase 2 |
+| 5 | FRED | 120 req/min | Macro | Completely free | Phase 2 |
+| 99 | Mock dataset | Unlimited | Fallback | Only when all real sources fail | Phase 1 |
 
-**Phase 说明**:
-- **Phase 1**（求职作品 demo）: 仅 Yahoo + Mock fallback。代码实现在 `web/src/lib/data/provider.ts`。
-- **Phase 1.5**（生产灰度）: 增加 Alpha Vantage + Polygon 作为 Yahoo 限流时的 fallback。
-- **Phase 2**（完整版）: 增加 SEC EDGAR + FRED 支持财报与宏观数据。
+**Phase notes**:
+- **Phase 1** (job-search portfolio demo): Only Yahoo + Mock fallback. Code in `web/src/lib/data/provider.ts`.
+- **Phase 1.5** (production gradual rollout): Add Alpha Vantage + Polygon as fallback when Yahoo is rate-limited.
+- **Phase 2** (full version): Add SEC EDGAR + FRED for earnings and macro data.
 
-### ID-5: D1 作为元数据存储，K 线不入 D1 [B]
+### ID-5: D1 as Metadata Store, K-lines Not in D1 [B]
 
-**决策**：K 线数据不入 D1（D1 5GB 限制 + 行查询慢），仅在 D1 存：
-- `symbols` 表（标的元数据，~8000 行美股全量）
-- `watchlists` 表（用户 watchlist）
-- `kline_cache_index` 表（R2 缓存指针）
-- `fundamentals` 表（基本面数据，小型）
+**Decision**: K-line data not in D1 (D1 5GB limit + slow row queries). D1 only stores:
+- `symbols` table (ticker metadata, ~8000 rows for all US stocks)
+- `watchlists` table (user watchlists)
+- `kline_cache_index` table (R2 cache pointers)
+- `fundamentals` table (fundamental data, small)
 
-### ID-6: 标的元数据预置 [B]
+### ID-6: Ticker Metadata Pre-population [B]
 
-**预置标的清单**：
-- Mockup 池：10 个（用户决策）
-- 美股大盘指数成分股预置：S&P 500 前 100（降低 Symbol Search 频率）
-- 启动脚本：`pnpm run db:seed` 一次性导入
+**Pre-populated ticker list**:
+- Mockup pool: 10 (user decision)
+- US large-cap index constituents pre-populated: S&P 500 top 100 (reduces Symbol Search frequency)
+- Startup script: `pnpm run db:seed` one-time import
 
-### ID-7: 限流熔断器 [B]
+### ID-7: Rate-limit Circuit Breaker [B]
 
 ```typescript
 class CircuitBreaker {
@@ -493,36 +493,36 @@ class CircuitBreaker {
 
 ## 5. Testing Decisions
 
-### 5.1 Test Seams 表 [B]
+### 5.1 Test Seams Table [B]
 
-| Seam | 类型 | 测试内容 | 工具 |
+| Seam | Type | Test content | Tool |
 |---|---|---|---|
-| TS-1 | Unit | `MockProvider.getKlines()` 返回 JSON 文件内容 | Vitest |
-| TS-2 | Unit | `RealProvider.getKlines()` 走 Yahoo API 路径 | Vitest + MSW mock |
-| TS-3 | Integration | `ProviderRouter` fallback 链路 | Vitest + nock |
-| TS-4 | Integration | R2 缓存命中/未命中 | Miniflare + Vitest |
-| TS-5 | Contract | Provider 接口契约一致性（Mock 与 Real 返回同结构） | Vitest snapshot |
+| TS-1 | Unit | `MockProvider.getKlines()` returns JSON file contents | Vitest |
+| TS-2 | Unit | `RealProvider.getKlines()` goes through Yahoo API path | Vitest + MSW mock |
+| TS-3 | Integration | `ProviderRouter` fallback chain | Vitest + nock |
+| TS-4 | Integration | R2 cache hit/miss | Miniflare + Vitest |
+| TS-5 | Contract | Provider interface contract consistency (Mock and Real return same structure) | Vitest snapshot |
 
-### 5.2 Golden Set（关键回归用例） [B]
+### 5.2 Golden Set (key regression cases) [B]
 
 ```typescript
 // tests/golden/data_provider.golden.test.ts
 describe("Data Provider Golden Set", () => {
-  it("Mock 与 Real 返回 AAPL 日线结构一致", async () => {
+  it("Mock and Real return AAPL daily with consistent structure", async () => {
     const mockResult = await mockProvider.getKlines("AAPL", "1d", ...);
     const realResult = await realProvider.getKlines("AAPL", "1d", ...);
     expect(Object.keys(mockResult[0]).sort())
       .toEqual(Object.keys(realResult[0]).sort());
   });
 
-  it("R2 缓存 10 个 Mockup 标的都存在", async () => {
+  it("R2 cache has all 10 Mockup tickers", async () => {
     for (const sym of R2_CACHE_SYMBOLS) {
       const cached = await r2.get(`klines/${sym}/1d.json`);
       expect(cached).not.toBeNull();
     }
   });
 
-  it("USE_MOCK=true 时所有外部 HTTP 被拦截", async () => {
+  it("USE_MOCK=true blocks all external HTTP", async () => {
     const fetches = mockFetch();
     const provider = getProvider({ USE_MOCK: "true" });
     await provider.getKlines("AAPL", "1d", ...);
@@ -531,84 +531,84 @@ describe("Data Provider Golden Set", () => {
 });
 ```
 
-### 5.3 测试策略 [B]
+### 5.3 Test Strategy [B]
 
-- **Unit 测试**：每个 Provider 类的纯函数逻辑
-- **Contract 测试**：Mock/Real 返回数据结构必须一致（避免下游 Bug）
-- **Integration 测试**：用 Miniflare 模拟 Cloudflare 环境（D1 + R2）
-- **Golden 测试**：每次 PR 跑 Golden Set，确保 Mock 数据未损坏
-- **不测**：不测 Yahoo/Alpha Vantage 真实可用性（外部依赖）
+- **Unit tests**: pure-function logic of each Provider class
+- **Contract tests**: Mock/Real return data structures must match (avoid downstream bugs)
+- **Integration tests**: use Miniflare to simulate Cloudflare environment (D1 + R2)
+- **Golden tests**: run Golden Set on every PR to ensure Mock data is not corrupted
+- **Not tested**: Yahoo/Alpha Vantage real availability (external dependency)
 
 ---
 
 ## 6. Out of Scope
 
-### 6.1 模块级非目标 [B]
+### 6.1 Module-level Non-Goals [B]
 
-- **Tick 级数据**：仅支持 1m 及以上时间框架，Tick 数据免费源不可得
-- **期权/期货/外汇数据**：Phase 1 仅美股股票
-- **A 股/港股数据**：地理范围限定美国市场（Master PRD E 项）
-- **实时 Level 2 报价**：需付费数据源，超出 Phase 1 免费栈约束
-- **历史 Tick 回测**：仅日/分钟级回测
-- **SEC EDGAR XBRL 全量解析**：仅解析关键财务字段
-- **新闻情感分析**：归 Epic 03 AskAgent，本 Epic 仅提供原始新闻
+- **Tick-level data**: only 1m and above timeframes supported; tick data unavailable from free sources
+- **Options/futures/forex data**: Phase 1 only US equities
+- **A-shares/HK stocks data**: geographic scope limited to US market (Master PRD item E)
+- **Real-time Level 2 quotes**: requires paid data source, exceeds Phase 1 free-stack constraint
+- **Historical tick backtest**: only daily/minute backtest
+- **SEC EDGAR XBRL full parsing**: only key financial fields parsed
+- **News sentiment analysis**: belongs to Epic 03 AskAgent; this Epic only provides raw news
 
-### 6.2 模块级反模式 [B]
+### 6.2 Module-level Anti-Patterns [B]
 
-- ❌ **真实存储所有美股 K 线**：R2 仅缓存 Mockup 命中的 10 个标的，不缓存冷门标的
-- ❌ **D1 存 K 线数据**：D1 仅存元数据，K 线走 R2 或 Mock JSON
-- ❌ **多个 Provider 并行查询竞争**：只用 fallback 链，不做并发请求
-- ❌ **Mock 模式下也写 R2**：Mock 模式 0 R2 写入，避免污染缓存
-- ❌ **无限 fallback 链**：最多 3 层 fallback（Real → 备用 Real → Mock）
-- ❌ **同步生成 Mock 数据**：生成脚本仅开发期运行，生产部署不依赖
+- ❌ **Store all US stock K-lines for real**: R2 only caches the 10 Mockup-hit tickers, not obscure ones
+- ❌ **Store K-line data in D1**: D1 only stores metadata; K-lines go through R2 or Mock JSON
+- ❌ **Multiple Providers competing in parallel queries**: only fallback chain, no concurrent requests
+- ❌ **Write R2 in Mock mode**: Mock mode has 0 R2 writes, avoiding cache pollution
+- ❌ **Infinite fallback chain**: at most 3 layers of fallback (Real → backup Real → Mock)
+- ❌ **Synchronous Mock data generation**: generation script runs only during development; production deployment does not depend on it
 
 ---
 
 ## 7. Further Notes
 
-### 7.1 参考 [KNOWN]
+### 7.1 References [KNOWN]
 
-- Yahoo Finance API 非官方接口：`https://query1.finance.yahoo.com/v8/finance/chart/{symbol}`
-- Alpha Vantage Free：`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={key}`
-- Polygon Free：`https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/day/{from}/{to}?apiKey={key}`
-- SEC EDGAR：`https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json`
-- FRED：`https://api.stlouisfed.org/fred/series.json?series_id={id}&api_key={key}`
+- Yahoo Finance API unofficial interface: `https://query1.finance.yahoo.com/v8/finance/chart/{symbol}`
+- Alpha Vantage Free: `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={key}`
+- Polygon Free: `https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/day/{from}/{to}?apiKey={key}`
+- SEC EDGAR: `https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json`
+- FRED: `https://api.stlouisfed.org/fred/series.json?series_id={id}&api_key={key}`
 
-### 7.2 待解问题 [B]
+### 7.2 Open Questions [B]
 
-- Q1: 是否需要支持实时 WebSocket 推送？→ Phase 2 再考虑
-- Q2: 是否需要标的基本面变更通知？→ Phase 2
-- Q3: 是否需要支持港股/A股？→ Phase 3（Master PRD E 项排除）
+- Q1: Need to support real-time WebSocket push? → Consider in Phase 2
+- Q2: Need ticker fundamentals change notifications? → Phase 2
+- Q3: Need to support HK/A-shares? → Phase 3 (Master PRD item E excludes)
 
-### 7.3 依赖 [B]
+### 7.3 Dependencies [B]
 
-- **上游依赖**：无（数据层是底层）
-- **下游依赖**：Epic 01 AgentHarness（Worker 环境）、Epic 03 AskAgent（RAG 数据源）、Epic 04 Strategy DSL（回测数据）、Epic 05 Dashboard（K 线展示）、Epic 06 Broker（报价数据）
+- **Upstream dependencies**: none (data layer is the bottom layer)
+- **Downstream dependencies**: Epic 01 AgentHarness (Worker environment), Epic 03 AskAgent (RAG data source), Epic 04 Strategy DSL (backtest data), Epic 05 Dashboard (K-line display), Epic 06 Broker (quote data)
 
 ---
 
 ## 8. Acceptance Criteria
 
-- [ ] `MarketDataProvider` 接口已定义且实现 MockProvider + RealProvider
-- [ ] `USE_MOCK=true` 时所有请求走 Mock JSON 文件
-- [ ] `USE_MOCK=false` 时按优先级走 Yahoo -> Mock fallback（**Phase 1**）
-- [ ] `USE_MOCK=false` 时按优先级走 Yahoo -> Alpha Vantage -> Polygon -> Mock（**Phase 1.5+**，per ID-4 Phase 表）
-- [ ] R2 缓存仅缓存 10 个 Mockup 命中标 的
-- [ ] D1 schema 包含 symbols/watchlists/kline_cache_index/fundamentals 4 表
-- [ ] Mock 数据集包含 10 标的 × 2 时间框架 = 20 个 JSON 文件
-- [ ] 每个标的有 ≥500 条日线 + ≥10000 条 5m 线
-- [ ] Mock 数据集总大小 < 50MB
-- [ ] `pnpm run gen:mock` 脚本可一次性生成全部 Mock 数据
-- [ ] `pnpm run db:seed` 脚本可初始化 D1 元数据
-- [ ] 限流熔断器实现并通过测试
-- [ ] Contract 测试：Mock 与 Real 返回数据结构一致
-- [ ] Golden Set 测试全部通过
-- [ ] Cloudflare 部署后 Real 模式下 R2 缓存命中率 > 60%（10 个标的重复查询）
+- [ ] `MarketDataProvider` interface defined and MockProvider + RealProvider implemented
+- [ ] `USE_MOCK=true` routes all requests to Mock JSON files
+- [ ] `USE_MOCK=false` follows priority Yahoo -> Mock fallback (**Phase 1**)
+- [ ] `USE_MOCK=false` follows priority Yahoo -> Alpha Vantage -> Polygon -> Mock (**Phase 1.5+**, per ID-4 Phase table)
+- [ ] R2 cache only caches the 10 Mockup-hit tickers
+- [ ] D1 schema contains symbols/watchlists/kline_cache_index/fundamentals 4 tables
+- [ ] Mock dataset contains 10 tickers × 2 timeframes = 20 JSON files
+- [ ] Each ticker has ≥500 daily + ≥10000 5m lines
+- [ ] Mock dataset total size < 50MB
+- [ ] `pnpm run gen:mock` script can one-shot generate all Mock data
+- [ ] `pnpm run db:seed` script can initialize D1 metadata
+- [ ] Rate-limit circuit breaker implemented and tested
+- [ ] Contract tests: Mock and Real return data structures match
+- [ ] Golden Set tests all pass
+- [ ] Cloudflare-deployed Real mode R2 cache hit rate > 60% (10 tickers repeatedly queried)
 
 ---
 
-## 9. 版本历史
+## 9. Version History
 
-| 版本 | 日期 | 变更 |
+| Version | Date | Change |
 |---|---|---|
-| 0.1 | 2026-07-19 | 初稿，基于 B3 优先级 + Q3 Mock 数据决策 + R2 细化决策 |
+| 0.1 | 2026-07-19 | Initial draft, based on B3 priority + Q3 Mock data decision + R2 refined decision |

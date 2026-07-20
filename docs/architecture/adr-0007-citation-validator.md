@@ -15,16 +15,16 @@ Accepted
 | **Engine** | Next.js 16.2.10 + Cloudflare Workers 4 + D1 (async URL check task metadata) |
 | **Domain** | Core (Ask Agent / Citation Validation) |
 | **Knowledge Risk** | LOW |
-| **References Consulted** | `web/src/lib/llm/router.ts`, `web/src/lib/types.ts`, EP01 §ID-6, EP03 §2.3/§3 BDD/§ID-3/§6.2 反模式, ADR-0003 §Cost Cap Enforcement, ADR-0004 §StepHandler.onSynthesize, `docs/registry/architecture.yaml` |
+| **References Consulted** | `web/src/lib/llm/router.ts`, `web/src/lib/types.ts`, EP01 §ID-6, EP03 §2.3/§3 BDD/§ID-3/§6.2 anti-pattern, ADR-0003 §Cost Cap Enforcement, ADR-0004 §StepHandler.onSynthesize, `docs/registry/architecture.yaml` |
 | **Post-Cutoff APIs Used** | None |
-| **Verification Required** | `validateCitations()` detects fabricated numbers (BDD 防幻觉 scenario); exact substring match catches LLM rewording; async URL check does not block response; Mock mode skips URL check (FP-0005 compliance) |
+| **Verification Required** | `validateCitations()` detects fabricated numbers (BDD anti-hallucination scenario); exact substring match catches LLM rewording; async URL check does not block response; Mock mode skips URL check (FP-0005 compliance) |
 
 ## ADR Dependencies
 
 | Field | Value |
 |-------|-------|
 | **Depends On** | ADR-0003 (LLM routing + RealLLM.complete() produces AskResponse to validate - Accepted) |
-| **Enables** | EP03 §2.3 BDD anti-hallucination scenarios, EP01 ID-6 幻觉率 ≤ 5% target, ADR-0014 Observability Schema (validation failures emit TraceStep events) |
+| **Enables** | EP03 §2.3 BDD anti-hallucination scenarios, EP01 ID-6 hallucination rate ≤ 5% target, ADR-0014 Observability Schema (validation failures emit TraceStep events) |
 | **Blocks** | EP03 Ask Agent implementation sprints involving LLM responses with numeric data (cannot ship without citation enforcement) |
 | **Ordering Note** | Complements ADR-0004: `StepHandler.onSynthesize` is the integration point that invokes `validateCitations()`. Does NOT require ADR-0004 to be Accepted (validator can be unit-tested standalone), but production usage requires the loop. |
 
@@ -34,28 +34,28 @@ Accepted
 
 EP03 §2.3 mandates **forced citation mode**: every numeric value in an LLM response must come from the provided RAG context with a verifiable citation. EP03 §3 BDD specifies two anti-hallucination scenarios:
 
-1. **数字字段必须从 RAG 提取**: "$22.10B" must appear in `numeric_facts`, with `citation.source = "sec_edgar"` and `confidence > 0.8`.
-2. **防幻觉**: If RAG context doesn't contain NVDA 2026 Q4 revenue data, the answer MUST say "I don't have current data for NVDA 2026 Q4 revenue" — no specific numbers allowed.
+1. **Numeric fields must be extracted from RAG**: "$22.10B" must appear in `numeric_facts`, with `citation.source = "sec_edgar"` and `confidence > 0.8`.
+2. **Anti-hallucination**: If RAG context doesn't contain NVDA 2026 Q4 revenue data, the answer MUST say "I don't have current data for NVDA 2026 Q4 revenue" — no specific numbers allowed.
 
 EP03 ID-3 contains a stub `validateCitations()` function with only 3 inline checks (missing source, URL reachability, quote in context) — no formal contract, no failure modes, no loop integration. The current `RealLLM.complete()` in `web/src/lib/llm/router.ts` is a placeholder that returns empty `numeric_facts` and `citations` arrays, bypassing validation entirely.
 
-EP01 ID-6 sets a project-level acceptance criterion: **幻觉率 ≤ 5%** (Eval Golden Set, 200+ cases). Without a formal validator, this metric cannot be enforced or measured.
+EP01 ID-6 sets a project-level acceptance criterion: **hallucination rate ≤ 5%** (Eval Golden Set, 200+ cases). Without a formal validator, this metric cannot be enforced or measured.
 
 ### Constraints
 
 - **Cloudflare Workers stateless**: Validator must be request-scoped; no module-level caches (per FP-0001/FP-0002/FP-0006 pattern).
 - **Mock mode zero external HTTP (FP-0005)**: URL reachability check MUST be skipped when `USE_MOCK=true`. Mock QA samples already contain pre-built citations; validator runs on Mock output too (sample integrity check), but makes no HTTP calls.
 - **ADR-0004 AgentLoop integration**: `StepHandler.onSynthesize(ctx, execResult) -> Synthesis` is the canonical hook point. Validator is invoked inside `onSynthesize`; loop state transitions are NOT modified by validator (validator returns result, handler decides what to do).
-- **EP01 ID-6 幻觉率 ≤ 5%**: Validator must be strict enough to catch fabricated numbers but lenient enough not to reject every LLM response (which would make the product unusable).
+- **EP01 ID-6 hallucination rate ≤ 5%**: Validator must be strict enough to catch fabricated numbers but lenient enough not to reject every LLM response (which would make the product unusable).
 - **Cost**: Validator runs synchronously in the request path; must not add > 5ms latency per answer (10 numeric_facts × structural + substring check).
 - **RAG context availability**: Validator needs the original RAG context string to verify `fact.source.quote` substring. This must be passed via `LoopContext` (ADR-0004 IF-0005) — already required by Ask Agent flow.
 
 ### Requirements
 
-- Every `numeric_fact` in `AskResponse.numeric_facts` MUST have a non-empty `source: Citation` (EP03 §6.2 反模式: "LLM 自由生成数字" 禁止).
+- Every `numeric_fact` in `AskResponse.numeric_facts` MUST have a non-empty `source: Citation` (EP03 §6.2 anti-pattern: "LLM freely generating numbers" forbidden).
 - `fact.source.quote` MUST appear as an exact substring in the RAG context string (exact match, no fuzzy/embedding — see Alternatives).
 - `fact.source.url` MUST be a valid URL string; reachability check is async (Cloud only, background task).
-- `AskResponse.citations` array MUST always be present (even if empty — EP03 §6.2 反模式: "无 citation 的回答" 禁止).
+- `AskResponse.citations` array MUST always be present (even if empty — EP03 §6.2 anti-pattern: "answers without citation" forbidden).
 - Validator output must distinguish: **verified facts** (pass all checks), **stripped facts** (fail structural or quote check, removed from response), **url_pending facts** (structural + quote pass, URL check queued).
 - Failure mode: **Partial strip by default** (keep verified facts + add disclaimer); **Strict reject fallback** when ALL numeric_facts fail (return "I don't have reliable data for this question").
 - Loop integration: `onSynthesize` calls validator, then transitions to `onFinalize` regardless of outcome (no LLM retry — see Alternatives).
@@ -140,7 +140,7 @@ import type { AskResponse, Citation, NumericFact, QueryIntent } from "../types";
 /**
  * Validation mode controls failure behavior.
  * - "partial_strip": default; keep verified facts, strip unverified, add disclaimer
- * - "strict": any unverified fact -> reject entire answer (used in BDD 防幻觉 scenario + when all facts fail)
+ * - "strict": any unverified fact -> reject entire answer (used in BDD anti-hallucination scenario + when all facts fail)
  */
 export type ValidationMode = "partial_strip" | "strict";
 
@@ -250,7 +250,7 @@ For each `numeric_fact` that passed Stage 1:
 
 If substring not found: record `ValidationFailure { stage: "quote_substring", reason: "quote not found in RAG context" }`, mark fact as stripped.
 
-**Prompt-side contract**: The LLM prompt (EP03 §2.3 `ANSWER_PROMPT`) must instruct: *"For numeric_facts[].source.quote, copy the exact original text片段 from the provided context; do not reword, paraphrase, or translate."* This minimizes false-negatives from LLM rewording.
+**Prompt-side contract**: The LLM prompt (EP03 §2.3 `ANSWER_PROMPT`) must instruct: *"For numeric_facts[].source.quote, copy the exact original text fragment from the provided context; do not reword, paraphrase, or translate."* This minimizes false-negatives from LLM rewording.
 
 ### Stage 3: URL Reachability Check (Async, Deferred)
 
@@ -291,7 +291,7 @@ After Stages 1+2:
   Special case: original numeric_facts.length == 0:
     -> All verified (no facts to validate)
     -> validation_status = "all_verified"
-    -> This covers "I don't have data" responses (BDD 防幻觉 scenario)
+    -> This covers "I don't have data" responses (BDD anti-hallucination scenario)
 ```
 
 ### Disclaimer Text
@@ -419,7 +419,7 @@ CREATE INDEX idx_url_check_status ON url_check_queue(status, created_at);
 
 - **Description**: Keep all `numeric_fact` entries in the response, but add `verification_status: "verified" | "unverified" | "url_check_pending"` to each. Frontend UI decides how to display unverified facts (e.g., grey out, hide, show warning).
 - **Pros**: Maximum flexibility; no data loss; UI can differentiate.
-- **Cons**: Doesn't satisfy EP03 §3 BDD "不允许出现具体数字" for unverified data without coupling to frontend behavior. Adds `verification_status` field to `NumericFact` type (breaks existing `types.ts` interface). Frontend must implement hiding logic, which is out of scope for Phase 1.
+- **Cons**: Doesn't satisfy EP03 §3 BDD "no specific numbers allowed" for unverified data without coupling to frontend behavior. Adds `verification_status` field to `NumericFact` type (breaks existing `types.ts` interface). Frontend must implement hiding logic, which is out of scope for Phase 1.
 - **Rejection Reason**: BDD compliance requires server-side enforcement, not UI-deferred. Phase 1 frontend doesn't have conditional rendering for unverified facts.
 
 ### Alternative 3: Fuzzy match (Levenshtein distance) for quote verification
@@ -440,7 +440,7 @@ CREATE INDEX idx_url_check_status ON url_check_queue(status, created_at);
 
 - **Description**: In Mock mode skip; in Local + Cloud modes, fetch each citation URL with 1s timeout before returning response.
 - **Pros**: Strictest URL verification; dead URLs caught before user sees them.
-- **Cons**: 10 citations × 1s timeout = up to 10s added latency per response; violates EP03 §6.2 反模式 "同步等待 LLM 完成才返回: >5s 必须流式返回" (URL check would push responses over 5s); external HTTP in Workers adds complexity.
+- **Cons**: 10 citations × 1s timeout = up to 10s added latency per response; violates EP03 §6.2 anti-pattern "synchronously waiting for LLM to complete before returning: >5s must stream" (URL check would push responses over 5s); external HTTP in Workers adds complexity.
 - **Rejection Reason**: Latency unacceptable. Async background check achieves the same observability goal without blocking response.
 
 ### Alternative 6: Synthesize -> Plan retry on validation failure (1 retry with stricter prompt)
@@ -455,8 +455,8 @@ CREATE INDEX idx_url_check_status ON url_check_queue(status, created_at);
 ### Positive
 
 - **EP03 §2.3 forced citation mode is now formally enforced** — no numeric data without verifiable source.
-- **EP03 §3 BDD 防幻觉 scenario is implementable** — strict_reject fallback returns "I don't have reliable data" when no facts pass.
-- **EP01 ID-6 幻觉率 ≤ 5% target is measurable** — count `validation_status: "strict_reject"` + `stripped_facts.length` across Golden Set.
+- **EP03 §3 BDD anti-hallucination scenario is implementable** — strict_reject fallback returns "I don't have reliable data" when no facts pass.
+- **EP01 ID-6 hallucination rate ≤ 5% target is measurable** — count `validation_status: "strict_reject"` + `stripped_facts.length` across Golden Set.
 - **Clear failure taxonomy**: structural vs quote_substring vs url_pending; each fact has explicit disposition.
 - **Mock mode compliance**: validator runs on Mock samples (integrity check) without breaking FP-0005.
 - **Pure function design**: `validateCitations()` is unit-testable without AgentLoop, without RAG pipeline, without LLM.
@@ -488,18 +488,18 @@ CREATE INDEX idx_url_check_status ON url_check_queue(status, created_at);
 
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|---------------------------|
-| EP03 §2.3 | "强制 Citation 模式：所有数字字段必须从结构化数据提取" | Stage 1 structural validation enforces every numeric_fact has Citation source |
+| EP03 §2.3 | "Forced citation mode: all numeric fields must be extracted from structured data" | Stage 1 structural validation enforces every numeric_fact has Citation source |
 | EP03 §2.3 | `AnswerWithCitations` interface (text + citations + numeric_facts) | Validator consumes `AskResponse` (which already has these fields per `types.ts`) |
 | EP03 §2.3 | `Citation.source` enum: "sec_edgar" \| "yahoo" \| "fred" \| "news" | Stage 1 validates `source.source` against this enum (extended with "playbook" \| "user_note" for RAG sources) |
 | EP03 §2.3 | LLM Prompt RULES: "Every numeric value MUST come from the provided context (RAG results)" | Stage 2 quote substring verification enforces this |
 | EP03 §2.3 | LLM Prompt RULES: "Do NOT fabricate numbers" | Strict reject fallback returns "I don't have reliable data" when fabrication detected |
-| EP03 §3 BDD | "数字字段必须从 RAG 提取" scenario: "$22.10B" must be in numeric_facts, citation.source = "sec_edgar", confidence > 0.8 | Stage 1 validates confidence ≥ 0 (BDD threshold > 0.8 is per-fact, enforced by prompt + observed in validation output) |
-| EP03 §3 BDD | "防幻觉" scenario: answer must contain "I don't have current data for X" and no specific numbers | Strict reject fallback produces exactly this message; `numeric_facts = []` |
-| EP03 §3 BDD | "Mock 模式立即返回" scenario: directly return mock_data/qa_samples/aapl_price.json, no LLM API call | Validator runs on Mock output (sample integrity check) but makes no HTTP calls (FP-0005); MockLLM.complete() bypasses validator if samples are pre-validated at build time (optimization) |
+| EP03 §3 BDD | "Numeric fields must be extracted from RAG" scenario: "$22.10B" must be in numeric_facts, citation.source = "sec_edgar", confidence > 0.8 | Stage 1 validates confidence ≥ 0 (BDD threshold > 0.8 is per-fact, enforced by prompt + observed in validation output) |
+| EP03 §3 BDD | "Anti-hallucination" scenario: answer must contain "I don't have current data for X" and no specific numbers | Strict reject fallback produces exactly this message; `numeric_facts = []` |
+| EP03 §3 BDD | "Mock mode returns immediately" scenario: directly return mock_data/qa_samples/aapl_price.json, no LLM API call | Validator runs on Mock output (sample integrity check) but makes no HTTP calls (FP-0005); MockLLM.complete() bypasses validator if samples are pre-validated at build time (optimization) |
 | EP03 §ID-3 | `validateCitations(answer: AnswerWithCitations): ValidationResult` stub | Formalized as canonical `validateCitations(answer, ragContext, env) -> ValidationResult` interface |
-| EP03 §6.2 反模式 | "LLM 自由生成数字：所有数字必须从 RAG 提取并带 citation" | FP-0014 (new) bans this pattern; validator enforces |
-| EP03 §6.2 反模式 | "无 citation 的回答：必须返回 citations 数组（即使为空也要返回）" | Stage 1 structural check: `answer.citations` array must exist (even if empty) |
-| EP01 §ID-6 | "幻觉率 ≤ 5%" Eval Golden Set acceptance criterion | Validator's `strict_reject` + `stripped_facts` metrics enable measuring hallucination rate |
+| EP03 §6.2 anti-pattern | "LLM freely generating numbers: all numbers must be extracted from RAG with citation" | FP-0014 (new) bans this pattern; validator enforces |
+| EP03 §6.2 anti-pattern | "answers without citation: must return citations array (even if empty)" | Stage 1 structural check: `answer.citations` array must exist (even if empty) |
+| EP01 §ID-6 | "hallucination rate ≤ 5%" Eval Golden Set acceptance criterion | Validator's `strict_reject` + `stripped_facts` metrics enable measuring hallucination rate |
 | EP03 §2.7 | Ask Agent Loop state machine includes "ValidateCitations" state | `StepHandler.onSynthesize` invokes validator (per ADR-0004 generic loop); Ask-specific validation behavior now ADR'd |
 | TR-EP03-005 | Forced citation mode - all numeric fields from structured RAG data | Stage 1+2 enforce |
 | TR-EP03-006 | AnswerWithCitations interface (text + citations + numeric_facts) | Validator consumes this interface (already in `types.ts`) |
@@ -526,7 +526,7 @@ Migration steps:
    - Stage 2 quote substring match (exact match passes, reworded quote fails)
    - Failure mode decision tree (all_verified, partial_strip, strict_reject)
    - Mock mode: no URL check enqueued
-   - BDD 防幻觉 scenario: strict_reject returns "I don't have reliable data"
+   - BDD anti-hallucination scenario: strict_reject returns "I don't have reliable data"
 3. **Update `MockLLM.complete()`** to invoke `validateCitations()` on sample output before returning. Mock samples should pass validation (sample integrity check). If a sample fails, log warning but still return (don't break Mock mode for a bad sample).
 4. **Update `RealLLM.complete()`** (when implemented in Phase 1.5) to invoke `validateCitations()` after LLM API call, before returning. Apply `applyValidationResult()` to produce final response.
 5. **Create `web/migrations/008_citation_url_check.sql`** with `url_check_queue` table DDL. Update ADR-0011 §Master Schema to include this table.
@@ -544,8 +544,8 @@ Migration steps:
 - [ ] `validateCitations(answer, ragContext, { USE_MOCK: "false", ENVIRONMENT: "production" })` enqueues URL checks for verified facts
 - [ ] `applyValidationResult(answer, strict_reject_result)` returns answer with summary = "I don't have reliable data for this question" and numeric_facts = []
 - [ ] `applyValidationResult(answer, partial_strip_result)` returns answer with verified_facts only and disclaimer appended to summary
-- [ ] BDD 防幻觉 scenario: when RAG context has no NVDA 2026 Q4 data and LLM produces numeric_facts, validator returns strict_reject
-- [ ] BDD 数字字段必须从 RAG 提取 scenario: when RAG context has "$22.10B" and LLM cites it with quote = "NVDA 营收 $22.10B", validator returns all_verified (quote is substring of context)
+- [ ] BDD anti-hallucination scenario: when RAG context has no NVDA 2026 Q4 data and LLM produces numeric_facts, validator returns strict_reject
+- [ ] BDD numeric fields must be extracted from RAG scenario: when RAG context has "$22.10B" and LLM cites it with quote = "NVDA revenue $22.10B", validator returns all_verified (quote is substring of context)
 - [ ] Performance: `validateCitations()` with 10 numeric_facts and 4KB ragContext completes in < 10ms
 - [ ] No module-level state in `citation.ts` (pure functions only)
 - [ ] Unit tests pass without AgentLoop dependency (validator is standalone)
@@ -558,6 +558,6 @@ Migration steps:
 - **ADR-0011** (D1 Schema Master) - Proposed. This ADR adds `url_check_queue` table (Migration 008). Requires ADR-0011 amendment.
 - **ADR-0014** (Observability Schema, future) - Validation failures should emit TraceStep events. This ADR defines the `ValidationFailure` shape that ADR-0014 will consume.
 - **EP03 §2.3** - Originating design doc (forced citation mode).
-- **EP03 §3 BDD** - Acceptance criteria (防幻觉 + 数字字段必须从 RAG 提取 scenarios).
+- **EP03 §3 BDD** - Acceptance criteria (anti-hallucination + numeric fields must be extracted from RAG scenarios).
 - **EP03 §ID-3** - Original `validateCitations()` stub. This ADR formalizes it.
-- **EP01 §ID-6** - Eval Golden Set 幻觉率 ≤ 5% target. This ADR makes the metric measurable.
+- **EP01 §ID-6** - Eval Golden Set hallucination rate ≤ 5% target. This ADR makes the metric measurable.

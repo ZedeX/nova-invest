@@ -25,8 +25,8 @@ YAML-based strategy definition language with JSON Schema validation, backtest en
 - [x] Equity curve SVG visualization — BacktestPage equity chart
 - [x] Trade log table — BacktestPage trade log
 - [x] 8 built-in indicators implementation — SMA, EMA, RSI (Phase 1); MACD/Bollinger/ATR/OBV/VWAP Phase 2
-- [ ] DSL parser (BNF grammar)
-- [ ] In-sample / out-of-sample split logic (70/30)
+- [x] DSL parser (BNF grammar) — `src/lib/dsl/parser.ts` (tokenizer + recursive descent + compiler, Phase 2 2026-07-21)
+- [x] In-sample / out-of-sample split logic (70/30) — `src/lib/backtest/walk-forward.ts` `splitSample()` (Phase 1.5, 2026-07-21)
 - [x] Strategy lifecycle state machine — lifecycle_status in strategies table
 
 ## Acceptance Criteria
@@ -34,7 +34,7 @@ YAML-based strategy definition language with JSON Schema validation, backtest en
 - [x] YAML DSL validates against JSON Schema
 - [x] Backtest produces Return, Sharpe, Sortino, Max DD, Win Rate, Trades, Avg Hold — ADR-0009
 - [x] Equity curve renders in SVG
-- [ ] Trade log exports CSV
+- [x] Trade log exports CSV — `src/lib/backtest/csv-export.ts` (RFC 4180 compliant, Phase 2 2026-07-21)
 - [x] Lifecycle state transitions enforced
 
 ## References

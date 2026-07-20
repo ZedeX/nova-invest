@@ -214,13 +214,13 @@ Failure to keep these in sync means Mock and Real modes show different "visible"
 
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|---------------------------|
-| EP02 §2.3 ID-3 | "R2 仅存储部分 Mockup 用到的真实 K 线" | Defines the whitelist as the canonical "Mockup 用到" set |
-| EP02 §2.3 ID-3 | "10 标的 × 2 年 × 252 交易日 × 6 字段 ≈ 30K 条记录 → JSON ≈ 5MB" | Confirms cache size bound |
-| EP02 §2.3 | "Mock 模式下 R2 不参与" | Reaffirmed: R2 is only active when `USE_MOCK=false` (per ADR-0001) |
-| EP02 §2.3 | "仅在生产模式且标的在 cachedSymbols 列表内时才写 R2" | Codifies `shouldCacheR2(symbol)` as the gate |
-| EP02 §3 User Story 5 | "R2 缓存自动启用且不超 10GB" | Bounded by whitelist size (5MB) |
-| EP02 §3 User Story 6 | "重复查询 AAPL，第二次查询命中 R2 缓存（<50ms）" | Whitelist ensures AAPL is cached |
-| EP02 ID-7 | "CircuitBreaker: Yahoo 失败 3 次 → 切换 Mock" | R2 cache reduces Yahoo calls, lowering circuit-breaker trigger frequency |
+| EP02 §2.3 ID-3 | "R2 only stores real K-lines used by the mockup" | Defines the whitelist as the canonical "used by the mockup" set |
+| EP02 §2.3 ID-3 | "10 symbols × 2 years × 252 trading days × 6 fields ≈ 30K records → JSON ≈ 5MB" | Confirms cache size bound |
+| EP02 §2.3 | "R2 is not involved in Mock mode" | Reaffirmed: R2 is only active when `USE_MOCK=false` (per ADR-0001) |
+| EP02 §2.3 | "Only write to R2 in production mode and when symbol is in cachedSymbols list" | Codifies `shouldCacheR2(symbol)` as the gate |
+| EP02 §3 User Story 5 | "R2 cache auto-enabled and not exceeding 10GB" | Bounded by whitelist size (5MB) |
+| EP02 §3 User Story 6 | "Repeated AAPL query, second query hits R2 cache (<50ms)" | Whitelist ensures AAPL is cached |
+| EP02 ID-7 | "CircuitBreaker: Yahoo fails 3 times → switch to Mock" | R2 cache reduces Yahoo calls, lowering circuit-breaker trigger frequency |
 
 ## Performance Implications
 
@@ -257,6 +257,6 @@ The current `provider.ts` and `env.ts` already implement this ADR. Migration ste
 ## Related Decisions
 
 - **ADR-0001** (USE_MOCK dual-mode switch) — R2 is only active when `USE_MOCK=false`
-- EP02 §2.3 R2 缓存策略 — originating design doc
+- EP02 §2.3 R2 cache strategy — originating design doc
 - EP02 ID-3 — user decision this ADR formalizes
 - architecture.md §5 — data flow context

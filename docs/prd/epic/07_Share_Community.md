@@ -1,64 +1,64 @@
 # Epic 07: Share & Community
 
-**Epic 编号**: 07
-**模块名称**: Share & Community（分享与社区）
-**优先级顺序**: 7（B3 中"7"位置）
-**文档性质标签**: [A] + [B] + [C]
-**Spec 模板**: to-spec
-**最后更新**: 2026-07-19
+**Epic Number**: 07
+**Module Name**: Share & Community (Sharing & Community)
+**Priority Order**: 7 (position "7" in B3)
+**Document Nature Tag**: [A] + [B] + [C]
+**Spec Template**: to-spec
+**Last Updated**: 2026-07-19
 
 ---
 
 ## 1. Problem Statement
 
-### 1.1 用户视角问题 [B]
+### 1.1 User Perspective Problems [B]
 
-Prosumer Brenda 写了一个好策略，想分享给朋友 Alex 时：
+When Prosumer Brenda writes a good strategy and wants to share with friend Alex:
 
-- **闭源平台不可分享**：Quantopian 已停、WorldQuant Brain 策略不公开、Alpaca 仅个人策略可见——无法分享
-- **分享形式单一**：现有平台仅"复制策略 ID"，缺少"上下文 + 表现 + 风险说明"的完整分享包
-- **UGC 质量参差**：Reddit r/algotrading 充斥不可执行的"想法"贴，无法一键运行验证
-- **缺乏反馈闭环**：分享后不知道谁用了、用得怎么样、有没有改进建议
-- **无激励机制**：优质策略作者无收益，导致内容枯竭
+- **Closed-source platforms not shareable**: Quantopian shut down, WorldQuant Brain strategies not public, Alpaca only personal strategies visible—cannot share
+- **Single sharing format**: Existing platforms only "copy strategy ID", lack a complete sharing package with "context + performance + risk explanation"
+- **Uneven UGC quality**: Reddit r/algotrading is full of non-executable "idea" posts, no one-click run verification
+- **No feedback loop**: After sharing, don't know who used it, how it performed, whether there are improvement suggestions
+- **No incentive mechanism**: Quality strategy authors earn nothing, leading to content drought
 
-### 1.2 工程视角问题 [B]
+### 1.2 Engineering Perspective Problems [B]
 
-- **Playbook 与 Share 关系**：用户决策"Playbook System 是 Epic 08"——本 Epic 仅负责"分享/发现/安装/反馈"链路，Playbook 本身定义归 Epic 08
-- **UGC 审核**：策略分享需经过 schema 校验 + 反作弊 + 风险提示
-- **社区治理**：评论/点赞/举报/封禁机制
-- **Cloudflare 免费层约束**：D1 存元数据，R2 存 Playbook YAML 大文件
+- **Playbook vs Share relationship**: User decided "Playbook System is Epic 08"—this Epic only handles the "share/discover/install/feedback" chain, Playbook itself is defined in Epic 08
+- **UGC moderation**: Strategy sharing needs schema validation + anti-abuse + risk disclosure
+- **Community governance**: Comment/like/report/ban mechanism
+- **Cloudflare free tier constraints**: D1 stores metadata, R2 stores Playbook YAML large files
 
-### 1.3 竞品现状分析 [A]
+### 1.3 Competitor Status Analysis [A]
 
-竞品当前在社区层呈现 [INFERRED]：
-- 不支持公开分享策略
-- 无 UGC 社区
-- 仅"复制策略 ID 给朋友"私下分享
+Competitors currently show at community layer [INFERRED]:
+- Don't support public strategy sharing
+- No UGC community
+- Only "copy strategy ID to friend" private sharing
 
-**本 Epic 核心差异化特性 [C]**：
-- 完整 UGC 社区（分享/发现/安装/反馈）
-- Playbook 包（含上下文 + 表现 + 风险说明）
-- 创作者激励（Credit 分成）
+**This Epic's core differentiating features [C]**:
+- Complete UGC community (share/discover/install/feedback)
+- Playbook package (including context + performance + risk disclosure)
+- Creator incentives (Credit share)
 
 ---
 
 ## 2. Solution
 
-### 2.1 总体架构 [B]
+### 2.1 Overall Architecture [B]
 
 ```mermaid
 flowchart TB
     subgraph "Creation"
-        AU[Author<br/>Epic 04 策略作者] --> PB[Playbook<br/>Epic 08 序列化]
+        AU[Author<br/>Epic 04 strategy author] --> PB[Playbook<br/>Epic 08 serialization]
     end
 
     subgraph "Sharing"
-        PB --> SP[Share Package<br/>含上下文+表现+风险]
+        PB --> SP[Share Package<br/>includes context+performance+risk]
         SP --> PUB[Publish to Community]
     end
 
     subgraph "Discovery"
-        PUB --> F[Feed 流]
+        PUB --> F[Feed]
         PUB --> S[Search]
         PUB --> R[Recommendation]
     end
@@ -67,28 +67,28 @@ flowchart TB
         F --> IN[Install]
         S --> IN
         R --> IN
-        IN --> BAK[Backtest<br/>复用 Epic 04]
-        BAK --> DEP[Deploy to Paper<br/>复用 Epic 06]
+        IN --> BAK[Backtest<br/>reuse Epic 04]
+        BAK --> DEP[Deploy to Paper<br/>reuse Epic 06]
     end
 
     subgraph "Feedback"
-        DEP --> RV[Review 评分]
-        DEP --> CM[Comment 评论]
-        DEP --> RP[Report 举报]
+        DEP --> RV[Review rating]
+        DEP --> CM[Comment]
+        DEP --> RP[Report]
     end
 
     subgraph "Incentive"
-        RV --> CR[Credit 分成]
+        RV --> CR[Credit share]
         CM --> CR
     end
 ```
 
-### 2.2 Share Package 设计 [B] - **关键决策**
+### 2.2 Share Package Design [B] - **Key Decision**
 
-**Share Package = Playbook YAML + 元数据 + 表现快照 + 风险提示**
+**Share Package = Playbook YAML + metadata + performance snapshot + risk disclosure**
 
 ```yaml
-# share_package 示例
+# share_package example
 package_id: "pkg_abc123"
 version: "1.0"
 
@@ -97,7 +97,7 @@ playbook:
   yaml_ref: "r2://playbooks/pb_nvda_macross_v1.yaml"
 
 metadata:
-  title: "NVDA 双均线金叉策略"
+  title: "NVDA Dual Moving Average Golden Cross Strategy"
   author: { id: "brenda", name: "Brenda", avatar: "..." }
   description: "50/200 SMA crossover on NVDA, paper-tested 6 months"
   tags: ["momentum", "single-stock", "low-frequency"]
@@ -127,30 +127,30 @@ license:
   attribution_required: true
 ```
 
-### 2.3 社区功能矩阵 [B]
+### 2.3 Community Feature Matrix [B]
 
-| 功能 | 描述 | Phase |
+| Feature | Description | Phase |
 |---|---|---|
-| 发布 | 把 Playbook 发布到社区 | 1 |
-| Feed 流 | 时间序展示最新/热门 | 1 |
-| 搜索 | 按标签/作者/标题搜索 | 1 |
-| 安装 | 一键安装到自己的策略库 | 1 |
-| 评分 | 1-5 星评分 | 1 |
-| 评论 | 公开评论 | 1 |
-| 举报 | 举报违规内容 | 1 |
-| 推荐 | 基于行为推荐相似 Playbook | 1.5 |
-| 关注作者 | 订阅作者更新 | 1.5 |
-| Credit 分成 | 安装时作者获 0.5 Credit | 2 |
+| Publish | Publish Playbook to community | 1 |
+| Feed | Time-series display of latest/popular | 1 |
+| Search | Search by tag/author/title | 1 |
+| Install | One-click install to own strategy library | 1 |
+| Rating | 1-5 star rating | 1 |
+| Comment | Public comments | 1 |
+| Report | Report violating content | 1 |
+| Recommendation | Behavior-based recommendation of similar Playbooks | 1.5 |
+| Follow Author | Subscribe to author updates | 1.5 |
+| Credit Share | Author earns 0.5 Credit per install | 2 |
 
 ### 2.4 D1 Schema [B]
 
-> **注意（2026-07-19 修订）**：`community_playbooks.yaml_r2_key` 列已移除 per [ADR-0011](../../architecture/adr-0011-d1-schema-master.md)。
-> 通过 `playbook_id` JOIN `playbook_versions.yaml_r2_key` 获取 R2 key。
-> `status` 列已重命名为 `moderation_status` 以避免歧义。
-> `playbook_installs` 表已合并入 `user_playbook_installs`(与 EP08 共享)。Canonical schema 见 ADR-0011 §Master Schema。
+> **Note (revised 2026-07-19)**: `community_playbooks.yaml_r2_key` column removed per [ADR-0011](../../architecture/adr-0011-d1-schema-master.md).
+> Get R2 key via `playbook_id` JOIN `playbook_versions.yaml_r2_key`.
+> `status` column renamed to `moderation_status` to avoid ambiguity.
+> `playbook_installs` table merged into `user_playbook_installs` (shared with EP08). Canonical schema see ADR-0011 §Master Schema.
 
 ```sql
--- 已发布 Playbook
+-- Published Playbooks
 CREATE TABLE community_playbooks (
   package_id     TEXT PRIMARY KEY,
   playbook_id    TEXT NOT NULL REFERENCES playbooks(id) ON DELETE CASCADE,  -- FK added per ADR-0011
@@ -170,7 +170,7 @@ CREATE TABLE community_playbooks (
 CREATE INDEX idx_cp_status_created ON community_playbooks(moderation_status, created_at);
 CREATE INDEX idx_cp_author ON community_playbooks(author_id);
 
--- 安装记录 (MERGED with EP08 user_playbooks into user_playbook_installs per ADR-0011)
+-- Install records (MERGED with EP08 user_playbooks into user_playbook_installs per ADR-0011)
 -- Old playbook_installs table is DEPRECATED. Use user_playbook_installs (see ADR-0011 §Master Schema Migration 007):
 -- CREATE TABLE user_playbook_installs (
 --   user_id            TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -181,7 +181,7 @@ CREATE INDEX idx_cp_author ON community_playbooks(author_id);
 --   PRIMARY KEY (user_id, playbook_id)
 -- );
 
--- 评分
+-- Ratings
 CREATE TABLE playbook_ratings (
   user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   package_id     TEXT NOT NULL REFERENCES community_playbooks(package_id) ON DELETE CASCADE,
@@ -190,7 +190,7 @@ CREATE TABLE playbook_ratings (
   PRIMARY KEY (user_id, package_id)
 );
 
--- 评论
+-- Comments
 CREATE TABLE playbook_comments (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   package_id     TEXT NOT NULL REFERENCES community_playbooks(package_id) ON DELETE CASCADE,
@@ -201,7 +201,7 @@ CREATE TABLE playbook_comments (
   created_at     TEXT DEFAULT (datetime('now'))
 );
 
--- 举报
+-- Reports
 CREATE TABLE playbook_reports (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   package_id     TEXT NOT NULL REFERENCES community_playbooks(package_id) ON DELETE CASCADE,
@@ -213,47 +213,47 @@ CREATE TABLE playbook_reports (
 );
 ```
 
-### 2.5 反作弊机制 [B]
+### 2.5 Anti-Abuse Mechanism [B]
 
 ```typescript
 class AntiAbuseFilter {
-  // 1. 内容审核
+  // 1. Content moderation
   async reviewPlaybook(yaml: string): Promise<ReviewResult> {
-    // 检查是否含敏感词（政治/歧视）
+    // Check for sensitive words (political/discriminatory)
     if (this.containsForbiddenWords(yaml)) {
       return { ok: false, reason: "Contains forbidden content" };
     }
-    // 检查是否抄袭（hash 比对）
+    // Check for plagiarism (hash comparison)
     const hash = sha256(yaml);
     const existing = await db.query("SELECT * FROM community_playbooks WHERE hash = ?", hash);
     if (existing) return { ok: false, reason: "Duplicate" };
     return { ok: true };
   }
 
-  // 2. 频率限制
+  // 2. Rate limiting
   async checkRate(userId: string): Promise<boolean> {
     const todayCount = await db.query(
       "SELECT COUNT(*) as c FROM community_playbooks WHERE author_id = ? AND created_at > date('now', '-1 day')",
       userId
     );
-    return todayCount.c < 5;  // 每天 5 篇上限
+    return todayCount.c < 5;  // 5 per day limit
   }
 
-  // 3. 刷评分检测
+  // 3. Rating fraud detection
   async detectRatingFraud(packageId: string): Promise<boolean> {
     const ratings = await db.query("SELECT user_id FROM playbook_ratings WHERE package_id = ?", packageId);
-    // 检测同一 IP 段集中评分
+    // Detect concentrated rating from same IP range
     // ...
     return false;
   }
 }
 ```
 
-### 2.6 推荐算法（Phase 1.5）[B]
+### 2.6 Recommendation Algorithm (Phase 1.5) [B]
 
 ```typescript
 class PlaybookRecommender {
-  // Phase 1: 简单标签匹配 + 热度
+  // Phase 1: simple tag matching + popularity
   async recommend(userId: string, limit = 10): Promise<Playbook[]> {
     const userTags = await getUserInterestedTags(userId);
     return db.query(`
@@ -265,7 +265,7 @@ class PlaybookRecommender {
     `, userTags, limit);
   }
 
-  // Phase 1.5: Vectorize 语义检索
+  // Phase 1.5: Vectorize semantic retrieval
   async recommendByVector(userId: string): Promise<Playbook[]> {
     const userProfile = await getUserEmbedding(userId);
     const candidates = await vectorize.query(userProfile, { topK: 50 });
@@ -274,10 +274,10 @@ class PlaybookRecommender {
 }
 ```
 
-### 2.7 创作者激励（Phase 2）[B]
+### 2.7 Creator Incentive (Phase 2) [B]
 
 ```typescript
-// Phase 2 启用：每次安装作者获 0.5 Credit
+// Phase 2 enabled: each install author earns 0.5 Credit
 async function onInstall(packageId: string, installerId: string) {
   const pkg = await db.query("SELECT author_id FROM community_playbooks WHERE package_id = ?", packageId);
   await creditSystem.grant(pkg.author_id, 0.5, {
@@ -294,93 +294,93 @@ async function onInstall(packageId: string, installerId: string) {
 
 ### Job Stories [B]
 
-1. **When** Brenda 写好策略，**I want to** 一键发布到社区，**so that** 朋友 Alex 可以一键安装。
-2. **When** Alex 浏览社区，**I want to** 看到热门 Playbook Feed 流，**so that** 发现好策略。
-3. **When** Alex 搜索"momentum"标签，**I want to** 看到所有 momentum 策略，**so that** 按主题找。
-4. **When** Alex 看到一个 Playbook，**I want to** 看到作者的回测快照 + 风险提示，**so that** 评估可信度。
-5. **When** Alex 安装 Playbook，**I want to** 自动复用作者回测参数再跑一次，**so that** 验证一致性。
-6. **When** Alex 用了一周觉得好，**I want to** 给 5 星好评 + 评论，**so that** 帮助作者也帮助其他用户。
-7. **When** Brenda 看到自己的 Playbook 有 100 安装，**I want to** 看到完整安装列表和评分分布，**so that** 有成就感。
-8. **When** Alex 发现一个 Playbook 抄袭 Brenda 的，**I want to** 举报且看到处理结果，**so that** 维护社区质量。
+1. **When** Brenda finishes writing a strategy, **I want to** one-click publish to community, **so that** friend Alex can one-click install.
+2. **When** Alex browses the community, **I want to** see popular Playbook feed, **so that** I discover good strategies.
+3. **When** Alex searches "momentum" tag, **I want to** see all momentum strategies, **so that** I can find by topic.
+4. **When** Alex views a Playbook, **I want to** see the author's backtest snapshot + risk disclosure, **so that** I can evaluate credibility.
+5. **When** Alex installs a Playbook, **I want to** auto-reuse the author's backtest params and run once more, **so that** I can verify consistency.
+6. **When** Alex uses it for a week and likes it, **I want to** give 5 stars + comment, **so that** I help the author and other users.
+7. **When** Brenda sees her Playbook has 100 installs, **I want to** see the full install list and rating distribution, **so that** I feel accomplished.
+8. **When** Alex finds a Playbook plagiarizing Brenda's, **I want to** report and see the resolution, **so that** I maintain community quality.
 
 ### As-a Stories [B]
 
-1. As a Prosumer, I want to 一键发布 Playbook，so that 分享给社区。
-2. As a Free User, I want to 浏览社区不需注册，so that 探索价值。
-3. As a Prosumer, I want to 安装 Playbook 后可二次编辑，so that 改进策略。
-4. As an Author, I want to 看到安装数/评分/评论统计，so that 了解反馈。
-5. As a User, I want to 看到风险提示，so that 知道策略局限。
-6. As a Developer, I want to 通过 Schema 校验 Playbook 包格式，so that 保证质量。
-7. As an Admin, I want to 处理举报和封禁违规内容，so that 维护社区。
-8. As an Interviewer, I want to 看到完整 UGC 闭环设计，so that 评估产品思维。
+1. As a Prosumer, I want to one-click publish Playbook, so that I share with community.
+2. As a Free User, I want to browse community without registration, so that I explore value.
+3. As a Prosumer, I want to second-edit after installing Playbook, so that I improve the strategy.
+4. As an Author, I want to see install count/rating/comment stats, so that I understand feedback.
+5. As a User, I want to see risk disclosure, so that I know strategy limitations.
+6. As a Developer, I want to validate Playbook package format via Schema, so that I ensure quality.
+7. As an Admin, I want to handle reports and ban violating content, so that I maintain community.
+8. As an Interviewer, I want to see complete UGC loop design, so that I evaluate product thinking.
 
 ### BDD Gherkin [B]
 
 ```gherkin
-Feature: Playbook 社区分享
+Feature: Playbook community sharing
 
-  Scenario: 发布 Playbook
-    Given Brenda 已有策略 MA Cross，状态 = backtested
-    When Brenda 点击 "Publish to Community"
-    Then 生成 Share Package（含 metadata + performance_snapshot + risk_disclosure）
-    And 上传 Playbook YAML 到 R2
-    And 在 community_playbooks 表插入记录
-    And 状态 = active
-    And 安装数 = 0
+  Scenario: Publish Playbook
+    Given Brenda has strategy MA Cross, status = backtested
+    When Brenda clicks "Publish to Community"
+    Then generate Share Package (with metadata + performance_snapshot + risk_disclosure)
+    And upload Playbook YAML to R2
+    And insert record in community_playbooks table
+    And status = active
+    And install count = 0
 
-  Scenario: 安装 Playbook
-    Given Alex 浏览社区
-    When Alex 安装 Brenda 的 NVDA MA Cross
-    Then playbook_installs 插入记录 (alex, pkg_abc)
+  Scenario: Install Playbook
+    Given Alex browses community
+    When Alex installs Brenda's NVDA MA Cross
+    Then playbook_installs inserts record (alex, pkg_abc)
     And installed_count += 1
-    And Alex 策略库新增一条策略（可编辑但保留 author_id 引用）
+    And Alex strategy library adds one strategy (editable but preserves author_id reference)
 
-  Scenario: 评分
-    Given Alex 已安装 Brenda 的 Playbook
-    When Alex 给 5 星评分
-    Then playbook_ratings 插入或更新 (alex, pkg_abc, 5)
-    And rating_avg 重新计算
-    And rating_count += 1（首次评分）
+  Scenario: Rating
+    Given Alex has installed Brenda's Playbook
+    When Alex gives 5-star rating
+    Then playbook_ratings inserts or updates (alex, pkg_abc, 5)
+    And rating_avg recalculated
+    And rating_count += 1 (first-time rating)
 
-  Scenario: 评论嵌套回复
-    Given Alex 评论 Brenda 的 Playbook
-    When Brenda 回复 Alex 的评论
-    Then playbook_comments 插入 parent_id = Alex 评论 id 的记录
+  Scenario: Comment nested reply
+    Given Alex comments on Brenda's Playbook
+    When Brenda replies to Alex's comment
+    Then playbook_comments inserts record with parent_id = Alex's comment id
 
-  Scenario: 举报
-    Given Alex 看到抄袭 Playbook
-    When Alex 举报 reason = "plagiarism"
-    Then playbook_reports 插入记录 status = pending
-    And 管理员收到通知
+  Scenario: Report
+    Given Alex sees plagiarized Playbook
+    When Alex reports reason = "plagiarism"
+    Then playbook_reports inserts record status = pending
+    And admin notified
 
-  Scenario: 反作弊 - 重复发布检测
-    Given Brenda 已发布相同 hash 的 Playbook
-    When Brenda 重新发布
-    Then 返回错误 "Duplicate package"
+  Scenario: Anti-abuse - duplicate publish detection
+    Given Brenda has already published Playbook with same hash
+    When Brenda republishes
+    Then return error "Duplicate package"
 
-  Scenario: 反作弊 - 频率限制
-    Given Brenda 今日已发布 5 个 Playbook
-    When Brenda 再发布第 6 个
-    Then 返回错误 "Daily limit exceeded"
+  Scenario: Anti-abuse - rate limit
+    Given Brenda has published 5 Playbooks today
+    When Brenda publishes 6th
+    Then return error "Daily limit exceeded"
 
-  Scenario: Mock 模式预置社区数据
+  Scenario: Mock mode preset community data
     Given USE_MOCK=true
-    When 用户访问社区
-    Then 显示 10 个预置 Playbook（mock_data/community/*.json）
-    And 安装数/评分/评论均为预置值
+    When user visits community
+    Then display 10 preset Playbooks (mock_data/community/*.json)
+    And install count/rating/comments are preset values
 ```
 
 ---
 
 ## 4. Implementation Decisions
 
-### ID-1: Share Package 是 Playbook 的"包装" [B]
+### ID-1: Share Package is Playbook's "Wrapper" [B]
 
-- Playbook（Epic 08）= 可执行 YAML
+- Playbook (Epic 08) = executable YAML
 - Share Package = Playbook + metadata + performance + risk + license
-- 发布流程：策略 → Playbook → Share Package → 社区
+- Publish flow: strategy → Playbook → Share Package → community
 
-### ID-2: R2 存 Playbook YAML 大文件 [B]
+### ID-2: R2 Stores Playbook YAML Large Files [B]
 
 ```typescript
 async function uploadPlaybook(yaml: string): Promise<string> {
@@ -390,44 +390,44 @@ async function uploadPlaybook(yaml: string): Promise<string> {
 }
 ```
 
-D1 仅存元数据 + R2 key 引用，避免 D1 单行过大。
+D1 stores only metadata + R2 key references, to avoid D1 single row being too large.
 
-### ID-3: 安装即"复制引用"而非"复制内容" [B]
+### ID-3: Install is "Copy Reference" not "Copy Content" [B]
 
 ```typescript
 async function installPackage(userId: string, packageId: string) {
-  // 不复制 Playbook 内容，仅创建引用
+  // Don't copy Playbook content, only create reference
   await db.run(`
     INSERT INTO user_strategies (user_id, package_id, source = "community")
     VALUES (?, ?, "community")
   `, userId, packageId);
-  // 用户可以基于此 fork 自己的版本
+  // User can fork their own version based on this
 }
 ```
 
-### ID-4: 评论支持嵌套 2 层 [B]
+### ID-4: Comments Support 2-Level Nesting [B]
 
-- 评论 → 回复（1 层）
-- 回复 → 回复的回复（2 层）
-- 不支持更深嵌套（防垃圾评论树）
+- Comment → Reply (1 level)
+- Reply → Reply to reply (2 levels)
+- Deeper nesting not supported (prevent spam comment trees)
 
-### ID-5: 评分去重 [B]
+### ID-5: Rating Deduplication [B]
 
-- 每个用户对每个 Playbook 仅 1 个评分
-- 重新评分覆盖旧评分
+- Each user has only 1 rating per Playbook
+- Re-rating overwrites old rating
 
-### ID-6: 举报分级 [B]
+### ID-6: Report Tiering [B]
 
-| 严重度 | 类型 | 处理 |
+| Severity | Type | Handling |
 |---|---|---|
-| 高 | 抄袭/欺诈 | 自动隐藏 + 人工复核 |
-| 中 | 误导性描述 | 人工复核 |
-| 低 | 内容不当 | 7 天内复核 |
+| High | Plagiarism/fraud | Auto-hide + manual review |
+| Medium | Misleading description | Manual review |
+| Low | Inappropriate content | Review within 7 days |
 
-### ID-7: Mock 模式预置社区数据 [B]
+### ID-7: Mock Mode Preset Community Data [B]
 
-> **注意（2026-07-19 修订）**：原稿引用 `mock_data/community/playbooks.json`，与 ADR-0001 §API-0002 canonical path 不一致。
-> 已对齐为 `web/public/mock/community/`。详见 [ADR-0001](../../architecture/adr-0001-use-mock-dual-mode-switch.md)。
+> **Note (revised 2026-07-19)**: Original referenced `mock_data/community/playbooks.json`, inconsistent with ADR-0001 §API-0002 canonical path.
+> Aligned to `web/public/mock/community/`. See [ADR-0001](../../architecture/adr-0001-use-mock-dual-mode-switch.md).
 
 ```json
 // web/public/mock/community/index.json (canonical path per ADR-0001 API-0002)
@@ -442,7 +442,7 @@ async function installPackage(userId: string, packageId: string) {
       "rating_count": 87,
       "tags": ["momentum", "single-stock"]
     },
-    // ... 共 10 个预置 Playbook
+    // ... 10 preset Playbooks total
   ]
 }
 ```
@@ -451,115 +451,115 @@ async function installPackage(userId: string, packageId: string) {
 
 ## 5. Testing Decisions
 
-### 5.1 Test Seams 表 [B]
+### 5.1 Test Seams Table [B]
 
-| Seam | 类型 | 测试内容 |
+| Seam | Type | Test Content |
 |---|---|---|
-| TS-1 | Unit | Share Package schema 校验 |
-| TS-2 | Unit | 反作弊 - 重复检测/频率限制 |
-| TS-3 | Integration | 发布 → 安装 → 评分 → 评论 闭环 |
-| TS-4 | E2E | 完整社区流程 |
-| TS-5 | Contract | Mock 预置数据格式与生产一致 |
+| TS-1 | Unit | Share Package schema validation |
+| TS-2 | Unit | Anti-abuse - duplicate detection/rate limit |
+| TS-3 | Integration | Publish → install → rate → comment loop |
+| TS-4 | E2E | Complete community flow |
+| TS-5 | Contract | Mock preset data format consistent with production |
 
 ### 5.2 Golden Set [B]
 
 ```typescript
 describe("Community Golden Set", () => {
-  it("完整 UGC 闭环", async () => {
-    // Brenda 发布
+  it("complete UGC loop", async () => {
+    // Brenda publishes
     const pkg = await publishPackage(brendaStrategy);
-    // Alex 安装
+    // Alex installs
     await installPackage("alex", pkg.id);
-    // Alex 评分
+    // Alex rates
     await ratePackage("alex", pkg.id, 5);
-    // Alex 评论
+    // Alex comments
     await commentPackage("alex", pkg.id, "Great strategy!");
-    // Brenda 回复
+    // Brenda replies
     await replyComment("brenda", commentId, "Thanks!");
-    // 验证
+    // Verify
     const updated = await getPackage(pkg.id);
     expect(updated.installed_count).toBe(1);
     expect(updated.rating_avg).toBe(5);
     expect(updated.rating_count).toBe(1);
   });
 
-  it("反作弊全部生效", async () => {
-    // 重复发布、频率超限、刷评分检测
+  it("all anti-abuse take effect", async () => {
+    // Duplicate publish, rate limit exceeded, rating fraud detection
   });
 });
 ```
 
-### 5.3 测试策略 [B]
+### 5.3 Testing Strategy [B]
 
-- **Unit**：纯函数 + 反作弊规则
-- **Integration**：UGC 闭环（用 Miniflare）
-- **E2E**：浏览器自动化模拟 Brenda/Alex 互动
+- **Unit**: pure functions + anti-abuse rules
+- **Integration**: UGC loop (using Miniflare)
+- **E2E**: browser automation simulating Brenda/Alex interaction
 
 ---
 
 ## 6. Out of Scope
 
-### 6.1 模块级非目标 [B]
+### 6.1 Module-level Non-goals [B]
 
-- **真实社交关系链**（关注/私信）：Phase 2
-- **付费 Playbook 市场**：Phase 3
-- **创作者现金分成**：Phase 3
-- **视频/直播内容**：Phase 3
-- **论坛/BBS 模块**：Phase 2 考虑
-- **多语言社区**：Phase 2
+- **Real social graph** (follow/DM): Phase 2
+- **Paid Playbook marketplace**: Phase 3
+- **Creator cash share**: Phase 3
+- **Video/live content**: Phase 3
+- **Forum/BBS module**: Phase 2 consideration
+- **Multi-language community**: Phase 2
 
-### 6.2 模块级反模式 [B]
+### 6.2 Module-level Anti-patterns [B]
 
-- ❌ **未校验直接发布**：必须经过 schema + 反作弊审核
-- ❌ **安装即复制 Playbook 内容**：仅创建引用，避免数据冗余
-- ❌ **评分无去重**：每用户每 Playbook 1 评分
-- ❌ **评论嵌套无限深**：最多 2 层
-- ❌ **举报无优先级**：必须分级处理
-- ❌ **Mock 模式无预置数据**：必须预置 10 个 Playbook 样本
+- ❌ **Publish without validation**: must go through schema + anti-abuse review
+- ❌ **Install as copy Playbook content**: only create reference, avoid data redundancy
+- ❌ **Rating without dedup**: 1 rating per user per Playbook
+- ❌ **Comment nesting infinitely deep**: max 2 levels
+- ❌ **Report without priority**: must tier handling
+- ❌ **Mock mode without preset data**: must preset 10 Playbook samples
 
 ---
 
 ## 7. Further Notes
 
-### 7.1 参考 [KNOWN]
+### 7.1 References [KNOWN]
 
 - Reddit API: https://www.reddit.com/dev/api
 - Hashnode community design: https://hashnode.com/
 - Discourse forum: https://www.discourse.org/
 
-### 7.2 待解问题 [B]
+### 7.2 Open Questions [B]
 
-- Q1: 是否需要私信功能？→ Phase 2
-- Q2: 是否需要创作者分成？→ Phase 2
+- Q1: Need DM feature? → Phase 2
+- Q2: Need creator share? → Phase 2
 
-### 7.3 依赖 [B]
+### 7.3 Dependencies [B]
 
-- **上游**：Epic 04 Strategy DSL（策略源）、Epic 08 Playbook System（序列化）
-- **下游**：Epic 05 Dashboard（社区 Feed widget）
+- **Upstream**: Epic 04 Strategy DSL (strategy source), Epic 08 Playbook System (serialization)
+- **Downstream**: Epic 05 Dashboard (community Feed widget)
 
 ---
 
 ## 8. Acceptance Criteria
 
-- [ ] Share Package schema 定义并校验
-- [ ] 发布流程：策略 → Playbook → Share Package → 社区
-- [ ] Feed 流（按时间序 + 按热度）
-- [ ] 搜索（按标签/作者/标题）
-- [ ] 安装（创建引用，不复制内容）
-- [ ] 评分（1-5 星，去重）
-- [ ] 评论（嵌套 2 层）
-- [ ] 举报（分级处理）
-- [ ] 反作弊：重复检测 + 频率限制
-- [ ] R2 存储 Playbook YAML 大文件
-- [ ] D1 schema 含 6 张表
-- [ ] Mock 模式预置 10 个 Playbook
-- [ ] 创作者激励占位（Phase 2 启用）
-- [ ] Golden Set 测试通过
+- [ ] Share Package schema defined and validated
+- [ ] Publish flow: strategy → Playbook → Share Package → community
+- [ ] Feed (by time + by popularity)
+- [ ] Search (by tag/author/title)
+- [ ] Install (create reference, don't copy content)
+- [ ] Rating (1-5 stars, deduped)
+- [ ] Comments (2-level nesting)
+- [ ] Report (tiered handling)
+- [ ] Anti-abuse: duplicate detection + rate limit
+- [ ] R2 storage for Playbook YAML large files
+- [ ] D1 schema contains 6 tables
+- [ ] Mock mode presets 10 Playbooks
+- [ ] Creator incentive placeholder (enabled in Phase 2)
+- [ ] Golden Set tests pass
 
 ---
 
-## 9. 版本历史
+## 9. Version History
 
-| 版本 | 日期 | 变更 |
+| Version | Date | Changes |
 |---|---|---|
-| 0.1 | 2026-07-19 | 初稿，含 Share Package 设计、UGC 闭环、反作弊、Mock 预置 |
+| 0.1 | 2026-07-19 | Initial draft, including Share Package design, UGC loop, anti-abuse, Mock preset |

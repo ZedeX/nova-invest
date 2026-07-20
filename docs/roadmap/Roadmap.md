@@ -1,352 +1,352 @@
 # Nova-Invest Roadmap (Detailed)
 
-**文档类型**: 路线图（详细版）
-**文档性质标签**: \[B] + \[C]
+**Document type**: Roadmap (Detailed)
+**Document nature tag**: \[B] + \[C]
 
-**最后更新**: 2026-07-19
+**Last updated**: 2026-07-19
 
-**关联**: Master PRD 中的 Roadmap Summary 是精简版，本文档为详细拆分
-
-***
-
-## 1. 路线图概述
-
-### 1.1 三阶段总览
-
-| 阶段                      | 时间窗口    | 目标            | 退出标准                        |
-| ----------------------- | ------- | ------------- | --------------------------- |
-| Phase 1: PMF Validation | 0-6 月   | 验证产品假设，跑通最小闭环 | 100 DAU + WAU-CW > 30       |
-| Phase 2: PMF Scaling    | 7-12 月  | 扩大用户基数，验证商业模式 | 5000 注册用户 + 5% 付费转化         |
-| Phase 3: Platform 化     | 13-18 月 | 开放生态，多市场扩张    | 50K 用户 + UGC Playbook 5000+ |
-
-### 1.2 关键里程碑
-
-- M0（T+0）: Master PRD + 8 Epic 完成
-- M1（T+1 月）: Next.js 骨架 + Mock 数据集 + 本地 Demo 可跑
-- M2（T+3 月）: Cloudflare 部署上线，公开访问
-- M3（T+6 月）: 100 DAU，启动种子用户招募
-- M4（T+9 月）: Pro 付费版上线
-- M5（T+12 月）: 5000 用户，进入 Phase 3
-- M6（T+18 月）: 多市场扩张启动
+**Related**: The Roadmap Summary in the Master PRD is the condensed version; this document is the detailed breakdown
 
 ***
 
-## 2. Phase 1: PMF Validation（0-6 月）
+## 1. Roadmap Overview
 
-### 2.1 Sprint 0: 文档与基础设施（第 1-2 周）
+### 1.1 Three-Phase Summary
 
-**目标**：完成全部 PRD 文档 + 代码骨架
+| Phase                   | Time Window | Goal                                          | Exit Criteria                  |
+| ----------------------- | ----------- | --------------------------------------------- | ------------------------------ |
+| Phase 1: PMF Validation | 0-6 mo      | Validate product hypothesis, run minimal loop | 100 DAU + WAU-CW > 30          |
+| Phase 2: PMF Scaling    | 7-12 mo     | Grow user base, validate business model       | 5000 registered users + 5% paid conversion |
+| Phase 3: Platform-ization | 13-18 mo  | Open ecosystem, multi-market expansion        | 50K users + UGC Playbook 5000+ |
 
-| 任务                   | 输出                                | 负责模块            |
-| -------------------- | --------------------------------- | --------------- |
-| Master PRD           | docs/prd/Master\_PRD.md           | Product         |
-| 8 个 Epic 文档          | docs/prd/epic/\*.md               | Product + Tech  |
-| 4 个附录                | docs/prd/appendix/\*.md           | Product + Legal |
-| 3 个 spec             | docs/spec/\*.md                   | Tech            |
-| 架构文档                 | docs/architecture/architecture.md | Architect       |
-| Roadmap              | docs/roadmap/Roadmap.md           | Product         |
-| Next.js 项目骨架         | web/                              | Tech            |
-| Mock 数据集             | mock\_data/                       | Tech            |
-| Cloudflare 项目配置      | wrangler.toml                     | DevOps          |
-| Github repo + Issues | github.com/ZedeX/nova-invest      | All             |
+### 1.2 Key Milestones
 
-**Exit Criteria**：
+- M0 (T+0): Master PRD + 8 Epics complete
+- M1 (T+1 mo): Next.js skeleton + Mock dataset + local Demo runnable
+- M2 (T+3 mo): Cloudflare deployment online, public access
+- M3 (T+6 mo): 100 DAU, start recruiting seed users
+- M4 (T+9 mo): Pro paid version launched
+- M5 (T+12 mo): 5000 users, enter Phase 3
+- M6 (T+18 mo): Multi-market expansion started
 
-- ✅ 所有文档完成且通过自查
-- ✅ Next.js 骨架可以 `pnpm dev` 启动
-- ✅ Mock K 线 JSON 文件已生成
-- ✅ Cloudflare 项目配置完成
+***
 
-### 2.2 Sprint 1: Data Layer（第 3-4 周）
+## 2. Phase 1: PMF Validation (0-6 mo)
 
-**目标**：Epic 02 完整实现
+### 2.1 Sprint 0: Documentation and Infrastructure (Weeks 1-2)
 
-| 任务                    | 验收标准                                          |
-| --------------------- | --------------------------------------------- |
-| MarketDataProvider 接口 | TypeScript 接口定义                               |
-| MockProvider          | 读 mock\_data/klines/\*.json                   |
-| RealProvider          | Yahoo/Alpha Vantage/Polygon 三源 + 优先级 fallback |
-| R2 缓存                 | 仅缓存 10 个 Mockup 标的                            |
-| D1 schema             | 5 张表创建 + seed 数据                              |
-| 限流熔断器                 | 实现 + 测试                                       |
-| Contract 测试           | Mock 与 Real 数据结构一致                            |
+**Goal**: Complete all PRD documentation + code skeleton
 
-**Exit Criteria**：
+| Task                  | Output                            | Module          |
+| --------------------- | --------------------------------- | --------------- |
+| Master PRD            | docs/prd/Master\_PRD.md           | Product         |
+| 8 Epic documents      | docs/prd/epic/\*.md               | Product + Tech  |
+| 4 appendices          | docs/prd/appendix/\*.md           | Product + Legal |
+| 3 specs               | docs/spec/\*.md                   | Tech            |
+| Architecture document | docs/architecture/architecture.md | Architect       |
+| Roadmap               | docs/roadmap/Roadmap.md           | Product         |
+| Next.js project skeleton | web/                           | Tech            |
+| Mock dataset          | mock\_data/                       | Tech            |
+| Cloudflare project config | wrangler.toml                 | DevOps          |
+| Github repo + Issues  | github.com/ZedeX/nova-invest      | All             |
 
-- ✅ `USE_MOCK=true` 时所有数据从本地 JSON 读取
-- ✅ `USE_MOCK=false` 时按优先级走真实 API + R2 缓存
-- ✅ Golden Set 测试通过
+**Exit Criteria**:
 
-### 2.3 Sprint 2: Agent Harness（第 5-6 周）
+- ✅ All documents complete and self-reviewed
+- ✅ Next.js skeleton can be started with `pnpm dev`
+- ✅ Mock K-line JSON files generated
+- ✅ Cloudflare project configuration complete
 
-**目标**：Epic 01 完整实现
+### 2.2 Sprint 1: Data Layer (Weeks 3-4)
 
-| 任务          | 验收标准                                    |
-| ----------- | --------------------------------------- |
-| Worker 入口路由 | /api/\* 全部路由生效                          |
-| LLM Router  | local (LM Studio) / cloud (火山引擎 Ark) 切换 |
-| 多模型降级链      | Sonnet → Haiku → Mock                   |
-| Cost Budget | 实现并测试                                   |
-| Worker 环境配置 | wrangler.toml + secrets                 |
+**Goal**: Epic 02 fully implemented
 
-**Exit Criteria**：
+| Task                  | Acceptance Criteria                             |
+| --------------------- | ----------------------------------------------- |
+| MarketDataProvider interface | TypeScript interface definition          |
+| MockProvider          | Read mock\_data/klines/\*.json                  |
+| RealProvider          | Yahoo/Alpha Vantage/Polygon three sources + priority fallback |
+| R2 cache              | Cache only 10 Mockup symbols                    |
+| D1 schema             | 5 tables created + seed data                    |
+| Rate-limit circuit breaker | Implementation + test                     |
+| Contract test         | Mock and Real data structures consistent        |
 
-- ✅ LLM 调用可在 Mock/Local/Cloud 三模切换
-- ✅ Cost Budget 不超过 cap
-- ✅ Worker 本地 + 生产部署均可运行
+**Exit Criteria**:
 
-### 2.4 Sprint 3: Ask Agent（第 7-8 周）
+- ✅ When `USE_MOCK=true`, all data read from local JSON
+- ✅ When `USE_MOCK=false`, real API + R2 cache used by priority
+- ✅ Golden Set test passes
 
-**目标**：Epic 03 完整实现
+### 2.3 Sprint 2: Agent Harness (Weeks 5-6)
 
-| 任务                 | 验收标准                     |
-| ------------------ | ------------------------ |
-| Query Classifier   | 4 种意图分类准确率 > 90%         |
-| RAG Pipeline       | 多源检索（K 线/财报/新闻/Playbook） |
-| Citation Validator | 数字字段必须带 citation         |
-| 短期记忆（KV）           | 会话内上下文保持                 |
-| 长期记忆（D1）           | 用户画像持久化                  |
-| Mock 问答样本          | ≥ 20 条覆盖 4 种意图           |
-| 流式响应（SSE）          | >5s 启用流式                 |
+**Goal**: Epic 01 fully implemented
 
-**Exit Criteria**：
+| Task              | Acceptance Criteria                            |
+| ----------------- | ---------------------------------------------- |
+| Worker entry route | All /api/\* routes active                     |
+| LLM Router        | Switch between local (LM Studio) / cloud (Volcano Engine Ark) |
+| Multi-model degradation chain | Sonnet → Haiku → Mock                  |
+| Cost Budget       | Implemented and tested                         |
+| Worker environment config | wrangler.toml + secrets                 |
 
-- ✅ Mock 模式下完全不调用 LLM API
-- ✅ Real 模式下每个回答含 citations
-- ✅ Golden Set 测试通过
+**Exit Criteria**:
 
-### 2.5 Sprint 4: Strategy DSL + Backtest（第 9-10 周）
+- ✅ LLM calls can switch between Mock/Local/Cloud modes
+- ✅ Cost Budget does not exceed cap
+- ✅ Worker runs both locally and in production deployment
 
-**目标**：Epic 04 完整实现
+### 2.4 Sprint 3: Ask Agent (Weeks 7-8)
 
-| 任务                   | 验收标准                                             |
-| -------------------- | ------------------------------------------------ |
-| DSL YAML Schema v1.0 | 完整定义 + JSON Schema 校验器                           |
-| 内置指标库                | ≥ 8 个指标（SMA/EMA/RSI/MACD/Bollinger/ATR/OBV/VWAP） |
-| 表达式解析器               | AND/OR/NOT/>/\</=                                |
-| BacktestEngine       | 完整回测流程                                           |
-| 报告生成                 | ≥ 8 个指标                                          |
-| in/out-of-sample     | 70/30 分割                                         |
-| 3 个示例策略              | MA Cross / RSI / Bollinger                       |
-| Golden 回测结果          | 固化测试                                             |
+**Goal**: Epic 03 fully implemented
 
-**Exit Criteria**：
+| Task                 | Acceptance Criteria      |
+| -------------------- | ------------------------ |
+| Query Classifier     | 4 intent classification accuracy > 90% |
+| RAG Pipeline         | Multi-source retrieval (K-line/financial reports/news/Playbook) |
+| Citation Validator   | Numeric fields must carry citation |
+| Short-term memory (KV) | In-session context preserved |
+| Long-term memory (D1) | User profile persisted   |
+| Mock Q&A samples     | ≥ 20 entries covering 4 intents |
+| Streaming response (SSE) | >5s enables streaming |
 
-- ✅ DSL 校验严格，所有错误返回明确错误码
-- ✅ 回测结果确定性（同输入同输出）
-- ✅ 指标计算与 talib 一致
+**Exit Criteria**:
 
-### 2.6 Sprint 5: Dashboard + Frontend（第 11-12 周）
+- ✅ Mock mode never calls LLM API
+- ✅ Real mode: every answer contains citations
+- ✅ Golden Set test passes
 
-**目标**：Epic 05 完整实现
+### 2.5 Sprint 4: Strategy DSL + Backtest (Weeks 9-10)
 
-| 任务                                | 验收标准                  |
-| --------------------------------- | --------------------- |
-| TradingView lightweight-charts 集成 | K 线渲染                 |
-| 指标 overlay                        | SMA/EMA/RSI 至少 3 个    |
-| 策略 markers                        | 买卖点显示                 |
-| 回测报告 widget                       | 含分位图                  |
-| 持仓表 widget                        | 从 Broker 取数据          |
-| Widget 网格系统                       | react-grid-layout 可拖拽 |
-| Mock Badge                        | 顶部显示                  |
-| 暗黑/明亮主题                           | 切换可用                  |
-| 响应式                               | 桌面/平板/移动              |
+**Goal**: Epic 04 fully implemented
 
-**Exit Criteria**：
+| Task                  | Acceptance Criteria                                            |
+| --------------------- | -------------------------------------------------------------- |
+| DSL YAML Schema v1.0  | Full definition + JSON Schema validator                        |
+| Built-in indicator library | ≥ 8 indicators (SMA/EMA/RSI/MACD/Bollinger/ATR/OBV/VWAP) |
+| Expression parser     | AND/OR/NOT/>/\</=                                              |
+| BacktestEngine        | Full backtest pipeline                                         |
+| Report generation     | ≥ 8 metrics                                                    |
+| in/out-of-sample      | 70/30 split                                                    |
+| 3 example strategies  | MA Cross / RSI / Bollinger                                     |
+| Golden backtest result | Pinned test                                                   |
 
-- ✅ Lighthouse LCP < 2s（Mock 模式）
-- ✅ 6 个默认 widget 全部加载
-- ✅ Mock Badge 清晰显示
+**Exit Criteria**:
 
-### 2.7 Sprint 6: Broker Integration（第 13-14 周）
+- ✅ DSL validation is strict, all errors return clear error codes
+- ✅ Backtest result is deterministic (same input, same output)
+- ✅ Indicator calculation matches talib
 
-**目标**：Epic 06 完整实现
+### 2.6 Sprint 5: Dashboard + Frontend (Weeks 11-12)
 
-| 任务               | 验收标准                          |
-| ---------------- | ----------------------------- |
-| BrokerAdapter 接口 | 定义并实现                         |
-| PaperBroker      | 完整订单生命周期                      |
-| 4 种订单类型          | market/limit/stop/stop\_limit |
-| 滑点模型             | 默认 5bps                       |
-| 持仓/资金双账本         | 同步更新                          |
-| 风控 5 项规则         | 全部实现                          |
-| D1 schema        | 4 张表                          |
-| 策略自动下单           | strategy\_id 关联               |
+**Goal**: Epic 05 fully implemented
 
-**Exit Criteria**：
+| Task                               | Acceptance Criteria    |
+| ---------------------------------- | ---------------------- |
+| TradingView lightweight-charts integration | K-line rendering |
+| Indicator overlay                  | At least 3 of SMA/EMA/RSI |
+| Strategy markers                   | Buy/sell point display |
+| Backtest report widget             | Includes quantile chart |
+| Position table widget              | Pulls data from Broker |
+| Widget grid system                 | react-grid-layout draggable |
+| Mock Badge                         | Shown at top           |
+| Dark/Light theme                   | Switchable             |
+| Responsive                         | Desktop/tablet/mobile  |
 
-- ✅ 完整 paper trade 闭环测试通过
-- ✅ Mock 模式下成交价来自 Mock K 线
-- ✅ 风控全部生效
+**Exit Criteria**:
 
-### 2.8 Sprint 7: Playbook System（第 15-16 周）
+- ✅ Lighthouse LCP < 2s (Mock mode)
+- ✅ All 6 default widgets loaded
+- ✅ Mock Badge clearly visible
 
-**目标**：Epic 08 完整实现
+### 2.7 Sprint 6: Broker Integration (Weeks 13-14)
 
-| 任务                      | 验收标准                                                           |
-| ----------------------- | -------------------------------------------------------------- |
-| Playbook YAML Schema v1 | 完整定义                                                           |
-| 6 种 kind 支持             | strategy/composite/data\_fetcher/risk\_manager/alert/narrative |
-| 3 种组合类型                 | parallel/sequential/conditional                                |
-| 组合权重校验                  | = 1.0                                                          |
-| 循环依赖检测                  | 实现                                                             |
-| SemVer 版本化              | 实现                                                             |
-| 叙事字段必填                  | why/how/risks                                                  |
-| R2 存储 YAML              | 实现                                                             |
-| PlaybookExecutor        | 3 种组合执行                                                        |
-| Mock 预置 5 个 Playbook    | 完成                                                             |
+**Goal**: Epic 06 fully implemented
 
-**Exit Criteria**：
+| Task               | Acceptance Criteria              |
+| ------------------ | -------------------------------- |
+| BrokerAdapter interface | Defined and implemented     |
+| PaperBroker        | Full order lifecycle             |
+| 4 order types      | market/limit/stop/stop\_limit    |
+| Slippage model     | Default 5bps                     |
+| Position/cash dual ledger | Synchronous update          |
+| Risk management 5 rules | All implemented             |
+| D1 schema          | 4 tables                         |
+| Strategy auto-ordering | strategy\_id association      |
 
-- ✅ 完整 Playbook 生命周期测试通过
-- ✅ 3 种组合类型全部测试通过
-- ✅ 循环依赖被拒绝
+**Exit Criteria**:
 
-### 2.9 Sprint 8: Share & Community（第 17-18 周）
+- ✅ Complete paper trade closed-loop test passes
+- ✅ In Mock mode, fill price comes from Mock K-line
+- ✅ All risk management rules effective
 
-**目标**：Epic 07 完整实现
+### 2.8 Sprint 7: Playbook System (Weeks 15-16)
 
-| 任务                    | 验收标准                               |
-| --------------------- | ---------------------------------- |
-| Share Package schema  | 完整定义                               |
-| 发布流程                  | 策略 → Playbook → Share Package → 社区 |
-| Feed 流                | 时间序 + 热度排序                         |
-| 搜索                    | 按标签/作者/标题                          |
-| 安装（创建引用）              | 不复制内容                              |
-| 评分（1-5 星，去重）          | 实现                                 |
-| 评论（嵌套 2 层）            | 实现                                 |
-| 举报（分级处理）              | 实现                                 |
-| 反作弊                   | 重复检测 + 频率限制                        |
-| Mock 预置 10 个 Playbook | 完成                                 |
+**Goal**: Epic 08 fully implemented
 
-**Exit Criteria**：
+| Task                     | Acceptance Criteria                                              |
+| ------------------------ | ---------------------------------------------------------------- |
+| Playbook YAML Schema v1  | Full definition                                                  |
+| 6 kind support           | strategy/composite/data\_fetcher/risk\_manager/alert/narrative   |
+| 3 composition types      | parallel/sequential/conditional                                  |
+| Composition weight validation | = 1.0                                                       |
+| Circular dependency detection | Implemented                                                 |
+| SemVer versioning        | Implemented                                                      |
+| Narrative fields required | why/how/risks                                                   |
+| R2 storage YAML          | Implemented                                                      |
+| PlaybookExecutor         | 3 composition executions                                         |
+| Mock prebuilt 5 Playbooks | Complete                                                        |
 
-- ✅ 完整 UGC 闭环测试通过
-- ✅ 反作弊全部生效
-- ✅ Mock 预置数据完整
+**Exit Criteria**:
 
-### 2.10 Sprint 9: Billing + 部署 + 试点（第 19-24 周）
+- ✅ Complete Playbook lifecycle test passes
+- ✅ All 3 composition types tested and passing
+- ✅ Circular dependencies rejected
 
-**目标**：Billing 系统 + Cloudflare 部署 + 招募 100 DAU
+### 2.9 Sprint 8: Share & Community (Weeks 17-18)
 
-| 任务                      | 验收标准                    |
-| ----------------------- | ----------------------- |
-| Credit 系统实现             | 4 档资费 + 按 Action 计费     |
-| Stripe 集成（Phase 2 启用）   | 占位                      |
-| Mock 模式 0 Credit 消耗     | 实现                      |
-| 降级链                     | 实现                      |
-| OpenTelemetry + Grafana | 监控完整                    |
-| Cloudflare 部署           | 公开访问                    |
-| 自定义域名（可选）               | nova-invest.workers.dev |
-| Github Issues 创建        | 8 个 Epic 顶层 Issue       |
-| 种子用户招募                  | 100 DAU                 |
-| 用户反馈收集                  | 调研报告                    |
+**Goal**: Epic 07 fully implemented
 
-**Exit Criteria**：
+| Task                     | Acceptance Criteria                       |
+| ------------------------ | ----------------------------------------- |
+| Share Package schema     | Full definition                           |
+| Publish flow             | Strategy → Playbook → Share Package → Community |
+| Feed stream              | Time order + popularity sort              |
+| Search                   | By tag/author/title                       |
+| Install (creates reference) | Does not copy content                  |
+| Rating (1-5 stars, dedup) | Implemented                              |
+| Comments (nested 2 levels) | Implemented                             |
+| Report (tiered handling) | Implemented                              |
+| Anti-cheat               | Duplicate detection + frequency limit     |
+| Mock prebuilt 10 Playbooks | Complete                                |
 
-- ✅ Cloudflare 部署后稳定运行 7 天
+**Exit Criteria**:
+
+- ✅ Complete UGC closed-loop test passes
+- ✅ All anti-cheat measures effective
+- ✅ Mock prebuilt data complete
+
+### 2.10 Sprint 9: Billing + Deployment + Pilot (Weeks 19-24)
+
+**Goal**: Billing system + Cloudflare deployment + recruit 100 DAU
+
+| Task                   | Acceptance Criteria     |
+| ---------------------- | ----------------------- |
+| Credit system implementation | 4 pricing tiers + per-Action billing |
+| Stripe integration (enabled in Phase 2) | Placeholder     |
+| Mock mode 0 Credit consumption | Implemented        |
+| Degradation chain      | Implemented             |
+| OpenTelemetry + Grafana | Monitoring complete    |
+| Cloudflare deployment  | Public access           |
+| Custom domain (optional) | nova-invest.workers.dev |
+| Github Issues creation | 8 Epic top-level Issues |
+| Seed user recruitment  | 100 DAU                 |
+| User feedback collection | Research report        |
+
+**Exit Criteria**:
+
+- ✅ Cloudflare deployment runs stably for 7 days
 - ✅ 100 DAU
-- ✅ WAU-CW > 30（每周完成完整工作流用户数）
+- ✅ WAU-CW > 30 (number of users completing full workflow per week)
 
 ***
 
-## 3. Phase 2: PMF Scaling（7-12 月）
+## 3. Phase 2: PMF Scaling (7-12 mo)
 
-### 3.1 Sprint 10-12: 真实券商集成（第 25-30 周）
+### 3.1 Sprint 10-12: Real Broker Integration (Weeks 25-30)
 
-| 任务                          | 验收标准          |
-| --------------------------- | ------------- |
-| Alpaca Paper Trading API 接入 | 通过 MCP server |
-| IBKR TWS API 接入             | 通过 MCP server |
-| 实时行情 SSE                    | 推送            |
-| Stripe 真实支付                 | 上线            |
-| Pro 付费版                     | $29/月         |
-| Team 付费版                    | $99/月         |
+| Task                            | Acceptance Criteria |
+| ------------------------------- | ------------------- |
+| Alpaca Paper Trading API integration | Through MCP server |
+| IBKR TWS API integration        | Through MCP server  |
+| Real-time quotes SSE             | Push                |
+| Stripe real payment              | Online              |
+| Pro paid version                 | $29/month           |
+| Team paid version                | $99/month           |
 
-### 3.2 Sprint 13-15: 性能优化 + 多 Agent（第 31-36 周）
+### 3.2 Sprint 13-15: Performance Optimization + Multi-Agent (Weeks 31-36)
 
-| 任务              | 验收标准           |
-| --------------- | -------------- |
-| Walk-forward 回测 | 实现             |
-| 多策略组合优化         | Markowitz      |
-| 推荐系统            | Vectorize 语义检索 |
-| 创作者激励           | Credit 分成      |
-| 性能优化            | LCP < 1s       |
-| 多语言（中文）         | i18n           |
+| Task                 | Acceptance Criteria |
+| -------------------- | ------------------- |
+| Walk-forward backtest | Implemented        |
+| Multi-strategy portfolio optimization | Markowitz |
+| Recommendation system | Vectorize semantic retrieval |
+| Creator incentives   | Credit revenue share |
+| Performance optimization | LCP < 1s        |
+| Multi-language (Chinese) | i18n            |
 
-### 3.3 Sprint 16-18: 中国市场准备（第 37-42 周）
+### 3.3 Sprint 16-18: China Market Preparation (Weeks 37-42)
 
-| 任务       | 验收标准   |
-| -------- | ------ |
-| ICP 备案   | 完成     |
-| 数据本地化    | 境内数据中心 |
-| 支付宝/微信支付 | 上线     |
-| 内容审查合规   | 网信办合规  |
-| 中文 AI 模型 | 接入     |
+| Task        | Acceptance Criteria |
+| ----------- | ------------------- |
+| ICP filing  | Complete            |
+| Data localization | Domestic data center |
+| Alipay/WeChat Pay | Online          |
+| Content review compliance | CAC compliant |
+| Chinese AI model | Integrated      |
 
-### 3.4 Sprint 19-21: 增长（第 43-48 周）
+### 3.4 Sprint 19-21: Growth (Weeks 43-48)
 
-| 任务        | 验收标准             |
-| --------- | ---------------- |
-| SEO 优化    | Google 排名        |
-| 内容营销      | 博客 + Twitter     |
-| 社区运营      | Discord/Telegram |
-| 推荐计划      | 邀请奖励 Credit      |
-| 5000 注册用户 | 达成               |
+| Task        | Acceptance Criteria           |
+| ----------- | ----------------------------- |
+| SEO optimization | Google ranking          |
+| Content marketing | Blog + Twitter          |
+| Community operations | Discord/Telegram     |
+| Referral program | Invite reward Credit       |
+| 5000 registered users | Achieved              |
 
-**Phase 2 Exit Criteria**：
+**Phase 2 Exit Criteria**:
 
-- ✅ 5000 注册用户
-- ✅ 5% 付费转化率（250 付费用户）
+- ✅ 5000 registered users
+- ✅ 5% paid conversion rate (250 paid users)
 - ✅ ARR $50K
-- ✅ 30 天留存 > 40%
+- ✅ 30-day retention > 40%
 
 ***
 
-## 4. Phase 3: Platform 化（13-18 月）
+## 4. Phase 3: Platform-ization (13-18 mo)
 
-### 4.1 Sprint 22-27: 平台化（第 49-72 周）
+### 4.1 Sprint 22-27: Platform-ization (Weeks 49-72)
 
-| 任务                 | 验收标准           |
-| ------------------ | -------------- |
-| Playbook SDK       | 外部开发者可用        |
-| 第三方 MCP servers    | 接入生态           |
-| 多市场（港股/A股）         | 上线             |
-| 期权/期货              | 上线             |
-| 移动 App             | iOS + Android  |
-| 团队协作               | 多人共享 Watchlist |
-| 创作者现金分成            | 上线             |
-| Enterprise 版       | 定制合同           |
-| 50K 用户             | 达成             |
-| UGC Playbook 5000+ | 达成             |
+| Task                 | Acceptance Criteria |
+| -------------------- | ------------------- |
+| Playbook SDK         | Available to external developers |
+| Third-party MCP servers | Ecosystem integration |
+| Multi-market (HK/A-shares) | Online            |
+| Options/futures      | Online              |
+| Mobile App           | iOS + Android       |
+| Team collaboration   | Multi-user shared Watchlist |
+| Creator cash revenue share | Online        |
+| Enterprise edition   | Custom contract     |
+| 50K users            | Achieved            |
+| UGC Playbook 5000+   | Achieved            |
 
-**Phase 3 Exit Criteria**：
+**Phase 3 Exit Criteria**:
 
-- ✅ 50K 注册用户
+- ✅ 50K registered users
 - ✅ UGC Playbook 5000+
 - ✅ ARR $500K
-- ✅ 多市场覆盖（美国 + 中国 + 港股）
+- ✅ Multi-market coverage (US + China + HK)
 
 ***
 
-## 5. Epic 排期矩阵
+## 5. Epic Schedule Matrix
 
 | Epic                  | Phase 1 Sprint | Phase 2 Sprint      | Phase 3 Sprint    |
 | --------------------- | -------------- | ------------------- | ----------------- |
-| 01 Agent Harness      | S2             | S13-15 多 Agent      | S22-24 Agent 市场   |
-| 02 Data Layer         | S1             | S10-12 多源扩展         | S25-27 多市场数据      |
-| 03 Ask Agent          | S3             | S13-15 推荐系统         | S22-24 多语言        |
-| 04 Strategy DSL       | S4             | S13-15 Walk-forward | S25-27 期权 DSL     |
-| 05 Dashboard          | S5             | S13-15 移动端          | S25-27 协作         |
-| 06 Broker Integration | S6             | S10-12 真实券商         | S25-27 多市场券商      |
-| 07 Share & Community  | S8             | S16-18 中国社区         | S25-27 创作者生态      |
-| 08 Playbook System    | S7             | S13-15 推荐优化         | S22-24 SDK + 多市场  |
+| 01 Agent Harness      | S2             | S13-15 Multi-Agent  | S22-24 Agent market |
+| 02 Data Layer         | S1             | S10-12 Multi-source expansion | S25-27 Multi-market data |
+| 03 Ask Agent          | S3             | S13-15 Recommendation system | S22-24 Multi-language |
+| 04 Strategy DSL       | S4             | S13-15 Walk-forward | S25-27 Options DSL |
+| 05 Dashboard          | S5             | S13-15 Mobile       | S25-27 Collaboration |
+| 06 Broker Integration | S6             | S10-12 Real broker  | S25-27 Multi-market broker |
+| 07 Share & Community  | S8             | S16-18 China community | S25-27 Creator ecosystem |
+| 08 Playbook System    | S7             | S13-15 Recommendation optimization | S22-24 SDK + multi-market |
 | Billing               | S9             | S10-12 Stripe       | S25-27 Enterprise |
-| Deployment            | S0+S9          | S13-15 多区域          | S22-24 多云         |
+| Deployment            | S0+S9          | S13-15 Multi-region | S22-24 Multi-cloud |
 
 ***
 
-## 6. 依赖关系图
+## 6. Dependency Graph
 
 ```mermaid
 flowchart LR
@@ -366,129 +366,128 @@ flowchart LR
     S5 --> S8
     S8 --> S9[Sprint 9<br/>Billing+Deploy]
 
-    S9 --> P2[Phase 2<br/>真实券商+付费+增长]
-    P2 --> P3[Phase 3<br/>Platform化]
+    S9 --> P2[Phase 2<br/>Real broker + paid + growth]
+    P2 --> P3[Phase 3<br/>Platform-ization]
 ```
 
 ***
 
-## 7. 风险登记（Roadmap 视角）
+## 7. Risk Register (Roadmap Perspective)
 
-### 7.1 Phase 1 风险
+### 7.1 Phase 1 Risks
 
-| 风险                | 概率 | 影响 | 缓解                             |
-| ----------------- | -- | -- | ------------------------------ |
-| Cloudflare 免费层不够用 | 中  | 高  | 监控用量 + Phase 2 升级 Workers Paid |
-| Yahoo API 封 IP    | 高  | 中  | 多源 fallback + Mock 兜底          |
-| Mock 数据不够真实       | 中  | 中  | 用真实历史 K 线生成 Mock               |
-| 用户不 adoption      | 中  | 高  | 100 DAU 是退出标准，达不到则 pivot       |
-| 开发延期              | 高  | 中  | Sprint 缓冲 + 优先级取舍              |
+| Risk                       | Probability | Impact | Mitigation                                |
+| -------------------------- | ----------- | ------ | ----------------------------------------- |
+| Cloudflare free tier insufficient | Medium  | High   | Monitor usage + upgrade to Workers Paid in Phase 2 |
+| Yahoo API IP-banned        | High        | Medium | Multi-source fallback + Mock fallback     |
+| Mock data not realistic    | Medium      | Medium | Generate Mock from real historical K-line |
+| User non-adoption          | Medium      | High   | 100 DAU is exit criterion; pivot if not met |
+| Development delay          | High        | Medium | Sprint buffer + priority tradeoffs        |
 
-### 7.2 Phase 2 风险
+### 7.2 Phase 2 Risks
 
-| 风险            | 概率 | 影响 | 缓解                       |
-| ------------- | -- | -- | ------------------------ |
-| 监管变化          | 中  | 高  | Phase 1 Publisher 定位降低风险 |
-| 真实券商 API 接入复杂 | 高  | 中  | 先 Alpaca paper，再 IBKR    |
-| 中国市场合规复杂      | 高  | 高  | Phase 2 后期才考虑进入中国        |
-| 竞品领先  | 中  | 中  | 差异化：完整 Mock + UGC        |
+| Risk                          | Probability | Impact | Mitigation                                |
+| ----------------------------- | ----------- | ------ | ----------------------------------------- |
+| Regulatory changes            | Medium      | High   | Phase 1 Publisher positioning reduces risk |
+| Real broker API integration complex | High | Medium | Alpaca paper first, then IBKR             |
+| China market compliance complex | High      | High   | Consider entering China only in late Phase 2 |
+| Competitors ahead             | Medium      | Medium | Differentiation: complete Mock + UGC      |
 
-### 7.3 Phase 3 风险
+### 7.3 Phase 3 Risks
 
-| 风险       | 概率 | 影响 | 缓解                |
-| -------- | -- | -- | ----------------- |
-| 平台化复杂度爆炸 | 高  | 高  | SDK 严格 API 契约     |
-| 多市场监管冲突  | 高  | 高  | 分阶段（美国 → 港股 → A股） |
-| 用户期望过高   | 中  | 中  | 透明沟通 + 渐进发布       |
-
-***
-
-## 8. 资源优先级
-
-### 8.1 Phase 1 资源分配
-
-| 角色           | 投入   | 关键交付                        |
-| ------------ | ---- | --------------------------- |
-| Product（候选人） | 100% | PRD + Epic + Roadmap + 用户调研 |
-| Tech Lead    | 100% | 架构 + Agent Harness + 关键模块   |
-| Frontend     | 100% | Dashboard + Next.js         |
-| Backend      | 100% | Workers + D1 + R2           |
-| DevOps（兼职）   | 30%  | Cloudflare 部署 + CI/CD       |
-| Designer（兼职） | 30%  | UI 设计 + 体验优化                |
-
-### 8.2 Phase 2 资源增加
-
-- 增加 1 个 Backend（券商集成 + 多 Agent）
-- 增加 1 个 Designer（移动端）
-- 增加 1 个 PM（中国市场调研）
-
-### 8.3 Phase 3 资源
-
-- 增加 SDK 团队
-- 增加多市场 BD
-- 增加 Enterprise 销售
+| Risk                  | Probability | Impact | Mitigation                                |
+| --------------------- | ----------- | ------ | ----------------------------------------- |
+| Platform-ization complexity explosion | High | High | Strict SDK API contracts                  |
+| Multi-market regulatory conflict | High | High   | Phased (US → HK → A-shares)              |
+| User expectations too high | Medium  | Medium | Transparent communication + progressive release |
 
 ***
 
-## 9. 跨模块协作事项
+## 8. Resource Priority
 
-### 9.1 Phase 1 跨模块
+### 8.1 Phase 1 Resource Allocation
 
-- DSL（Epic 04）↔ Playbook（Epic 08）：DSL 是 Playbook 的内容源，需紧密协作
-- Dashboard（Epic 05）↔ 所有模块：Dashboard 是消费方，需要各模块提供 API
-- Broker（Epic 06）↔ Strategy（Epic 04）：策略信号触发订单
-- Community（Epic 07）↔ Playbook（Epic 08）：社区分享 Playbook 包
+| Role              | Investment | Key Deliverables                       |
+| ----------------- | ---------- | -------------------------------------- |
+| Product (candidate) | 100%     | PRD + Epic + Roadmap + user research   |
+| Tech Lead         | 100%       | Architecture + Agent Harness + key modules |
+| Frontend          | 100%       | Dashboard + Next.js                    |
+| Backend           | 100%       | Workers + D1 + R2                       |
+| DevOps (part-time) | 30%        | Cloudflare deployment + CI/CD          |
+| Designer (part-time) | 30%      | UI design + experience optimization    |
 
-### 9.2 Phase 2 跨模块
+### 8.2 Phase 2 Resource Additions
 
-- 真实券商集成（Epic 06 扩展）涉及 Billing（Stripe）+ Compliance（KYC）
-- 多 Agent（Epic 01 扩展）涉及 Ask Agent（Epic 03）+ Build Agent
-- 中国市场涉及全部模块的本地化
+- Add 1 Backend (broker integration + multi-Agent)
+- Add 1 Designer (mobile)
+- Add 1 PM (China market research)
 
-### 9.3 沟通节奏
+### 8.3 Phase 3 Resources
 
-- 每日 Standup（15 min）
-- 每周 Sprint Planning + Review
-- 每月跨模块同步会议
-- 每季度 Roadmap 调整
-
-***
-
-## 10. 版本发布计划
-
-### 10.1 Phase 1 版本
-
-| 版本           | 时间     | 内容                        |
-| ------------ | ------ | ------------------------- |
-| v0.1.0-alpha | 第 4 周  | DataLayer + Mock 数据集      |
-| v0.2.0-alpha | 第 8 周  | + AskAgent + AgentHarness |
-| v0.3.0-alpha | 第 12 周 | + StrategyDSL + Dashboard |
-| v0.4.0-alpha | 第 16 周 | + Broker + Playbook       |
-| v0.5.0-beta  | 第 20 周 | + Community + Billing     |
-| v1.0.0       | 第 24 周 | 公开发布，100 DAU 试点           |
-
-### 10.2 Phase 2 版本
-
-| 版本     | 时间     | 内容             |
-| ------ | ------ | -------------- |
-| v1.1.0 | 第 30 周 | 真实券商集成         |
-| v1.2.0 | 第 36 周 | 多 Agent + 推荐系统 |
-| v1.3.0 | 第 42 周 | 中国市场           |
-| v2.0.0 | 第 48 周 | 5000 用户里程碑     |
-
-### 10.3 Phase 3 版本
-
-| 版本     | 时间     | 内容           |
-| ------ | ------ | ------------ |
-| v3.0.0 | 第 60 周 | Playbook SDK |
-| v3.1.0 | 第 66 周 | 多市场（港股/A股）   |
-| v3.2.0 | 第 72 周 | 移动 App       |
+- Add SDK team
+- Add multi-market BD
+- Add Enterprise sales
 
 ***
 
-## 11. 版本历史
+## 9. Cross-Module Collaboration
 
-| 版本  | 日期         | 变更                                           |
-| --- | ---------- | -------------------------------------------- |
-| 0.1 | 2026-07-19 | 初稿，含 3 阶段 + 9 个 Phase 1 Sprint + 风险登记 + 资源分配 |
+### 9.1 Phase 1 Cross-Module
 
+- DSL (Epic 04) ↔ Playbook (Epic 08): DSL is the content source for Playbook, needs tight collaboration
+- Dashboard (Epic 05) ↔ all modules: Dashboard is the consumer, each module provides APIs
+- Broker (Epic 06) ↔ Strategy (Epic 04): strategy signals trigger orders
+- Community (Epic 07) ↔ Playbook (Epic 08): community shares Playbook packages
+
+### 9.2 Phase 2 Cross-Module
+
+- Real broker integration (Epic 06 extension) involves Billing (Stripe) + Compliance (KYC)
+- Multi-Agent (Epic 01 extension) involves Ask Agent (Epic 03) + Build Agent
+- China market involves localization across all modules
+
+### 9.3 Communication Cadence
+
+- Daily Standup (15 min)
+- Weekly Sprint Planning + Review
+- Monthly cross-module sync meeting
+- Quarterly Roadmap adjustment
+
+***
+
+## 10. Version Release Plan
+
+### 10.1 Phase 1 Versions
+
+| Version       | Time      | Content                      |
+| ------------- | --------- | ---------------------------- |
+| v0.1.0-alpha  | Week 4    | DataLayer + Mock dataset     |
+| v0.2.0-alpha  | Week 8    | + AskAgent + AgentHarness    |
+| v0.3.0-alpha  | Week 12   | + StrategyDSL + Dashboard    |
+| v0.4.0-alpha  | Week 16   | + Broker + Playbook          |
+| v0.5.0-beta   | Week 20   | + Community + Billing        |
+| v1.0.0        | Week 24   | Public release, 100 DAU pilot |
+
+### 10.2 Phase 2 Versions
+
+| Version | Time      | Content                  |
+| ------- | --------- | ------------------------ |
+| v1.1.0  | Week 30   | Real broker integration  |
+| v1.2.0  | Week 36   | Multi-Agent + recommendation system |
+| v1.3.0  | Week 42   | China market             |
+| v2.0.0  | Week 48   | 5000-user milestone      |
+
+### 10.3 Phase 3 Versions
+
+| Version | Time      | Content           |
+| ------- | --------- | ----------------- |
+| v3.0.0  | Week 60   | Playbook SDK      |
+| v3.1.0  | Week 66   | Multi-market (HK/A-shares) |
+| v3.2.0  | Week 72   | Mobile App        |
+
+***
+
+## 11. Version History
+
+| Version | Date        | Change                                                                  |
+| ------- | ----------- | ----------------------------------------------------------------------- |
+| 0.1     | 2026-07-19  | Initial draft, including 3 phases + 9 Phase 1 Sprints + risk register + resource allocation |

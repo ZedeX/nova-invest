@@ -1,24 +1,24 @@
 # Data Model Specification
 
-**文档类型**: 技术规格 / 数据模型
-**文档性质标签**: [B] + [C]
-**最后更新**: 2026-07-19
-**关联**: 各 Epic 文档的 D1 schema 聚合 + 统一 ER 图
+**Document type**: Technical spec / Data model
+**Document nature tag**: [B] + [C]
+**Last updated**: 2026-07-19
+**Related**: D1 schema aggregation of each Epic + unified ER diagram
 
 ---
 
-## 1. 概述
+## 1. Overview
 
-本文档汇总 nova-invest 全部 8 个 Epic 涉及的 D1 数据表，提供：
-- 统一 ER 图
-- 表清单
-- 字段规范
-- 索引策略
-- 数据生命周期
+This document aggregates the D1 data tables involved in all 8 Epics of nova-invest, providing:
+- Unified ER diagram
+- Table list
+- Field specifications
+- Index strategy
+- Data lifecycle
 
 ---
 
-## 2. ER 图 [B]
+## 2. ER Diagram [B]
 
 ```mermaid
 erDiagram
@@ -55,24 +55,24 @@ erDiagram
 
 ---
 
-## 3. 表清单 [B]
+## 3. Table List [B]
 
 ### 3.1 Auth & User
 
-#### `users` (Phase 1.5，Auth 暂时简化)
+#### `users` (Phase 1.5, Auth is temporarily simplified)
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | TEXT PK | UUID |
-| email | TEXT UNIQUE | 注册邮箱 |
-| name | TEXT | 显示名 |
+| email | TEXT UNIQUE | Registration email |
+| name | TEXT | Display name |
 | plan | TEXT | free / pro / team / enterprise |
-| created_at | TEXT | 创建时间 |
-| updated_at | TEXT | 更新时间 |
+| created_at | TEXT | Creation time |
+| updated_at | TEXT | Update time |
 
 #### `user_profiles` (Epic 03)
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | user_id | TEXT PK | FK → users.id |
 | risk_tolerance | TEXT | conservative/moderate/aggressive |
@@ -86,7 +86,7 @@ erDiagram
 
 #### `symbols`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | ticker | TEXT PK | "AAPL" |
 | name | TEXT | "Apple Inc." |
@@ -94,21 +94,21 @@ erDiagram
 | sector | TEXT | "Technology" |
 | industry | TEXT | "Consumer Electronics" |
 | market_cap | INTEGER | USD |
-| is_mockup | INTEGER | 1 = 在 Mockup 池 |
+| is_mockup | INTEGER | 1 = in Mockup pool |
 | created_at | TEXT | |
 
 #### `watchlists`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | INTEGER PK AUTOINCREMENT | |
 | user_id | TEXT | FK → users.id |
-| name | TEXT | "我的科技股" |
+| name | TEXT | "My Tech Stocks" |
 | created_at | TEXT | |
 
 #### `watchlist_items`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | watchlist_id | INTEGER | FK → watchlists.id |
 | ticker | TEXT | FK → symbols.ticker |
@@ -117,17 +117,17 @@ erDiagram
 
 #### `kline_cache_index`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | ticker | TEXT | |
 | timeframe | TEXT | 1d/5m/15m/1h |
 | cached_at | TEXT | |
-| r2_key | TEXT | R2 对象 key |
+| r2_key | TEXT | R2 object key |
 | PK | | (ticker, timeframe) |
 
 #### `fundamentals`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | ticker | TEXT | |
 | field | TEXT | pe_ratio/eps/revenue/... |
@@ -140,7 +140,7 @@ erDiagram
 
 #### `conversation_history`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | INTEGER PK AUTOINCREMENT | |
 | user_id | TEXT | |
@@ -150,50 +150,50 @@ erDiagram
 | metadata | TEXT | JSON: {intent, citations, cost} |
 | created_at | TEXT | |
 
-**索引**: `idx_conv_user_session (user_id, session_id)`
+**Index**: `idx_conv_user_session (user_id, session_id)`
 
 ### 3.4 Strategy DSL (Epic 04)
 
 #### `strategies`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | TEXT PK | UUID |
 | user_id | TEXT | |
 | name | TEXT | "NVDA MA Cross" |
-| dsl_yaml | TEXT | 完整 DSL YAML |
+| dsl_yaml | TEXT | Full DSL YAML |
 | status | TEXT | draft/validated/backtested/paper/live |
 | created_at | TEXT | |
 | updated_at | TEXT | |
 
-**索引**: `idx_strategies_user (user_id)`
+**Index**: `idx_strategies_user (user_id)`
 
 #### `backtest_results`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | INTEGER PK AUTOINCREMENT | |
 | strategy_id | TEXT | FK → strategies.id |
-| result_json | TEXT | BacktestResult 序列化 |
+| result_json | TEXT | BacktestResult serialized |
 | run_at | TEXT | |
 
 ### 3.5 Broker (Epic 06)
 
 #### `broker_accounts`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | TEXT PK | UUID |
 | user_id | TEXT | |
 | broker_name | TEXT | paper/alpaca/ibkr |
 | mode | TEXT | paper/live |
-| balance | REAL | 默认 100000 |
+| balance | REAL | Default 100000 |
 | currency | TEXT | "USD" |
 | created_at | TEXT | |
 
 #### `orders`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | TEXT PK | "ord_xxx" |
 | user_id | TEXT | |
@@ -207,15 +207,15 @@ erDiagram
 | status | TEXT | pending/partial/filled/cancelled/rejected |
 | filled_qty | REAL | |
 | filled_price | REAL | |
-| strategy_id | TEXT | 可选关联策略 |
+| strategy_id | TEXT | Optional associated strategy |
 | created_at | TEXT | |
 | updated_at | TEXT | |
 
-**索引**: `idx_orders_user (user_id, created_at)`, `idx_orders_status (status)`
+**Index**: `idx_orders_user (user_id, created_at)`, `idx_orders_status (status)`
 
 #### `positions`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | INTEGER PK AUTOINCREMENT | |
 | user_id | TEXT | |
@@ -230,7 +230,7 @@ erDiagram
 
 #### `trades`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | INTEGER PK AUTOINCREMENT | |
 | order_id | TEXT | FK → orders.id |
@@ -241,13 +241,13 @@ erDiagram
 | commission | REAL | |
 | executed_at | TEXT | |
 
-**索引**: `idx_trades_order (order_id)`
+**Index**: `idx_trades_order (order_id)`
 
 ### 3.6 Community (Epic 07)
 
 #### `community_playbooks`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | package_id | TEXT PK | "pkg_xxx" |
 | playbook_id | TEXT | FK → playbooks.id |
@@ -255,7 +255,7 @@ erDiagram
 | title | TEXT | |
 | description | TEXT | |
 | tags | TEXT | JSON array |
-| yaml_r2_key | TEXT | R2 引用 |
+| yaml_r2_key | TEXT | R2 reference |
 | version | TEXT | "1.0" |
 | status | TEXT | active/removed/banned |
 | installed_count | INTEGER | |
@@ -263,11 +263,11 @@ erDiagram
 | rating_count | INTEGER | |
 | created_at | TEXT | |
 
-**索引**: `idx_cp_status_created (status, created_at)`, `idx_cp_author (author_id)`
+**Index**: `idx_cp_status_created (status, created_at)`, `idx_cp_author (author_id)`
 
 #### `playbook_installs`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | INTEGER PK AUTOINCREMENT | |
 | user_id | TEXT | |
@@ -277,7 +277,7 @@ erDiagram
 
 #### `playbook_ratings`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | user_id | TEXT | |
 | package_id | TEXT | |
@@ -287,19 +287,19 @@ erDiagram
 
 #### `playbook_comments`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | INTEGER PK AUTOINCREMENT | |
 | package_id | TEXT | |
 | user_id | TEXT | |
 | content | TEXT | |
-| parent_id | INTEGER | 嵌套回复 |
+| parent_id | INTEGER | Nested reply |
 | status | TEXT | active/hidden/deleted |
 | created_at | TEXT | |
 
 #### `playbook_reports`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | INTEGER PK AUTOINCREMENT | |
 | package_id | TEXT | |
@@ -313,7 +313,7 @@ erDiagram
 
 #### `playbooks`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | TEXT PK | "pb_xxx" |
 | title | TEXT | |
@@ -327,33 +327,33 @@ erDiagram
 
 #### `playbook_versions`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | playbook_id | TEXT | FK → playbooks.id |
 | version | TEXT | "1.2.0" |
-| yaml_r2_key | TEXT | R2 引用 |
+| yaml_r2_key | TEXT | R2 reference |
 | changelog | TEXT | |
 | published_by | TEXT | |
 | published_at | TEXT | |
 | PK | | (playbook_id, version) |
 
-**索引**: `idx_pbv_playbook (playbook_id, published_at DESC)`
+**Index**: `idx_pbv_playbook (playbook_id, published_at DESC)`
 
 #### `playbook_dependencies`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | parent_id | TEXT | FK → playbooks.id |
 | child_id | TEXT | FK → playbooks.id |
-| child_version | TEXT | 可选固定版本 |
+| child_version | TEXT | Optional fixed version |
 | dependency_type | TEXT | parallel/sequential/conditional/data |
-| weight | REAL | parallel 时权重 |
+| weight | REAL | Weight in parallel case |
 | created_at | TEXT | |
 | PK | | (parent_id, child_id, dependency_type) |
 
 #### `user_playbooks`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | user_id | TEXT | |
 | playbook_id | TEXT | |
@@ -365,7 +365,7 @@ erDiagram
 
 #### `credit_balances`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | user_id | TEXT | |
 | period | TEXT | "2026-07" |
@@ -379,21 +379,21 @@ erDiagram
 
 #### `credit_transactions`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | INTEGER PK AUTOINCREMENT | |
 | user_id | TEXT | |
 | action | TEXT | ask_simple/ask_deep/backtest/... |
-| amount | INTEGER | 正数=扣除，负数=返还 |
+| amount | INTEGER | Positive = deducted, negative = refunded |
 | balance_after | INTEGER | |
 | metadata | TEXT | JSON |
 | created_at | TEXT | |
 
-**索引**: `idx_credit_tx_user_time (user_id, created_at)`
+**Index**: `idx_credit_tx_user_time (user_id, created_at)`
 
 #### `credit_orders`
 
-| 字段 | 类型 | 说明 |
+| Field | Type | Description |
 |---|---|---|
 | id | TEXT PK | "ord_xxx" |
 | user_id | TEXT | |
@@ -405,66 +405,66 @@ erDiagram
 
 ---
 
-## 4. 索引策略汇总 [B]
+## 4. Index Strategy Summary [B]
 
-| 表 | 索引 | 用途 |
+| Table | Index | Purpose |
 |---|---|---|
-| watchlists | (user_id) | 用户 watchlist 查询 |
-| conversation_history | (user_id, session_id) | 会话历史查询 |
-| strategies | (user_id) | 用户策略列表 |
-| orders | (user_id, created_at) | 用户订单时间序 |
-| orders | (status) | 待处理订单筛选 |
-| trades | (order_id) | 订单成交明细 |
-| community_playbooks | (status, created_at) | Feed 流 |
-| community_playbooks | (author_id) | 作者主页 |
-| playbook_versions | (playbook_id, published_at DESC) | 版本历史 |
-| credit_transactions | (user_id, created_at) | 流水查询 |
+| watchlists | (user_id) | User watchlist query |
+| conversation_history | (user_id, session_id) | Conversation history query |
+| strategies | (user_id) | User strategy list |
+| orders | (user_id, created_at) | User order timeline |
+| orders | (status) | Pending order filtering |
+| trades | (order_id) | Order trade details |
+| community_playbooks | (status, created_at) | Feed stream |
+| community_playbooks | (author_id) | Author profile |
+| playbook_versions | (playbook_id, published_at DESC) | Version history |
+| credit_transactions | (user_id, created_at) | Transaction query |
 
 ---
 
-## 5. 数据生命周期 [B]
+## 5. Data Lifecycle [B]
 
-### 5.1 保留策略
+### 5.1 Retention Policy
 
-| 数据类型 | 保留期 | 删除方式 |
+| Data type | Retention period | Deletion method |
 |---|---|---|
-| 用户账户 | 永久（用户主动删除） | 软删除 → 30 天后硬删除 |
-| 对话历史 | 7 年 | 合规要求 |
-| 订单/成交 | 7 年 | 合规要求 |
-| 回测结果 | 1 年 | 用户可主动清理 |
-| Mock 数据 | 永久 | 静态资产 |
-| Playbook | 永久（作者归档后软删除） | |
-| Credit 流水 | 7 年 | 合规要求 |
-| 社区评论 | 永久（用户删除后软删除） | |
+| User account | Permanent (user-initiated deletion) | Soft delete → hard delete after 30 days |
+| Conversation history | 7 years | Compliance requirement |
+| Orders/Trades | 7 years | Compliance requirement |
+| Backtest results | 1 year | User can manually clean |
+| Mock data | Permanent | Static asset |
+| Playbook | Permanent (soft-deleted after author archives) | |
+| Credit transactions | 7 years | Compliance requirement |
+| Community comments | Permanent (soft-deleted after user deletion) | |
 
-### 5.2 GDPR 删除流程
+### 5.2 GDPR Deletion Process
 
 ```typescript
 async function deleteUserData(userId: string) {
-  // 1. 软删除主表
+  // 1. Soft delete primary tables
   await db.run("UPDATE users SET deleted_at = ? WHERE id = ?", new Date(), userId);
 
-  // 2. 30 天后硬删除（cron job）
-  // 包括：users, user_profiles, watchlists, strategies, orders, positions,
+  // 2. Hard delete after 30 days (cron job)
+  // Includes: users, user_profiles, watchlists, strategies, orders, positions,
   //       trades, conversation_history, user_playbooks, credit_balances,
   //       credit_transactions, credit_orders, playbook_ratings, playbook_comments
 
-  // 3. R2 中用户策略导出删除
+  // 3. Delete user strategy exports in R2
   await R2.delete(`strategy_exports/${userId}/`);
 
-  // 4. Vectorize 中用户相关向量删除
-  // （通过 metadata.user_id 过滤删除）
+  // 4. Delete user-related vectors in Vectorize
+  // (Filtered and deleted via metadata.user_id)
 
-  // 5. 通知 Stripe 取消订阅
+  // 5. Notify Stripe to cancel subscription
   await stripe.subscriptions.cancel(user.stripe_sub_id);
 }
 ```
 
 ---
 
-## 6. Mock 模式数据预置 [B]
+## 6. Mock Mode Data Preset [B]
 
-### 6.1 预置用户
+### 6.1 Preset Users
 
 ```sql
 -- migrations/0003_seed_mock_users.sql
@@ -480,7 +480,7 @@ VALUES
   ('mock-user-3', 'aggressive', '["tech"]', '{"TSLA":300,"NVDA":200}', '["yahoo","polygon"]');
 ```
 
-### 6.2 预置 Playbook
+### 6.2 Preset Playbooks
 
 ```sql
 -- migrations/0004_seed_mock_playbooks.sql
@@ -491,7 +491,7 @@ INSERT INTO playbooks (id, title, author_id, kind, current_version, status) VALU
   ('pb_mock_combo',      'Multi-Strategy Combo','mock-user-3', 'composite', '1.0.0', 'published');
 ```
 
-### 6.3 预置社区数据
+### 6.3 Preset Community Data
 
 ```sql
 -- migrations/0005_seed_mock_community.sql
@@ -505,23 +505,23 @@ VALUES
 
 ---
 
-## 7. 迁移文件清单 [B]
+## 7. Migration File List [B]
 
 ```
 migrations/
-├── 0001_init.sql              # 所有表 CREATE
-├── 0002_seed_symbols.sql      # 预置 10 个 Mockup 标的 + S&P 100
-├── 0003_seed_mock_users.sql   # 预置 3 个 Mock 用户
-├── 0004_seed_mock_playbooks.sql # 预置 5 个 Mock Playbook
-├── 0005_seed_mock_community.sql # 预置社区数据
-├── 0006_seed_mock_strategies.sql # 预置策略 + 回测结果
-└── 0007_seed_mock_orders.sql   # 预置订单 + 持仓 + 成交
+├── 0001_init.sql              # All tables CREATE
+├── 0002_seed_symbols.sql      # Preset 10 Mockup symbols + S&P 100
+├── 0003_seed_mock_users.sql   # Preset 3 Mock users
+├── 0004_seed_mock_playbooks.sql # Preset 5 Mock Playbooks
+├── 0005_seed_mock_community.sql # Preset community data
+├── 0006_seed_mock_strategies.sql # Preset strategies + backtest results
+└── 0007_seed_mock_orders.sql   # Preset orders + positions + trades
 ```
 
 ---
 
-## 8. 版本历史
+## 8. Version History
 
-| 版本 | 日期 | 变更 |
+| Version | Date | Change |
 |---|---|---|
-| 0.1 | 2026-07-19 | 初稿，汇总 8 Epic + 1 Appendix 共 27 张表 |
+| 0.1 | 2026-07-19 | Initial draft, aggregating 8 Epics + 1 Appendix with 27 tables |

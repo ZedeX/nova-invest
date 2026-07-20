@@ -964,7 +964,7 @@ For shared fixtures and stubs referenced below, see [`04-test-fixtures.md`](./04
 #### 5. `STREAM_THRESHOLD_MS === 5000`
 - **Input**: read `STREAM_THRESHOLD_MS`.
 - **Expected**: `5000`.
-- **Why**: ADR-0015 §"Decision" — 5s adaptive threshold per EP03 §6.2 反模式.
+- **Why**: ADR-0015 §"Decision" — 5s adaptive threshold per EP03 §6.2 anti-pattern.
 
 #### 6. `SSEncoder exposes readable ReadableStream<Uint8Array>`
 - **Input**: `const enc = new SSEncoder(); const { readable } = enc;`.

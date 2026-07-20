@@ -11,7 +11,7 @@
 - **GDD revision flags applied**: 4 (all in EP01 + EP03)
   - EP01 §ID-4 - added ADR-0004 back-reference (state machine formalized)
   - EP01 §ID-7 - added ADR-0004 back-reference (TraceStep schema, 7 -> 9 fields)
-  - EP01 §反模式 - added ADR-0004 back-reference (MAX_STEPS=20, $5 aggregate ceiling, TOOL_RETRY_LIMIT=3)
+  - EP01 §anti-pattern - added ADR-0004 back-reference (MAX_STEPS=20, $5 aggregate ceiling, TOOL_RETRY_LIMIT=3)
   - EP03 §2.7 - added ADR-0004 back-reference (generic loop + StepHandler injection)
 - **Architecture.md update**: §3 Layer 7 "Agent Loop" now references ADR-0004
 - **Top remaining ADR gaps (9)**:
@@ -25,7 +25,7 @@
   - ADR-0012 Dashboard Widget System (Feature, blocks EP05)
   - ADR-0014 Observability Schema (Cross-cutting, blocks EP01 ID-7 full Trace)
 - **New conflicts found**: 4 (all LOW/MEDIUM documentation drift)
-  - C10 (MEDIUM): EP01 §ID-4/§ID-7/§反模式 didn't back-ref ADR-0004 - **RESOLVED** (this session)
+  - C10 (MEDIUM): EP01 §ID-4/§ID-7/§anti-pattern didn't back-ref ADR-0004 - **RESOLVED** (this session)
   - C11 (LOW): EP03 §2.7 didn't back-ref ADR-0004 - **RESOLVED** (this session)
   - C12 (LOW): traceability-index.md was stale (said 3 ADRs) - **RESOLVED** (this session)
   - C13 (LOW): tr-registry.yaml owner_adr fields were stale - **RESOLVED** (this session)
